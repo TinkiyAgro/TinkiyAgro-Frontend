@@ -17,9 +17,12 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
   String? _pedidoId;
   bool _cargando = true;
   String? _error;
+  final Map<String, TrackingInfo?> _courierTracking = {};
 
   Timer? _pollTimer;
+  Timer? _courierPollTimer;
   static const _pollInterval = Duration(seconds: 30);
+  static const _courierPollInterval = Duration(hours: 1);
 
   @override
   void didChangeDependencies() {
@@ -34,6 +37,7 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
   @override
   void dispose() {
     _pollTimer?.cancel();
+    _courierPollTimer?.cancel();
     super.dispose();
   }
 
@@ -42,6 +46,7 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
       final pedido = await _service.detallePedido(id);
       if (mounted) {
         setState(() => _pedido = pedido);
+        await _fetchCourierTracking(pedido);
         _iniciarPolling(pedido);
         _debugEstado();
       }
@@ -49,6 +54,16 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
       if (mounted) setState(() => _error = e.toString());
     } finally {
       if (mounted) setState(() => _cargando = false);
+    }
+  }
+
+  Future<void> _fetchCourierTracking(PedidoConsumidor pedido) async {
+    for (final sub in pedido.subPedidos) {
+      if (!sub.isCourierDelivery) continue;
+      final t = await _service.fetchTracking(sub.id, isCourier: true);
+      if (mounted && t != null) {
+        setState(() => _courierTracking[sub.id] = t);
+      }
     }
   }
 
@@ -77,6 +92,16 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
         // Fallo silencioso: se sigue mostrando el último dato conocido
       }
     });
+
+    final hayCourier = pedido.subPedidos.any((s) => s.isCourierDelivery);
+    if (hayCourier && _pedidoId != null) {
+      _courierPollTimer?.cancel();
+      _courierPollTimer = Timer.periodic(_courierPollInterval, (_) async {
+        if (!mounted) return;
+        final current = _pedido;
+        if (current != null) await _fetchCourierTracking(current);
+      });
+    }
   }
 
   @override
@@ -196,15 +221,10 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
                         color: Colors.black,
                       ),
                     ),
-                    Text(
-                      sub.itemsText.join(' • '),
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey.shade600,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
+                    ...sub.itemsText.map((item) => Text(
+                      item,
+                      style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                    )),
                   ],
                 ),
               ),
@@ -213,13 +233,12 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
             ],
           ),
           const SizedBox(height: 16),
-          // Pasar sub.tracking directamente — viene del detalle del pedido
           ...sub.timeline.asMap().entries.map(
             (entry) => _buildTimelineRow(
               entry.value,
               entry.key,
               sub.timeline.length,
-              liveTracking: sub.tracking,
+              liveTracking: _courierTracking[sub.id] ?? sub.tracking,
             ),
           ),
         ],

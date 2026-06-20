@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:tinkiyagro_app/features/catalog/data/product_model.dart';
 
 // ── Farmer real-time tracking (from obtainUbicationFarmerEndpoint) ────────────
 
@@ -78,6 +79,7 @@ class SubPedido {
   final String estadoTexto;
   final List<TimelineEvent> timeline;
   final TrackingInfo? tracking; // null cuando no está en camino
+  final bool isCourierDelivery; // true cuando hay repartidor asignado en tránsito
 
   const SubPedido({
     required this.id,
@@ -88,6 +90,7 @@ class SubPedido {
     required this.estadoTexto,
     required this.timeline,
     this.tracking,
+    this.isCourierDelivery = false,
   });
 
   factory SubPedido.fromJson(Map<String, dynamic> json) {
@@ -99,8 +102,11 @@ class SubPedido {
     final itemsText = rawItems.whereType<Map>().map((i) {
       final name = i['productName'] ?? i['name'] ?? '';
       final qty = i['quantity'] ?? i['cantidad'] ?? '';
-      final unit = i['unit'] ?? i['unidad'] ?? '';
-      return '$name × $qty $unit'.trim();
+      final rawUnit = (i['unit'] ?? i['unidad'] ?? '').toString().trim();
+      final rawFormat = (i['saleFormat'] ?? '').toString().trim();
+      final unit = rawUnit.isNotEmpty ? rawUnit : _saleFormatUnit(rawFormat);
+      final cantStr = unit.isNotEmpty ? '$qty $unit' : qty.toString();
+      return '$name × $cantStr'.trim();
     }).toList();
 
     // Usar el timeline que envía el backend si viene (tiene label, completed, current, tracking)
@@ -143,16 +149,42 @@ class SubPedido {
       }
     }
 
+    final farmerObjSub = json['farmer'];
+    final farmerMapSub = farmerObjSub is Map ? farmerObjSub.cast<String, dynamic>() : null;
+
     return SubPedido(
+      isCourierDelivery: rawStatus == 'OUT_FOR_DELIVERY',
       id: json['id']?.toString() ?? '',
-      farmerName: json['farmerName']?.toString() ?? json['farmerDisplayName']?.toString() ?? json['farmerUsername']?.toString() ?? '',
-      farmerAvatarUrl: json['farmerAvatarUrl']?.toString() ?? json['avatarUrl']?.toString() ?? '',
+      farmerName: farmerMapSub?['fullName']?.toString()
+          ?? json['farmerName']?.toString()
+          ?? json['farmerDisplayName']?.toString()
+          ?? json['farmerUsername']?.toString()
+          ?? '',
+      farmerAvatarUrl: resolveMediaUrl(
+        farmerMapSub?['profileImageUrl']?.toString()
+            ?? json['farmerAvatarUrl']?.toString()
+            ?? json['farmerProfileImageUrl']?.toString()
+            ?? json['avatarUrl']?.toString()
+            ?? '',
+      ),
       tipo: tipo,
       itemsText: itemsText.isEmpty ? ['(sin productos)'] : itemsText,
       estadoTexto: estadoTexto,
       timeline: timeline,
       tracking: tracking,
     );
+  }
+}
+
+String _saleFormatUnit(String format) {
+  switch (format.toUpperCase()) {
+    case 'KILO': return 'kg';
+    case 'GRAM': case 'GRAMO': return 'g';
+    case 'UNIT': case 'UNIDAD': return 'ud';
+    case 'CAJA': case 'BOX': return 'caja';
+    case 'BOLSA': case 'BAG': return 'bolsa';
+    case 'LITRO': case 'LITER': return 'L';
+    default: return format.toLowerCase();
   }
 }
 

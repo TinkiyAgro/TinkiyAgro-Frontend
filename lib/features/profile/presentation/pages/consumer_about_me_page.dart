@@ -2,7 +2,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:tinkiyagro_app/core/session_manager.dart';
-import 'package:tinkiyagro_app/features/auth/data/remote/auth_service.dart';
+import 'package:tinkiyagro_app/features/catalog/data/product_model.dart';
+import 'package:tinkiyagro_app/features/profile/data/remote/profile_service.dart';
 
 class ConsumerAboutMePage extends StatefulWidget {
   const ConsumerAboutMePage({super.key});
@@ -12,14 +13,21 @@ class ConsumerAboutMePage extends StatefulWidget {
 }
 
 class _ConsumerAboutMePageState extends State<ConsumerAboutMePage> {
+  final _service = ProfileService();
+
   final _nameController = TextEditingController();
   final _usernameController = TextEditingController();
   final _phoneController = TextEditingController();
+  final _currentPasswordController = TextEditingController();
   final _newPasswordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
+
+  bool _showCurrentPassword = false;
   bool _showNewPassword = false;
   bool _showConfirmPassword = false;
+
   File? _profileImage;
+  String? _avatarUrl;
   bool _loadingProfile = true;
   bool _guardando = false;
 
@@ -31,35 +39,35 @@ class _ConsumerAboutMePageState extends State<ConsumerAboutMePage> {
 
   Future<void> _loadProfile() async {
     final session = SessionManager();
-    // Pre-fill from cached session first for instant display
-    _nameController.text = [
-      session.nombre,
-      session.apellido,
-    ].where((s) => s != null && s.isNotEmpty).join(' ');
+    _nameController.text = [session.nombre, session.apellido]
+        .where((s) => s != null && s.isNotEmpty)
+        .join(' ');
     _usernameController.text = session.username ?? '';
     _phoneController.text = session.telefono ?? '';
 
-    // Then try to refresh from API
-    final token = session.token;
-    if (token != null) {
-      try {
-        final data = await AuthService().obtenerPerfil(token);
-        if (!mounted) return;
-        final nombre = data['firstName']?.toString() ?? '';
-        final apellido = data['lastName']?.toString() ?? '';
-        final usuario = data['username']?.toString() ?? '';
-        final telefono = data['phoneNumber']?.toString() ?? '';
-        setState(() {
-          _nameController.text = [
-            nombre,
-            apellido,
-          ].where((s) => s.isNotEmpty).join(' ');
-          _usernameController.text = usuario;
-          _phoneController.text = telefono;
-        });
-      } catch (_) {
-        // keep session-cached values on error
-      }
+    try {
+      final data = await _service.obtenerPerfil();
+      if (!mounted) return;
+      final nombre = data['firstName']?.toString() ?? '';
+      final apellido = data['lastName']?.toString() ?? '';
+      final usuario = data['username']?.toString() ?? '';
+      final telefono = data['phoneNumber']?.toString() ?? data['phone']?.toString() ?? '';
+      final avatarRaw = data['profileImageUrl']
+          ?? data['avatarUrl']
+          ?? data['imageUrl']
+          ?? data['profileImage']
+          ?? data['photo'];
+      setState(() {
+        if (nombre.isNotEmpty || apellido.isNotEmpty) {
+          _nameController.text =
+              [nombre, apellido].where((s) => s.isNotEmpty).join(' ');
+        }
+        if (usuario.isNotEmpty) _usernameController.text = usuario;
+        if (telefono.isNotEmpty) _phoneController.text = telefono;
+        if (avatarRaw != null) _avatarUrl = resolveMediaUrl(avatarRaw.toString());
+      });
+    } catch (_) {
+      // keep session-cached values on error
     }
 
     if (mounted) setState(() => _loadingProfile = false);
@@ -81,9 +89,84 @@ class _ConsumerAboutMePageState extends State<ConsumerAboutMePage> {
     _nameController.dispose();
     _usernameController.dispose();
     _phoneController.dispose();
+    _currentPasswordController.dispose();
     _newPasswordController.dispose();
     _confirmPasswordController.dispose();
     super.dispose();
+  }
+
+  Future<void> _guardar() async {
+    final fullName = _nameController.text.trim();
+    final parts = fullName.split(' ');
+    final firstName = parts.isNotEmpty ? parts.first : '';
+    final lastName = parts.length > 1 ? parts.sublist(1).join(' ') : '';
+    final phone = _phoneController.text.trim();
+
+    final currentPwd = _currentPasswordController.text;
+    final newPwd = _newPasswordController.text;
+    final confirmPwd = _confirmPasswordController.text;
+    final passwordFilled =
+        currentPwd.isNotEmpty || newPwd.isNotEmpty || confirmPwd.isNotEmpty;
+
+    if (passwordFilled) {
+      if (currentPwd.isEmpty) {
+        _showSnackBar('Ingresa tu contraseña actual', error: true);
+        return;
+      }
+      if (newPwd.isEmpty) {
+        _showSnackBar('Ingresa la nueva contraseña', error: true);
+        return;
+      }
+      if (newPwd != confirmPwd) {
+        _showSnackBar('Las contraseñas nuevas no coinciden', error: true);
+        return;
+      }
+    }
+
+    setState(() => _guardando = true);
+    try {
+      if (_profileImage != null) {
+        await _service.subirFotoPerfil(_profileImage!);
+      }
+      await _service.editarPerfil(
+        firstName: firstName,
+        lastName: lastName,
+        phone: phone,
+      );
+      SessionManager().setSession(
+        nombre: firstName,
+        apellido: lastName,
+        telefono: phone,
+      );
+
+      if (passwordFilled) {
+        await _service.cambiarContrasena(
+          currentPassword: currentPwd,
+          newPassword: newPwd,
+          confirmPassword: confirmPwd,
+        );
+      }
+
+      if (mounted) {
+        _showSnackBar('Perfil guardado correctamente');
+        Navigator.pop(context);
+      }
+    } catch (e) {
+      if (mounted) {
+        _showSnackBar(e.toString(), error: true);
+      }
+    } finally {
+      if (mounted) setState(() => _guardando = false);
+    }
+  }
+
+  void _showSnackBar(String msg, {bool error = false}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg),
+        backgroundColor: error ? Colors.redAccent : const Color(0xFF5CA399),
+      ),
+    );
   }
 
   @override
@@ -115,6 +198,7 @@ class _ConsumerAboutMePageState extends State<ConsumerAboutMePage> {
                     icon: Icons.alternate_email,
                     controller: _usernameController,
                     hint: 'Usuario',
+                    readOnly: true,
                   ),
                   const SizedBox(height: 10),
                   _buildField(
@@ -127,6 +211,14 @@ class _ConsumerAboutMePageState extends State<ConsumerAboutMePage> {
                   _buildSectionTitle('Cambiar contraseña'),
                   const SizedBox(height: 12),
                   _buildPasswordField(
+                    controller: _currentPasswordController,
+                    hint: 'Contraseña actual',
+                    show: _showCurrentPassword,
+                    onToggle: () =>
+                        setState(() => _showCurrentPassword = !_showCurrentPassword),
+                  ),
+                  const SizedBox(height: 10),
+                  _buildPasswordField(
                     controller: _newPasswordController,
                     hint: 'Nueva contraseña',
                     show: _showNewPassword,
@@ -136,7 +228,7 @@ class _ConsumerAboutMePageState extends State<ConsumerAboutMePage> {
                   const SizedBox(height: 10),
                   _buildPasswordField(
                     controller: _confirmPasswordController,
-                    hint: 'Confirmar contraseña',
+                    hint: 'Confirmar nueva contraseña',
                     show: _showConfirmPassword,
                     onToggle: () => setState(
                       () => _showConfirmPassword = !_showConfirmPassword,
@@ -158,9 +250,11 @@ class _ConsumerAboutMePageState extends State<ConsumerAboutMePage> {
             radius: 48,
             backgroundColor: const Color(0xFFE0EFED),
             backgroundImage: _profileImage != null
-                ? FileImage(_profileImage!)
-                : null,
-            child: _profileImage == null
+                ? FileImage(_profileImage!) as ImageProvider
+                : (_avatarUrl != null && _avatarUrl!.isNotEmpty
+                    ? NetworkImage(_avatarUrl!)
+                    : null),
+            child: (_profileImage == null && (_avatarUrl == null || _avatarUrl!.isEmpty))
                 ? const Icon(Icons.person, size: 48, color: Color(0xFF5CA399))
                 : null,
           ),
@@ -230,10 +324,11 @@ class _ConsumerAboutMePageState extends State<ConsumerAboutMePage> {
     required TextEditingController controller,
     String? hint,
     TextInputType keyboardType = TextInputType.text,
+    bool readOnly = false,
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: readOnly ? Colors.grey.shade50 : Colors.white,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
@@ -246,9 +341,17 @@ class _ConsumerAboutMePageState extends State<ConsumerAboutMePage> {
       child: TextField(
         controller: controller,
         keyboardType: keyboardType,
-        style: const TextStyle(fontSize: 15, color: Colors.black87),
+        readOnly: readOnly,
+        style: TextStyle(
+          fontSize: 15,
+          color: readOnly ? Colors.grey.shade500 : Colors.black87,
+        ),
         decoration: InputDecoration(
-          prefixIcon: Icon(icon, color: Colors.grey.shade400, size: 22),
+          prefixIcon: Icon(
+            icon,
+            color: readOnly ? Colors.grey.shade300 : Colors.grey.shade400,
+            size: 22,
+          ),
           hintText: hint,
           hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 15),
           border: InputBorder.none,
@@ -307,52 +410,6 @@ class _ConsumerAboutMePageState extends State<ConsumerAboutMePage> {
         ),
       ),
     );
-  }
-
-  Future<void> _guardar() async {
-    final fullName = _nameController.text.trim();
-    final parts = fullName.split(' ');
-    final firstName = parts.isNotEmpty ? parts.first : '';
-    final lastName = parts.length > 1 ? parts.sublist(1).join(' ') : '';
-    final phone = _phoneController.text.trim();
-    final token = SessionManager().token;
-
-    if (token == null) return;
-
-    setState(() => _guardando = true);
-    try {
-      await AuthService().actualizarPerfil(
-        token: token,
-        firstName: firstName,
-        lastName: lastName,
-        phone: phone,
-      );
-      SessionManager().setSession(
-        nombre: firstName,
-        apellido: lastName,
-        telefono: phone,
-      );
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Perfil guardado correctamente.'),
-            backgroundColor: Color(0xFF5CA399),
-          ),
-        );
-        Navigator.pop(context);
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error al guardar: ${e.toString()}'),
-            backgroundColor: Colors.redAccent,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _guardando = false);
-    }
   }
 
   Widget _buildSaveButton(BuildContext context) {

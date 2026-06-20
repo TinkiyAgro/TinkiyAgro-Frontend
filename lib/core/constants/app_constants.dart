@@ -11,7 +11,17 @@ class AppConstants {
 
   static const String profileEndpoint = '/users/me';
 
-  //Profile
+  //Profile - General
+
+  static const String showProfileEndpoint = '/api/profile/about-me';
+
+  static const String editProfileEndpoint = '/api/profile/about-me';
+
+  static const String changePasswordEndpoint = '/api/profile/password';
+
+  static const String uploadProfilePhotoEndpoint = '/api/profile/profile-image';
+
+  //Profile - Customer
 
   static const String obtainAdressDefaultEndpoint =
       '/api/customer/profile/addresses/default';
@@ -25,6 +35,11 @@ class AppConstants {
 
   static const String editAddressEndpoint =
       '/api/customer/profile/addresses/{id}'; // + /{id}
+
+  static const String showTransactionsEndpoint =
+      '/api/customer/profile/transactions';
+
+  //Profile - Farmer
 
   static const String showDeliverySettingsEndpoint =
       '/api/farmer/profile/delivery-settings';
@@ -43,8 +58,6 @@ class AppConstants {
 
   static const String editProfileFarmerEndpoint =
       '/api/farmer/profile/about-me';
-
-  static const String changePasswordEndpoint = '/api/farmer/profile/password';
 
   //Products
   static const String listProductEndpoint = '/api/farmer/products';

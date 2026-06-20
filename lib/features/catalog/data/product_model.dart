@@ -24,6 +24,8 @@ class Producto {
   final double? precioCaja;
   final double? stockCaja;
   final double? unidadesCajaReferencial;
+  final String farmerDescription;
+  final String farmerPhone;
 
   Producto({
     required this.id,
@@ -48,9 +50,14 @@ class Producto {
     this.precioCaja,
     this.stockCaja,
     this.unidadesCajaReferencial,
+    this.farmerDescription = '',
+    this.farmerPhone = '',
   });
 
   factory Producto.fromJson(Map<String, dynamic> json) {
+    final farmerObj = json['farmer'];
+    final farmerMap = farmerObj is Map ? farmerObj.cast<String, dynamic>() : null;
+
     double asDouble(dynamic value, [double fallback = 0.0]) {
       if (value is num) return value.toDouble();
       return double.tryParse(value?.toString() ?? '') ?? fallback;
@@ -130,21 +137,34 @@ class Producto {
       cantidadResenas: asInt(
         json['cantidadResenas'] ?? json['reviewCount'] ?? 0,
       ),
-      // Detail: farmerUsername | legacy fields
+      // Detail: farmer.fullName | farmerUsername | legacy fields
       nombreVendedor:
+          farmerMap?['fullName']?.toString() ??
           json['farmerUsername'] ??
           json['nombreVendedor'] ??
           json['sellerName'] ??
           '',
       calificacionVendedor: asDouble(
-        json['farmerAverageRating'] ??
+        farmerMap?['averageRating'] ??
+            json['farmerAverageRating'] ??
             json['calificacionVendedor'] ??
             json['sellerRating'] ??
             0,
       ),
       urlAvatarVendedor: resolveMediaUrl(
-        json['urlAvatarVendedor'] ?? json['sellerAvatarUrl'] ?? '',
+        farmerMap?['profileImageUrl']?.toString() ??
+        json['urlAvatarVendedor'] ??
+        json['sellerAvatarUrl'] ??
+        '',
       ),
+      farmerDescription:
+          farmerMap?['description']?.toString() ??
+          json['farmerDescription']?.toString() ??
+          '',
+      farmerPhone:
+          farmerMap?['phoneNumber']?.toString() ??
+          json['farmerPhone']?.toString() ??
+          '',
       stockDisponible: asDouble(
         json['stockDisponible'] ??
             json['stock'] ??
@@ -226,6 +246,8 @@ class Producto {
     double? precioCaja,
     double? stockCaja,
     double? unidadesCajaReferencial,
+    String? farmerDescription,
+    String? farmerPhone,
   }) {
     return Producto(
       id: id ?? this.id,
@@ -251,6 +273,8 @@ class Producto {
       stockCaja: stockCaja ?? this.stockCaja,
       unidadesCajaReferencial:
           unidadesCajaReferencial ?? this.unidadesCajaReferencial,
+      farmerDescription: farmerDescription ?? this.farmerDescription,
+      farmerPhone: farmerPhone ?? this.farmerPhone,
     );
   }
 }

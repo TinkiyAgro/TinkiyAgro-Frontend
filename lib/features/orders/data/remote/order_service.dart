@@ -59,11 +59,14 @@ class OrderService {
     throw Exception('Error al confirmar pedido: ${response.statusCode} ${response.body}');
   }
 
-  /// GET /api/farmer/orders/self-deliveries/{subOrderId}/tracking
-  Future<TrackingInfo?> fetchTracking(String subOrderId) async {
-    final url = AppConstants.obtainUbicationFarmerEndpoint
-        .replaceAll('{subOrderId}', subOrderId);
-    debugPrint('[OrderService] fetchTracking → $url');
+  /// Obtiene la ubicación en tiempo real.
+  /// [isCourier] = true → endpoint del repartidor; false → auto-entrega del agricultor.
+  Future<TrackingInfo?> fetchTracking(String subOrderId, {bool isCourier = false}) async {
+    final endpoint = isCourier
+        ? AppConstants.obtainUbicationCourierEndpoint
+        : AppConstants.obtainUbicationFarmerEndpoint;
+    final url = endpoint.replaceAll('{subOrderId}', subOrderId);
+    debugPrint('[OrderService] fetchTracking(isCourier=$isCourier) → $url');
     try {
       final response = await ApiClient.get(url);
       debugPrint('[OrderService] fetchTracking ${response.statusCode}: ${response.body}');

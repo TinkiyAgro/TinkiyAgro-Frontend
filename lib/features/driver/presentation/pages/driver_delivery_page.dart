@@ -17,6 +17,7 @@ class _RepartidorDeliveryPageState extends State<RepartidorDeliveryPage> {
 
   late RepartidorDeliveryGroup _group;
   bool _initialized = false;
+  bool _trackingActive = false;
 
   final Map<String, bool> _confirmando = {};
   final Set<String> _confirmados = {};
@@ -27,7 +28,7 @@ class _RepartidorDeliveryPageState extends State<RepartidorDeliveryPage> {
     if (!_initialized) {
       _initialized = true;
       _group = ModalRoute.of(context)!.settings.arguments as RepartidorDeliveryGroup;
-      _startTracking();
+      WidgetsBinding.instance.addPostFrameCallback((_) => _startTracking());
     }
   }
 
@@ -39,6 +40,7 @@ class _RepartidorDeliveryPageState extends State<RepartidorDeliveryPage> {
   }
 
   Future<void> _startTracking() async {
+    if (!mounted) return;
     final granted = await _tracking.requestPermission();
     if (!granted || !mounted) return;
     final ids = _group.clientes.map((c) => c.subOrderId).toList();
@@ -46,6 +48,7 @@ class _RepartidorDeliveryPageState extends State<RepartidorDeliveryPage> {
       subOrderIds: ids,
       endpointTemplate: AppConstants.updateTrackingCourierEndpoint,
     );
+    if (mounted) setState(() => _trackingActive = true);
   }
 
   Future<void> _confirmar(RepartidorCustomer customer) async {
@@ -101,7 +104,30 @@ class _RepartidorDeliveryPageState extends State<RepartidorDeliveryPage> {
           ),
         ),
       ),
-      body: SingleChildScrollView(
+      body: Column(
+        children: [
+          if (_trackingActive)
+            Container(
+              width: double.infinity,
+              color: const Color(0xFF5CA399).withValues(alpha: 0.12),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Row(
+                children: [
+                  const Icon(Icons.location_on, color: Color(0xFF5CA399), size: 16),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'Compartiendo ubicación con los clientes',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF5CA399),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          Expanded(
+            child: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -115,19 +141,27 @@ class _RepartidorDeliveryPageState extends State<RepartidorDeliveryPage> {
               ),
             ),
             const SizedBox(height: 4),
-            Row(
-              children: [
-                const Icon(Icons.location_on_outlined,
-                    size: 14, color: Colors.grey),
-                const SizedBox(width: 4),
-                Expanded(
-                  child: Text(
-                    'Entregar en: ${_group.fullAddress}',
-                    style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+            Builder(builder: (context) {
+              final addr = _group.fullAddress.isNotEmpty
+                  ? _group.fullAddress
+                  : _group.clientes.isNotEmpty
+                      ? _group.clientes.first.destinationAddress
+                      : '';
+              if (addr.isEmpty) return const SizedBox.shrink();
+              return Row(
+                children: [
+                  const Icon(Icons.location_on_outlined,
+                      size: 14, color: Colors.grey),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      'Entregar en: $addr',
+                      style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                    ),
                   ),
-                ),
-              ],
-            ),
+                ],
+              );
+            }),
             const SizedBox(height: 16),
             ..._group.clientes.map((c) => Padding(
                   padding: const EdgeInsets.only(bottom: 16),
@@ -135,6 +169,9 @@ class _RepartidorDeliveryPageState extends State<RepartidorDeliveryPage> {
                 )),
           ],
         ),
+      ),
+    ),
+        ],
       ),
     );
   }
@@ -163,32 +200,48 @@ class _RepartidorDeliveryPageState extends State<RepartidorDeliveryPage> {
         children: [
           Row(
             children: [
-              Container(
-                width: 38,
-                height: 38,
-                decoration: BoxDecoration(
-                  color: customer.clienteColor,
-                  shape: BoxShape.circle,
-                ),
-                child: Center(
-                  child: Text(
-                    customer.clienteInicial,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                      color: Color(0xFF1E3A32),
-                    ),
-                  ),
-                ),
+              CircleAvatar(
+                radius: 19,
+                backgroundColor: customer.clienteColor,
+                backgroundImage: customer.customerProfileImageUrl.isNotEmpty
+                    ? NetworkImage(customer.customerProfileImageUrl)
+                    : null,
+                child: customer.customerProfileImageUrl.isEmpty
+                    ? Text(
+                        customer.clienteInicial,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                          color: Color(0xFF1E3A32),
+                        ),
+                      )
+                    : null,
               ),
               const SizedBox(width: 10),
               Expanded(
-                child: Text(
-                  customer.clienteNombre,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      customer.clienteNombre,
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                    ),
+                    if (customer.destinationAddress.isNotEmpty)
+                      Row(
+                        children: [
+                          Icon(Icons.location_on_outlined, size: 13, color: Colors.grey.shade500),
+                          const SizedBox(width: 2),
+                          Expanded(
+                            child: Text(
+                              customer.destinationAddress,
+                              style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                  ],
                 ),
               ),
               _buildTypeBadge(customer.tipoEntrega),

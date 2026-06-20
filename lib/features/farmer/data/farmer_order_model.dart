@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/foundation.dart';
+import 'package:tinkiyagro_app/features/catalog/data/product_model.dart';
 
 // ── State machine for an order group ─────────────────────────────────────────
 
@@ -29,6 +30,7 @@ class FarmerCustomerOrder {
   final String clienteInicial;
   final Color clienteColor;
   final String clienteNombre;
+  final String customerProfileImageUrl;
   final List<FarmerOrderItem> items;
   final double productsSubtotal;
   final double deliveryCost;
@@ -44,6 +46,7 @@ class FarmerCustomerOrder {
     required this.clienteInicial,
     required this.clienteColor,
     required this.clienteNombre,
+    this.customerProfileImageUrl = '',
     required this.items,
     this.productsSubtotal = 0,
     this.deliveryCost = 0,
@@ -90,6 +93,7 @@ class FarmerCustomerOrder {
       clienteInicial: name.isNotEmpty ? name[0].toUpperCase() : '#',
       clienteColor: const Color(0xFFB2DFDB),
       clienteNombre: displayName,
+      customerProfileImageUrl: resolveMediaUrl(json['customerProfileImageUrl']?.toString() ?? ''),
       items: items,
       productsSubtotal: _parseDouble(json['productsTotal'] ?? json['subtotal'] ?? json['productsSubtotal']),
       deliveryCost: _parseDouble(json['deliveryCost'] ?? json['shippingCost'] ?? json['shipping']),
@@ -446,8 +450,14 @@ class RepartidorInfo {
   final String nombre;
   final String username;
   final String? telefono;
+  final String profileImageUrl;
 
-  const RepartidorInfo({required this.nombre, required this.username, this.telefono});
+  const RepartidorInfo({
+    required this.nombre,
+    required this.username,
+    this.telefono,
+    this.profileImageUrl = '',
+  });
 
   factory RepartidorInfo.fromJson(Map<String, dynamic> json) {
     final name = json['fullName']?.toString()
@@ -461,7 +471,8 @@ class RepartidorInfo {
     return RepartidorInfo(
       nombre: name,
       username: username,
-      telefono: json['phone']?.toString() ?? json['telefono']?.toString(),
+      telefono: json['phoneNumber']?.toString() ?? json['phone']?.toString() ?? json['telefono']?.toString(),
+      profileImageUrl: resolveMediaUrl(json['profileImageUrl']?.toString() ?? ''),
     );
   }
 }

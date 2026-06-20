@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 import 'package:tinkiyagro_app/core/app_navigator.dart';
 import 'package:tinkiyagro_app/core/constants/app_constants.dart';
 import 'package:tinkiyagro_app/core/session_manager.dart';
@@ -120,6 +121,41 @@ class ApiClient {
     debugPrint('[ApiClient] DELETE $url');
     try {
       return await _withRetry((h) => http.delete(url, headers: h));
+    } on SocketException {
+      throw Exception('Sin conexión al servidor.');
+    }
+  }
+
+  static Future<http.Response> multipartPost(
+    String endpoint,
+    File file, {
+    String field = 'file',
+  }) async {
+    final url = Uri.parse('${AppConstants.baseUrl}$endpoint');
+    debugPrint('[ApiClient] MULTIPART POST $url field=$field path=${file.path}');
+    final bytes = await file.readAsBytes();
+    final ext = file.path.toLowerCase().split('.').last;
+    final contentType = <String, MediaType>{
+      'jpg': MediaType('image', 'jpeg'),
+      'jpeg': MediaType('image', 'jpeg'),
+      'png': MediaType('image', 'png'),
+      'webp': MediaType('image', 'webp'),
+    }[ext] ?? MediaType('image', 'jpeg');
+    final filename = file.path.split('/').last;
+    try {
+      return await _withRetry((headers) async {
+        final request = http.MultipartRequest('POST', url);
+        final auth = headers['Authorization'];
+        if (auth != null) request.headers['Authorization'] = auth;
+        request.files.add(http.MultipartFile.fromBytes(
+          field,
+          bytes,
+          filename: filename,
+          contentType: contentType,
+        ));
+        final streamed = await request.send();
+        return http.Response.fromStream(streamed);
+      });
     } on SocketException {
       throw Exception('Sin conexión al servidor.');
     }

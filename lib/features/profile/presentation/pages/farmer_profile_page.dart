@@ -1,20 +1,57 @@
 import 'package:flutter/material.dart';
 import 'package:tinkiyagro_app/core/session_manager.dart';
+import 'package:tinkiyagro_app/features/catalog/data/product_model.dart';
 import 'package:tinkiyagro_app/features/orders/data/remote/location_tracking_service.dart';
+import 'package:tinkiyagro_app/features/profile/data/remote/profile_service.dart';
 import 'farmer_about_me_page.dart';
 import 'farmer_delivery_rates_page.dart';
 import 'farmer_payment_methods_page.dart';
 import 'notifications_page.dart';
 
-class FarmerProfilePage extends StatelessWidget {
+class FarmerProfilePage extends StatefulWidget {
   final void Function(int tabIndex) onTabSwitch;
 
   const FarmerProfilePage({super.key, required this.onTabSwitch});
 
   @override
+  State<FarmerProfilePage> createState() => _FarmerProfilePageState();
+}
+
+class _FarmerProfilePageState extends State<FarmerProfilePage> {
+  final _service = ProfileService();
+  String? _avatarUrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAvatar();
+  }
+
+  Future<void> _loadAvatar() async {
+    try {
+      final data = await _service.obtenerPerfilAgricultor();
+      final raw = data['profileImageUrl']
+          ?? data['avatarUrl']
+          ?? data['imageUrl']
+          ?? data['profileImage']
+          ?? data['photo'];
+      if (raw != null && mounted) {
+        setState(() => _avatarUrl = resolveMediaUrl(raw.toString()));
+      }
+    } catch (_) {}
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final name =
-        SessionManager().nombre ?? SessionManager().username ?? 'Usuario';
+    final session = SessionManager();
+    final name = [session.nombre, session.apellido]
+        .where((s) => s != null && s.isNotEmpty)
+        .join(' ')
+        .isNotEmpty
+        ? [session.nombre, session.apellido]
+            .where((s) => s != null && s.isNotEmpty)
+            .join(' ')
+        : session.username ?? 'Usuario';
     return SafeArea(
       child: SingleChildScrollView(
         child: Column(
@@ -39,23 +76,29 @@ class FarmerProfilePage extends StatelessWidget {
               CircleAvatar(
                 radius: 52,
                 backgroundColor: Colors.grey.shade300,
-                child:
-                    const Icon(Icons.person, size: 56, color: Colors.white),
+                backgroundImage: _avatarUrl != null && _avatarUrl!.isNotEmpty
+                    ? NetworkImage(_avatarUrl!)
+                    : null,
+                child: _avatarUrl == null || _avatarUrl!.isEmpty
+                    ? const Icon(Icons.person, size: 56, color: Colors.white)
+                    : null,
               ),
               Positioned(
                 bottom: 2,
                 right: 2,
-                child: Container(
-                  width: 30,
-                  height: 30,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFF5CA399),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.camera_alt,
-                    size: 16,
-                    color: Colors.white,
+                child: GestureDetector(
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const FarmerAboutMePage()),
+                  ).then((_) => _loadAvatar()),
+                  child: Container(
+                    width: 30,
+                    height: 30,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF5CA399),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.camera_alt, size: 16, color: Colors.white),
                   ),
                 ),
               ),
@@ -87,13 +130,13 @@ class FarmerProfilePage extends StatelessWidget {
             onTap: () => Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => const FarmerAboutMePage()),
-            ),
+            ).then((_) => _loadAvatar()),
           ),
           _buildMenuItem(
             context,
             icon: Icons.eco_outlined,
             label: 'Mis productos',
-            onTap: () => onTabSwitch(0),
+            onTap: () => widget.onTabSwitch(0),
           ),
           _buildMenuItem(
             context,
@@ -101,15 +144,14 @@ class FarmerProfilePage extends StatelessWidget {
             label: 'Tarifas de entrega',
             onTap: () => Navigator.push(
               context,
-              MaterialPageRoute(
-                  builder: (_) => const FarmerDeliveryRatesPage()),
+              MaterialPageRoute(builder: (_) => const FarmerDeliveryRatesPage()),
             ),
           ),
           _buildMenuItem(
             context,
             icon: Icons.local_shipping_outlined,
             label: 'Entregas',
-            onTap: () => onTabSwitch(2),
+            onTap: () => widget.onTabSwitch(2),
           ),
           _buildMenuItem(
             context,
@@ -117,8 +159,7 @@ class FarmerProfilePage extends StatelessWidget {
             label: 'Métodos de pago',
             onTap: () => Navigator.push(
               context,
-              MaterialPageRoute(
-                  builder: (_) => const FarmerPaymentMethodsPage()),
+              MaterialPageRoute(builder: (_) => const FarmerPaymentMethodsPage()),
             ),
           ),
           _buildMenuItem(
@@ -172,11 +213,7 @@ class FarmerProfilePage extends StatelessWidget {
                 ),
               ),
             ),
-            const Icon(
-              Icons.arrow_forward_ios,
-              size: 16,
-              color: Colors.black38,
-            ),
+            const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.black38),
           ],
         ),
       ),
@@ -188,11 +225,7 @@ class FarmerProfilePage extends StatelessWidget {
       onTap: () {
         LocationTrackingService().stop();
         SessionManager().clearSession();
-        Navigator.pushNamedAndRemoveUntil(
-          context,
-          '/welcome',
-          (route) => false,
-        );
+        Navigator.pushNamedAndRemoveUntil(context, '/welcome', (route) => false);
       },
       child: Container(
         margin: const EdgeInsets.only(bottom: 10),
@@ -214,11 +247,7 @@ class FarmerProfilePage extends StatelessWidget {
             SizedBox(width: 14),
             Text(
               'Cerrar sesión',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-                color: Colors.black87,
-              ),
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Colors.black87),
             ),
           ],
         ),

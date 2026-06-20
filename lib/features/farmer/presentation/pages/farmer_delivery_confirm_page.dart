@@ -208,22 +208,21 @@ class _FarmerDeliveryConfirmPageState
         children: [
           Row(
             children: [
-              Container(
-                width: 38,
-                height: 38,
-                decoration: BoxDecoration(
-                  color: customer.clienteColor,
-                  shape: BoxShape.circle,
-                ),
-                child: Center(
-                  child: Text(
-                    customer.clienteInicial,
-                    style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                        color: Color(0xFF1E3A32)),
-                  ),
-                ),
+              CircleAvatar(
+                radius: 19,
+                backgroundColor: customer.clienteColor,
+                backgroundImage: customer.customerProfileImageUrl.isNotEmpty
+                    ? NetworkImage(customer.customerProfileImageUrl)
+                    : null,
+                child: customer.customerProfileImageUrl.isEmpty
+                    ? Text(
+                        customer.clienteInicial,
+                        style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 15,
+                            color: Color(0xFF1E3A32)),
+                      )
+                    : null,
               ),
               const SizedBox(width: 10),
               Expanded(
@@ -353,22 +352,21 @@ class _FarmerDeliveryConfirmPageState
         children: [
           Row(
             children: [
-              Container(
-                width: 38,
-                height: 38,
-                decoration: BoxDecoration(
-                  color: customer.clienteColor,
-                  shape: BoxShape.circle,
-                ),
-                child: Center(
-                  child: Text(
-                    customer.clienteInicial,
-                    style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                        color: Color(0xFF1E3A32)),
-                  ),
-                ),
+              CircleAvatar(
+                radius: 19,
+                backgroundColor: customer.clienteColor,
+                backgroundImage: customer.customerProfileImageUrl.isNotEmpty
+                    ? NetworkImage(customer.customerProfileImageUrl)
+                    : null,
+                child: customer.customerProfileImageUrl.isEmpty
+                    ? Text(
+                        customer.clienteInicial,
+                        style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 15,
+                            color: Color(0xFF1E3A32)),
+                      )
+                    : null,
               ),
               const SizedBox(width: 10),
               Expanded(

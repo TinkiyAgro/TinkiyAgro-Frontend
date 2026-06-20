@@ -1,16 +1,53 @@
 import 'package:flutter/material.dart';
 import 'package:tinkiyagro_app/core/session_manager.dart';
+import 'package:tinkiyagro_app/features/catalog/data/product_model.dart';
 import 'package:tinkiyagro_app/features/orders/data/remote/location_tracking_service.dart';
+import 'package:tinkiyagro_app/features/profile/data/remote/profile_service.dart';
 import 'consumer_about_me_page.dart';
 import 'notifications_page.dart';
 
-class DriverProfilePage extends StatelessWidget {
+class DriverProfilePage extends StatefulWidget {
   const DriverProfilePage({super.key});
 
   @override
+  State<DriverProfilePage> createState() => _DriverProfilePageState();
+}
+
+class _DriverProfilePageState extends State<DriverProfilePage> {
+  final _service = ProfileService();
+  String? _avatarUrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAvatar();
+  }
+
+  Future<void> _loadAvatar() async {
+    try {
+      final data = await _service.obtenerPerfil();
+      final raw = data['profileImageUrl']
+          ?? data['avatarUrl']
+          ?? data['imageUrl']
+          ?? data['profileImage']
+          ?? data['photo'];
+      if (raw != null && mounted) {
+        setState(() => _avatarUrl = resolveMediaUrl(raw.toString()));
+      }
+    } catch (_) {}
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final name =
-        SessionManager().nombre ?? SessionManager().username ?? 'Usuario';
+    final session = SessionManager();
+    final name = [session.nombre, session.apellido]
+        .where((s) => s != null && s.isNotEmpty)
+        .join(' ')
+        .isNotEmpty
+        ? [session.nombre, session.apellido]
+            .where((s) => s != null && s.isNotEmpty)
+            .join(' ')
+        : session.username ?? 'Usuario';
     return SafeArea(
       child: SingleChildScrollView(
         child: Column(
@@ -35,23 +72,29 @@ class DriverProfilePage extends StatelessWidget {
               CircleAvatar(
                 radius: 52,
                 backgroundColor: Colors.grey.shade300,
-                child:
-                    const Icon(Icons.person, size: 56, color: Colors.white),
+                backgroundImage: _avatarUrl != null && _avatarUrl!.isNotEmpty
+                    ? NetworkImage(_avatarUrl!)
+                    : null,
+                child: _avatarUrl == null || _avatarUrl!.isEmpty
+                    ? const Icon(Icons.person, size: 56, color: Colors.white)
+                    : null,
               ),
               Positioned(
                 bottom: 2,
                 right: 2,
-                child: Container(
-                  width: 30,
-                  height: 30,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFF5CA399),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.camera_alt,
-                    size: 16,
-                    color: Colors.white,
+                child: GestureDetector(
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const ConsumerAboutMePage()),
+                  ).then((_) => _loadAvatar()),
+                  child: Container(
+                    width: 30,
+                    height: 30,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF5CA399),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.camera_alt, size: 16, color: Colors.white),
                   ),
                 ),
               ),
@@ -82,9 +125,8 @@ class DriverProfilePage extends StatelessWidget {
             label: 'Sobre mi',
             onTap: () => Navigator.push(
               context,
-              MaterialPageRoute(
-                  builder: (_) => const ConsumerAboutMePage()),
-            ),
+              MaterialPageRoute(builder: (_) => const ConsumerAboutMePage()),
+            ).then((_) => _loadAvatar()),
           ),
           _buildMenuItem(
             context,
@@ -137,11 +179,7 @@ class DriverProfilePage extends StatelessWidget {
                 ),
               ),
             ),
-            const Icon(
-              Icons.arrow_forward_ios,
-              size: 16,
-              color: Colors.black38,
-            ),
+            const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.black38),
           ],
         ),
       ),
@@ -153,11 +191,7 @@ class DriverProfilePage extends StatelessWidget {
       onTap: () {
         LocationTrackingService().stop();
         SessionManager().clearSession();
-        Navigator.pushNamedAndRemoveUntil(
-          context,
-          '/welcome',
-          (route) => false,
-        );
+        Navigator.pushNamedAndRemoveUntil(context, '/welcome', (route) => false);
       },
       child: Container(
         margin: const EdgeInsets.only(bottom: 10),
@@ -179,11 +213,7 @@ class DriverProfilePage extends StatelessWidget {
             SizedBox(width: 14),
             Text(
               'Cerrar sesión',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-                color: Colors.black87,
-              ),
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Colors.black87),
             ),
           ],
         ),

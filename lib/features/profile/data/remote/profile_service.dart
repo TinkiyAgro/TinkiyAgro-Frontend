@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:tinkiyagro_app/core/api_client.dart';
 import 'package:tinkiyagro_app/core/constants/app_constants.dart';
@@ -104,6 +105,38 @@ class ProfileService {
     throw Exception('Error al guardar tarifas de entrega: ${response.statusCode}');
   }
 
+  // ── Generic profile (consumer / driver) ──────────────────────────────────
+
+  Future<Map<String, dynamic>> obtenerPerfil() async {
+    final response = await ApiClient.get(AppConstants.showProfileEndpoint);
+    debugPrint('[ProfileService] obtenerPerfil ${response.statusCode}: ${response.body}');
+    if (response.statusCode == 200) {
+      final body = jsonDecode(response.body);
+      return body is Map<String, dynamic> ? body : {};
+    }
+    throw Exception('Error al obtener perfil: ${response.statusCode}');
+  }
+
+  Future<void> editarPerfil({
+    required String firstName,
+    required String lastName,
+    required String phone,
+    String description = '',
+  }) async {
+    final response = await ApiClient.put(AppConstants.editProfileEndpoint, {
+      'firstName': firstName,
+      'lastName': lastName,
+      'phoneNumber': phone,
+      'description': description,
+    });
+    debugPrint('[ProfileService] editarPerfil ${response.statusCode}: ${response.body}');
+    if (response.statusCode != 200 && response.statusCode != 204) {
+      throw Exception('Error al guardar perfil: ${response.statusCode}');
+    }
+  }
+
+  // ── Farmer profile ────────────────────────────────────────────────────────
+
   Future<Map<String, dynamic>> obtenerPerfilAgricultor() async {
     final response = await ApiClient.get(AppConstants.showProfileFarmerEndpoint);
     debugPrint('[ProfileService] obtenerPerfilAgricultor ${response.statusCode}: ${response.body}');
@@ -152,22 +185,59 @@ class ProfileService {
     }
   }
 
+  Future<void> subirFotoPerfil(File image) async {
+    final response = await ApiClient.multipartPost(
+      AppConstants.uploadProfilePhotoEndpoint,
+      image,
+      field: 'image',
+    );
+    debugPrint('[ProfileService] subirFotoPerfil ${response.statusCode}');
+    if (response.statusCode != 200 && response.statusCode != 201 && response.statusCode != 204) {
+      throw Exception('Error al subir foto de perfil: ${response.statusCode}');
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> obtenerTransacciones() async {
+    final response = await ApiClient.get(AppConstants.showTransactionsEndpoint);
+    debugPrint('[ProfileService] obtenerTransacciones ${response.statusCode}: ${response.body}');
+    if (response.statusCode == 200) {
+      final body = jsonDecode(response.body);
+      final List<dynamic> data;
+      if (body is List) {
+        data = body;
+      } else if (body is Map) {
+        data = (body['content'] ?? body['transactions'] ?? body['data'] ?? []) as List;
+      } else {
+        data = [];
+      }
+      return data.whereType<Map<String, dynamic>>().toList();
+    }
+    throw Exception('Error al obtener transacciones: ${response.statusCode}');
+  }
+
+  // ── Farmer payment settings ───────────────────────────────────────────────
+
   Future<String?> obtenerNumeroYape() async {
     final response = await ApiClient.get(AppConstants.obtainPaymentSettingsEndpoint);
     debugPrint('[ProfileService] obtenerNumeroYape ${response.statusCode}: ${response.body}');
     if (response.statusCode == 200) {
       final body = jsonDecode(response.body);
       if (body is Map) {
-        return body['yapeNumber']?.toString() ?? body['yapeNumero']?.toString();
+        return body['yapePhoneNumber']?.toString()
+            ?? body['yapeNumber']?.toString()
+            ?? body['yapeNumero']?.toString();
       }
     }
     return null;
   }
 
   Future<void> guardarConfiguracionPago({String? yapeNumber}) async {
-    final response = await ApiClient.put(AppConstants.editPaymentSettingsEndpoint, {
-      'yapeNumber': yapeNumber?.isNotEmpty == true ? yapeNumber : null,
-    });
+    final numero = yapeNumber?.trim();
+    final payload = <String, dynamic>{};
+    if (numero != null && numero.isNotEmpty) {
+      payload['yapePhoneNumber'] = numero;
+    }
+    final response = await ApiClient.put(AppConstants.editPaymentSettingsEndpoint, payload);
     debugPrint('[ProfileService] guardarConfiguracionPago ${response.statusCode}: ${response.body}');
     if (response.statusCode != 200 && response.statusCode != 204) {
       throw Exception('Error al guardar método de pago: ${response.statusCode}');

@@ -54,12 +54,20 @@ class _HomePageState extends State<HomePage> {
   final List<Map<String, dynamic>> _categorias = [
     {
       'nombre': 'Verduras',
-      'icono': SvgPicture.asset('assets/icons/lettuce.svg', width: 28, height: 28),
+      'icono': SvgPicture.asset(
+        'assets/icons/lettuce.svg',
+        width: 28,
+        height: 28,
+      ),
       'colorFondo': const Color(0xFFE8F5E9),
     },
     {
       'nombre': 'Frutas',
-      'icono': SvgPicture.asset('assets/icons/apple.svg', width: 28, height: 28),
+      'icono': SvgPicture.asset(
+        'assets/icons/apple.svg',
+        width: 28,
+        height: 28,
+      ),
       'colorFondo': const Color(0xFFFFF3E0),
     },
     {
@@ -69,12 +77,20 @@ class _HomePageState extends State<HomePage> {
     },
     {
       'nombre': 'Tubérculos',
-      'icono': SvgPicture.asset('assets/icons/potato.svg', width: 28, height: 28),
+      'icono': SvgPicture.asset(
+        'assets/icons/potato.svg',
+        width: 28,
+        height: 28,
+      ),
       'colorFondo': const Color(0xFFEFEBE9),
     },
     {
       'nombre': 'Granos y cereales',
-      'icono': SvgPicture.asset('assets/icons/wheat.svg', width: 28, height: 28),
+      'icono': SvgPicture.asset(
+        'assets/icons/wheat.svg',
+        width: 28,
+        height: 28,
+      ),
       'colorFondo': const Color(0xFFFAF3E0),
     },
   ];
@@ -118,8 +134,7 @@ class _HomePageState extends State<HomePage> {
   void _onSearchChanged(String val) {
     setState(() => _terminoBusqueda = val);
     _debounceTimer?.cancel();
-    _debounceTimer =
-        Timer(const Duration(milliseconds: 400), _buscarProductos);
+    _debounceTimer = Timer(const Duration(milliseconds: 400), _buscarProductos);
   }
 
   void _limpiarTodo() {
@@ -281,10 +296,14 @@ class _HomePageState extends State<HomePage> {
             ? const Color(0xFF5CA399)
             : const Color(0xFF8CAF3F),
         unselectedItemColor: Colors.grey.shade400,
-        selectedLabelStyle:
-            const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-        unselectedLabelStyle:
-            const TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
+        selectedLabelStyle: const TextStyle(
+          fontWeight: FontWeight.bold,
+          fontSize: 13,
+        ),
+        unselectedLabelStyle: const TextStyle(
+          fontWeight: FontWeight.w500,
+          fontSize: 13,
+        ),
         items: items,
       ),
     );
@@ -325,13 +344,17 @@ class _HomePageState extends State<HomePage> {
                           shape: BoxShape.circle,
                         ),
                         child: IconButton(
-                          icon: const Icon(Icons.notifications_none,
-                              color: Colors.black87),
+                          icon: const Icon(
+                            Icons.notifications_none,
+                            color: Colors.black87,
+                          ),
                           onPressed: () {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
-                                  content: Text(
-                                      'No tienes notificaciones nuevas.')),
+                                content: Text(
+                                  'No tienes notificaciones nuevas.',
+                                ),
+                              ),
                             );
                           },
                         ),
@@ -340,21 +363,24 @@ class _HomePageState extends State<HomePage> {
                       GestureDetector(
                         onTap: () async {
                           final aplicar = await Navigator.pushNamed(
-                              context, '/filtros');
+                            context,
+                            '/filtros',
+                          );
                           if (aplicar == true) _buscarProductos();
                         },
                         child: Container(
                           width: 44,
                           height: 44,
                           decoration: BoxDecoration(
-                            color: _enModoFiltro &&
+                            color:
+                                _enModoFiltro &&
                                     (CatalogoRepositorio()
-                                            .filtrosActivos
-                                            .precioMinimo !=
-                                        null ||
+                                                .filtrosActivos
+                                                .precioMinimo !=
+                                            null ||
                                         CatalogoRepositorio()
-                                            .filtrosActivos
-                                            .precioMaximo !=
+                                                .filtrosActivos
+                                                .precioMaximo !=
                                             null ||
                                         CatalogoRepositorio()
                                             .filtrosActivos
@@ -366,8 +392,11 @@ class _HomePageState extends State<HomePage> {
                                 : const Color(0xFF5CA399),
                             shape: BoxShape.circle,
                           ),
-                          child: const Icon(Icons.filter_alt,
-                              color: Colors.white, size: 22),
+                          child: const Icon(
+                            Icons.filter_alt,
+                            color: Colors.white,
+                            size: 22,
+                          ),
                         ),
                       ),
                     ],
@@ -393,18 +422,28 @@ class _HomePageState extends State<HomePage> {
                   controller: _searchCtrl,
                   onChanged: _onSearchChanged,
                   decoration: InputDecoration(
-                    prefixIcon: const Icon(Icons.search,
-                        color: Color(0xFF5CA399), size: 24),
+                    prefixIcon: const Icon(
+                      Icons.search,
+                      color: Color(0xFF5CA399),
+                      size: 24,
+                    ),
                     hintText: '¿Qué estás buscando?',
-                    hintStyle:
-                        const TextStyle(color: Colors.grey, fontSize: 16),
+                    hintStyle: const TextStyle(
+                      color: Colors.grey,
+                      fontSize: 16,
+                    ),
                     border: InputBorder.none,
                     contentPadding: const EdgeInsets.symmetric(
-                        vertical: 16, horizontal: 20),
+                      vertical: 16,
+                      horizontal: 20,
+                    ),
                     suffixIcon: _terminoBusqueda.isNotEmpty
                         ? IconButton(
-                            icon: const Icon(Icons.clear,
-                                color: Colors.grey, size: 20),
+                            icon: const Icon(
+                              Icons.clear,
+                              color: Colors.grey,
+                              size: 20,
+                            ),
                             onPressed: () {
                               _searchCtrl.clear();
                               _onSearchChanged('');
@@ -420,9 +459,10 @@ class _HomePageState extends State<HomePage> {
               const Text(
                 'Categorias',
                 style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black),
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
+                ),
               ),
               const SizedBox(height: 8),
               SizedBox(
@@ -499,10 +539,10 @@ class _HomePageState extends State<HomePage> {
                 ),
                 const SizedBox(height: 24),
                 _buildSeccionProductos(
-                  titulo: 'Tendencias en tu zona',
+                  titulo: 'Todos los productos',
                   productos: _tendencias,
                   cargando: _cargandoHome,
-                  routeName: 'Tendencias en tu zona',
+                  routeName: 'Todos los productos',
                 ),
                 const SizedBox(height: 30),
               ],
@@ -525,18 +565,24 @@ class _HomePageState extends State<HomePage> {
                   ? 'Buscando...'
                   : '${_resultadosBusqueda.length} resultado${_resultadosBusqueda.length != 1 ? "s" : ""}',
               style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87),
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+              ),
             ),
             TextButton.icon(
               onPressed: _limpiarTodo,
-              icon: const Icon(Icons.clear_all,
-                  size: 18, color: Color(0xFF5CA399)),
+              icon: const Icon(
+                Icons.clear_all,
+                size: 18,
+                color: Color(0xFF5CA399),
+              ),
               label: const Text(
                 'Limpiar',
                 style: TextStyle(
-                    color: Color(0xFF5CA399), fontWeight: FontWeight.bold),
+                  color: Color(0xFF5CA399),
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
           ],
@@ -546,8 +592,7 @@ class _HomePageState extends State<HomePage> {
           const Center(
             child: Padding(
               padding: EdgeInsets.symmetric(vertical: 40),
-              child:
-                  CircularProgressIndicator(color: Color(0xFF5CA399)),
+              child: CircularProgressIndicator(color: Color(0xFF5CA399)),
             ),
           )
         else if (_resultadosBusqueda.isEmpty)
@@ -556,15 +601,15 @@ class _HomePageState extends State<HomePage> {
               padding: const EdgeInsets.symmetric(vertical: 40),
               child: Column(
                 children: [
-                  Icon(Icons.search_off,
-                      size: 56, color: Colors.grey.shade300),
+                  Icon(Icons.search_off, size: 56, color: Colors.grey.shade300),
                   const SizedBox(height: 12),
                   Text(
                     'No se encontraron productos.',
                     style: TextStyle(
-                        fontSize: 15,
-                        color: Colors.grey.shade500,
-                        fontWeight: FontWeight.w500),
+                      fontSize: 15,
+                      color: Colors.grey.shade500,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ],
               ),
@@ -574,8 +619,7 @@ class _HomePageState extends State<HomePage> {
           GridView.builder(
             physics: const NeverScrollableScrollPhysics(),
             shrinkWrap: true,
-            gridDelegate:
-                const SliverGridDelegateWithFixedCrossAxisCount(
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 2,
               crossAxisSpacing: 16,
               mainAxisSpacing: 16,
@@ -601,17 +645,26 @@ class _HomePageState extends State<HomePage> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(titulo,
-                style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black)),
+            Text(
+              titulo,
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Colors.black,
+              ),
+            ),
             IconButton(
-              icon: const Icon(Icons.arrow_forward_ios,
-                  size: 16, color: Colors.black54),
+              icon: const Icon(
+                Icons.arrow_forward_ios,
+                size: 16,
+                color: Colors.black54,
+              ),
               onPressed: () {
-                Navigator.pushNamed(context, '/seccion_productos',
-                    arguments: {'titulo': routeName, 'productos': productos});
+                Navigator.pushNamed(
+                  context,
+                  '/seccion_productos',
+                  arguments: {'titulo': routeName, 'productos': productos},
+                );
               },
             ),
           ],
@@ -631,9 +684,10 @@ class _HomePageState extends State<HomePage> {
               child: Text(
                 'No se encontraron productos.',
                 style: TextStyle(
-                    fontSize: 15,
-                    color: Colors.grey,
-                    fontWeight: FontWeight.w500),
+                  fontSize: 15,
+                  color: Colors.grey,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ),
           )
@@ -659,8 +713,7 @@ class _HomePageState extends State<HomePage> {
   Widget _buildTarjetaProductoHome(Producto producto) {
     return GestureDetector(
       onTap: () {
-        Navigator.pushNamed(context, '/detalle_producto',
-            arguments: producto);
+        Navigator.pushNamed(context, '/detalle_producto', arguments: producto);
       },
       child: Container(
         decoration: BoxDecoration(
@@ -707,8 +760,11 @@ class _HomePageState extends State<HomePage> {
                                 color: Color(0xFF5CA399),
                               ),
                             )
-                          : const Icon(Icons.eco_outlined,
-                              size: 32, color: Color(0xFF5CA399)),
+                          : const Icon(
+                              Icons.eco_outlined,
+                              size: 32,
+                              color: Color(0xFF5CA399),
+                            ),
                     ),
                   ),
                   // Botón favorito
@@ -764,9 +820,10 @@ class _HomePageState extends State<HomePage> {
                   Text(
                     producto.nombre,
                     style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black),
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black,
+                    ),
                     textAlign: TextAlign.center,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -775,9 +832,10 @@ class _HomePageState extends State<HomePage> {
                   Text(
                     producto.textoPesoUnidad,
                     style: TextStyle(
-                        fontSize: 11,
-                        color: Colors.grey.shade500,
-                        fontWeight: FontWeight.w500),
+                      fontSize: 11,
+                      color: Colors.grey.shade500,
+                      fontWeight: FontWeight.w500,
+                    ),
                     textAlign: TextAlign.center,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,

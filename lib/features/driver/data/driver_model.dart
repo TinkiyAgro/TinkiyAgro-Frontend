@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:tinkiyagro_app/features/catalog/data/product_model.dart';
 
 class RepartidorOrderItem {
   final String productName;
@@ -34,6 +35,8 @@ class RepartidorCustomer {
   final String clienteInicial;
   final Color clienteColor;
   final String clienteNombre;
+  final String customerProfileImageUrl;
+  final String destinationAddress;
   final List<RepartidorOrderItem> items;
   final double deliveryCost;
   final double total;
@@ -48,6 +51,8 @@ class RepartidorCustomer {
     required this.clienteInicial,
     required this.clienteColor,
     required this.clienteNombre,
+    this.customerProfileImageUrl = '',
+    this.destinationAddress = '',
     required this.items,
     this.deliveryCost = 0,
     required this.total,
@@ -88,11 +93,21 @@ class RepartidorCustomer {
     final metodo = rawPayment == 'YAPE' ? 'Yape' : 'Efectivo';
     final subOrderId = json['id']?.toString() ?? json['subOrderId']?.toString() ?? '';
 
+    final destObj = json['destination'];
+    final destMap = destObj is Map ? destObj.cast<String, dynamic>() : null;
+    final destAddr = [
+      destMap?['address']?.toString() ?? '',
+      destMap?['district']?.toString() ?? '',
+      destMap?['reference']?.toString() ?? '',
+    ].where((s) => s.isNotEmpty).join(', ');
+
     return RepartidorCustomer(
       subOrderId: subOrderId,
       clienteInicial: name.isNotEmpty ? name[0].toUpperCase() : '#',
       clienteColor: const Color(0xFFB2DFDB),
       clienteNombre: name.isNotEmpty ? name : 'Pedido #$index',
+      customerProfileImageUrl: resolveMediaUrl(json['customerProfileImageUrl']?.toString() ?? ''),
+      destinationAddress: destAddr,
       items: items,
       deliveryCost: _parseDouble(json['deliveryCost'] ?? json['shippingCost']),
       total: _parseDouble(json['total'] ?? json['amount'] ?? json['totalAmount']),
@@ -106,6 +121,7 @@ class RepartidorCustomer {
 class RepartidorDeliveryGroup {
   final String id;
   final String farmerName;
+  final String farmerImageUrl;
   final String tipoGrupo; // 'Recojo' | 'Delivery'
   final String ubicacion;
   final String? district;
@@ -116,6 +132,7 @@ class RepartidorDeliveryGroup {
   RepartidorDeliveryGroup({
     required this.id,
     required this.farmerName,
+    this.farmerImageUrl = '',
     required this.tipoGrupo,
     required this.ubicacion,
     this.district,
@@ -148,39 +165,53 @@ class RepartidorDeliveryGroup {
     final rawDelivery = (json['deliveryMethod'] ?? '').toString().toUpperCase();
     final tipoGrupo = (rawDelivery == 'PICKUP' || rawDelivery == 'RECOJO') ? 'Recojo' : 'Delivery';
 
-    // destination object lives inside each subOrder, not at group level.
-    // Use the first subOrder's destination for district/reference.
+    // Use the first subOrder's destination as fallback for district/reference.
     final firstSubOrder = rawSubOrders.whereType<Map>().isNotEmpty
         ? rawSubOrders.whereType<Map>().first
         : null;
     final subDestination = firstSubOrder?['destination'];
     final subDestMap = subDestination is Map ? subDestination : null;
 
-    final address = json['destinationAddress']?.toString()
-        ?? subDestMap?['address']?.toString()
-        ?? json['pickupPointAddress']?.toString()
-        ?? json['address']?.toString()
-        ?? '';
-    final district = subDestMap?['district']?.toString()
-        ?? subDestMap?['distrito']?.toString()
-        ?? json['district']?.toString();
-    final reference = subDestMap?['reference']?.toString()
-        ?? subDestMap?['referencia']?.toString()
-        ?? json['reference']?.toString();
-    debugPrint('[RepartidorDeliveryGroup.fromJson] address=$address district=$district reference=$reference');
+    // Use firstWhere to handle both null AND empty-string values from the API.
+    final address = [
+      json['destinationAddress'],
+      subDestMap?['address'],
+      json['pickupPointAddress'],
+      json['address'],
+    ].map((v) => (v?.toString() ?? '').trim()).firstWhere((s) => s.isNotEmpty, orElse: () => '');
 
-    final farmerName = json['farmerName']?.toString()
+    final district = [
+      subDestMap?['district'],
+      subDestMap?['distrito'],
+      json['district'],
+    ].map((v) => (v?.toString() ?? '').trim()).firstWhere((s) => s.isNotEmpty, orElse: () => '');
+
+    final reference = [
+      subDestMap?['reference'],
+      subDestMap?['referencia'],
+      json['reference'],
+    ].map((v) => (v?.toString() ?? '').trim()).firstWhere((s) => s.isNotEmpty, orElse: () => '');
+
+    final farmerObj2 = json['farmer'];
+    final farmerMap2 = farmerObj2 is Map ? farmerObj2.cast<String, dynamic>() : null;
+    final farmerName = farmerMap2?['fullName']?.toString()
+        ?? json['farmerName']?.toString()
         ?? json['farmerUsername']?.toString()
-        ?? json['farmer']?.toString()
         ?? '';
+    final farmerImageUrl = resolveMediaUrl(
+      farmerMap2?['profileImageUrl']?.toString()
+          ?? json['farmerProfileImageUrl']?.toString()
+          ?? '',
+    );
 
     return RepartidorDeliveryGroup(
       id: json['groupKey']?.toString() ?? json['id']?.toString() ?? '',
       farmerName: farmerName,
+      farmerImageUrl: farmerImageUrl,
       tipoGrupo: tipoGrupo,
       ubicacion: address,
-      district: district?.isEmpty == true ? null : district,
-      reference: reference?.isEmpty == true ? null : reference,
+      district: district.isEmpty ? null : district,
+      reference: reference.isEmpty ? null : reference,
       clientes: clientes,
       estado: estado,
     );

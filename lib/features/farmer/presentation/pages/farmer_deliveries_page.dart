@@ -6,7 +6,7 @@ import 'farmer_pickup_point_form_page.dart';
 const _kDayOrder = [
   'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY',
 ];
-const _kDayLabels = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
+const _kDayLabels = ['L', 'M', 'Mi', 'J', 'V', 'S', 'D'];
 
 List<bool> _toBoolDays(List<String> days) =>
     _kDayOrder.map(days.contains).toList();

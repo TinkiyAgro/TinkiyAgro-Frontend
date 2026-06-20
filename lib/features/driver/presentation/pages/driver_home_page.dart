@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../data/driver_model.dart';
 import '../../data/remote/driver_service.dart';
+import 'package:tinkiyagro_app/features/orders/data/remote/location_tracking_service.dart';
 import 'package:tinkiyagro_app/features/profile/presentation/pages/driver_profile_page.dart';
 
 class RepartidorHomePage extends StatefulWidget {
@@ -24,6 +25,9 @@ class _RepartidorHomePageState extends State<RepartidorHomePage> {
   void initState() {
     super.initState();
     _cargar();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      LocationTrackingService().requestPermission();
+    });
   }
 
   Future<void> _cargar() async {
@@ -271,25 +275,18 @@ class _RepartidorHomePageState extends State<RepartidorHomePage> {
               // Farmer header
               Row(
                 children: [
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFF5CA399),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Center(
-                      child: Text(
-                        group.farmerName.isNotEmpty
-                            ? group.farmerName[0].toUpperCase()
-                            : '?',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 18,
-                        ),
-                      ),
-                    ),
+                  CircleAvatar(
+                    radius: 22,
+                    backgroundColor: const Color(0xFF5CA399),
+                    backgroundImage: group.farmerImageUrl.isNotEmpty
+                        ? NetworkImage(group.farmerImageUrl)
+                        : null,
+                    child: group.farmerImageUrl.isEmpty
+                        ? Text(
+                            group.farmerName.isNotEmpty ? group.farmerName[0].toUpperCase() : '?',
+                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+                          )
+                        : null,
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -298,18 +295,29 @@ class _RepartidorHomePageState extends State<RepartidorHomePage> {
                       children: [
                         Text(
                           group.farmerName,
-                          style: const TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.bold,
-                          ),
+                          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
                         ),
                         Text(
                           '${group.clientes.length} pedido${group.clientes.length != 1 ? 's' : ''}',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey.shade600,
-                          ),
+                          style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
                         ),
+                        if (group.ubicacion.isNotEmpty) ...[
+                          const SizedBox(height: 2),
+                          Row(
+                            children: [
+                              Icon(Icons.location_on_outlined, size: 12, color: Colors.grey.shade500),
+                              const SizedBox(width: 2),
+                              Expanded(
+                                child: Text(
+                                  group.fullAddress,
+                                  style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                       ],
                     ),
                   ),
@@ -353,24 +361,24 @@ class _RepartidorHomePageState extends State<RepartidorHomePage> {
         borderRadius: BorderRadius.circular(10),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 34,
-            height: 34,
-            decoration: BoxDecoration(
-              color: customer.clienteColor,
-              shape: BoxShape.circle,
-            ),
-            child: Center(
-              child: Text(
-                customer.clienteInicial,
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 15,
-                  color: Color(0xFF1E3A32),
-                ),
-              ),
-            ),
+          CircleAvatar(
+            radius: 17,
+            backgroundColor: customer.clienteColor,
+            backgroundImage: customer.customerProfileImageUrl.isNotEmpty
+                ? NetworkImage(customer.customerProfileImageUrl)
+                : null,
+            child: customer.customerProfileImageUrl.isEmpty
+                ? Text(
+                    customer.clienteInicial,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                      color: Color(0xFF1E3A32),
+                    ),
+                  )
+                : null,
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -379,22 +387,27 @@ class _RepartidorHomePageState extends State<RepartidorHomePage> {
               children: [
                 Text(
                   customer.clienteNombre,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
-                  ),
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                 ),
-                Text(
-                  customer.items
-                      .map((i) => '${i.productName} • ${i.cantidad}')
-                      .join(', '),
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey.shade600,
+                ...customer.items.map((i) => Text(
+                  '${i.productName} × ${i.cantidad}',
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                )),
+                if (customer.destinationAddress.isNotEmpty)
+                  Row(
+                    children: [
+                      Icon(Icons.location_on_outlined, size: 12, color: Colors.grey.shade500),
+                      const SizedBox(width: 2),
+                      Expanded(
+                        child: Text(
+                          customer.destinationAddress,
+                          style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
               ],
             ),
           ),

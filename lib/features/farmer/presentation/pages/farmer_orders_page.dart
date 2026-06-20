@@ -479,24 +479,24 @@ class _FarmerOrdersPageState extends State<FarmerOrdersPage> {
           borderRadius: BorderRadius.circular(10),
         ),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: customer.clienteColor,
-                shape: BoxShape.circle,
-              ),
-              child: Center(
-                child: Text(
-                  customer.clienteInicial,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                    color: Color(0xFF1E3A32),
-                  ),
-                ),
-              ),
+            CircleAvatar(
+              radius: 18,
+              backgroundColor: customer.clienteColor,
+              backgroundImage: customer.customerProfileImageUrl.isNotEmpty
+                  ? NetworkImage(customer.customerProfileImageUrl)
+                  : null,
+              child: customer.customerProfileImageUrl.isEmpty
+                  ? Text(
+                      customer.clienteInicial,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                        color: Color(0xFF1E3A32),
+                      ),
+                    )
+                  : null,
             ),
             const SizedBox(width: 10),
             Expanded(
@@ -505,19 +505,12 @@ class _FarmerOrdersPageState extends State<FarmerOrdersPage> {
                 children: [
                   Text(
                     customer.clienteNombre,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                   ),
-                  Text(
-                    customer.items
-                        .map((i) => '${i.productName} • ${i.cantidad}')
-                        .join(', '),
+                  ...customer.items.map((i) => Text(
+                    '${i.productName} × ${i.cantidad}',
                     style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
+                  )),
                 ],
               ),
             ),
@@ -806,27 +799,26 @@ class _FarmerOrdersPageState extends State<FarmerOrdersPage> {
                                 ),
                                 child: Row(
                                   children: [
-                                    Container(
-                                      width: 36,
-                                      height: 36,
-                                      decoration: BoxDecoration(
-                                        color: selectedUsername == r.username
-                                            ? const Color(0xFF5CA399)
-                                            : Colors.grey.shade300,
-                                        shape: BoxShape.circle,
-                                      ),
-                                      child: Center(
-                                        child: Text(
-                                          r.nombre.isNotEmpty ? r.nombre[0].toUpperCase() : '?',
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 16,
-                                            color: selectedUsername == r.username
-                                                ? Colors.white
-                                                : Colors.black87,
-                                          ),
-                                        ),
-                                      ),
+                                    CircleAvatar(
+                                      radius: 18,
+                                      backgroundColor: selectedUsername == r.username
+                                          ? const Color(0xFF5CA399)
+                                          : Colors.grey.shade300,
+                                      backgroundImage: r.profileImageUrl.isNotEmpty
+                                          ? NetworkImage(r.profileImageUrl)
+                                          : null,
+                                      child: r.profileImageUrl.isEmpty
+                                          ? Text(
+                                              r.nombre.isNotEmpty ? r.nombre[0].toUpperCase() : '?',
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 15,
+                                                color: selectedUsername == r.username
+                                                    ? Colors.white
+                                                    : Colors.black87,
+                                              ),
+                                            )
+                                          : null,
                                     ),
                                     const SizedBox(width: 10),
                                     Expanded(

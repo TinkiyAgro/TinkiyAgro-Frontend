@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:tinkiyagro_app/core/session_manager.dart';
+import 'package:tinkiyagro_app/features/catalog/data/product_model.dart';
 import 'package:tinkiyagro_app/features/profile/data/remote/profile_service.dart';
 
 class FarmerAboutMePage extends StatefulWidget {
@@ -27,6 +28,7 @@ class _FarmerAboutMePageState extends State<FarmerAboutMePage> {
   bool _showConfirmPassword = false;
 
   File? _profileImage;
+  String? _avatarUrl;
   bool _loadingProfile = true;
   bool _guardando = false;
 
@@ -56,6 +58,11 @@ class _FarmerAboutMePageState extends State<FarmerAboutMePage> {
           ?? data['bio']?.toString()
           ?? data['aboutMe']?.toString()
           ?? '';
+      final avatarRaw = data['profileImageUrl']
+          ?? data['avatarUrl']
+          ?? data['imageUrl']
+          ?? data['profileImage']
+          ?? data['photo'];
       setState(() {
         if (nombre.isNotEmpty || apellido.isNotEmpty) {
           _nameController.text =
@@ -64,6 +71,7 @@ class _FarmerAboutMePageState extends State<FarmerAboutMePage> {
         if (usuario.isNotEmpty) _usernameController.text = usuario;
         if (telefono.isNotEmpty) _phoneController.text = telefono;
         _descriptionController.text = descripcion;
+        if (avatarRaw != null) _avatarUrl = resolveMediaUrl(avatarRaw.toString());
       });
     } catch (_) {
       // keep session-cached values on error
@@ -124,6 +132,9 @@ class _FarmerAboutMePageState extends State<FarmerAboutMePage> {
 
     setState(() => _guardando = true);
     try {
+      if (_profileImage != null) {
+        await _service.subirFotoPerfil(_profileImage!);
+      }
       await _service.editarPerfilAgricultor(
         firstName: firstName,
         lastName: lastName,
@@ -246,9 +257,12 @@ class _FarmerAboutMePageState extends State<FarmerAboutMePage> {
           CircleAvatar(
             radius: 48,
             backgroundColor: const Color(0xFFE0EFED),
-            backgroundImage:
-                _profileImage != null ? FileImage(_profileImage!) : null,
-            child: _profileImage == null
+            backgroundImage: _profileImage != null
+                ? FileImage(_profileImage!) as ImageProvider
+                : (_avatarUrl != null && _avatarUrl!.isNotEmpty
+                    ? NetworkImage(_avatarUrl!)
+                    : null),
+            child: (_profileImage == null && (_avatarUrl == null || _avatarUrl!.isEmpty))
                 ? const Icon(Icons.person, size: 48, color: Color(0xFF5CA399))
                 : null,
           ),

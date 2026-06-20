@@ -134,6 +134,83 @@ class _DetalleProductoPageState extends State<DetalleProductoPage> {
     }
   }
 
+  void _showFarmerSheet(Producto producto) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              margin: const EdgeInsets.only(bottom: 20),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            CircleAvatar(
+              radius: 40,
+              backgroundColor: Colors.grey.shade200,
+              backgroundImage: producto.urlAvatarVendedor.isNotEmpty
+                  ? NetworkImage(producto.urlAvatarVendedor)
+                  : null,
+              child: producto.urlAvatarVendedor.isEmpty
+                  ? const Icon(Icons.person, size: 40, color: Colors.white)
+                  : null,
+            ),
+            const SizedBox(height: 14),
+            Text(
+              producto.nombreVendedor.isNotEmpty ? producto.nombreVendedor : 'Agricultor',
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black),
+            ),
+            const SizedBox(height: 6),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.star, color: Colors.amber, size: 18),
+                const SizedBox(width: 4),
+                Text(
+                  producto.calificacionVendedor.toStringAsFixed(1),
+                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                ),
+              ],
+            ),
+            if (producto.farmerDescription.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  producto.farmerDescription,
+                  style: TextStyle(fontSize: 14, color: Colors.grey.shade700, height: 1.4),
+                ),
+              ),
+            ],
+            if (producto.farmerPhone.isNotEmpty) ...[
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  const Icon(Icons.phone_outlined, size: 18, color: Color(0xFF5CA399)),
+                  const SizedBox(width: 8),
+                  Text(producto.farmerPhone, style: const TextStyle(fontSize: 14)),
+                ],
+              ),
+            ],
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final producto = _p;
@@ -321,69 +398,69 @@ class _DetalleProductoPageState extends State<DetalleProductoPage> {
                       const SizedBox(height: 20),
 
                       // Card del agricultor
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.02),
-                              blurRadius: 8,
-                              offset: const Offset(0, 3),
-                            ),
-                          ],
-                        ),
-                        child: Row(
-                          children: [
-                            CircleAvatar(
-                              radius: 24,
-                              backgroundImage:
-                                  producto.urlAvatarVendedor.isNotEmpty
-                                  ? NetworkImage(producto.urlAvatarVendedor)
-                                  : null,
-                              backgroundColor: Colors.grey.shade200,
-                              child: producto.urlAvatarVendedor.isEmpty
-                                  ? const Icon(Icons.person)
-                                  : null,
-                            ),
-                            const SizedBox(width: 12),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  producto.nombreVendedor.isNotEmpty
-                                      ? producto.nombreVendedor
-                                      : 'Agricultor',
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.black87,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Row(
+                      GestureDetector(
+                        onTap: () => _showFarmerSheet(producto),
+                        child: Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.02),
+                                blurRadius: 8,
+                                offset: const Offset(0, 3),
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            children: [
+                              CircleAvatar(
+                                radius: 24,
+                                backgroundImage: producto.urlAvatarVendedor.isNotEmpty
+                                    ? NetworkImage(producto.urlAvatarVendedor)
+                                    : null,
+                                backgroundColor: Colors.grey.shade200,
+                                child: producto.urlAvatarVendedor.isEmpty
+                                    ? const Icon(Icons.person)
+                                    : null,
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    const Icon(
-                                      Icons.star,
-                                      color: Colors.amber,
-                                      size: 14,
-                                    ),
-                                    const SizedBox(width: 4),
                                     Text(
-                                      producto.calificacionVendedor
-                                          .toStringAsFixed(1),
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w600,
-                                        color: Colors.grey.shade600,
+                                      producto.nombreVendedor.isNotEmpty
+                                          ? producto.nombreVendedor
+                                          : 'Agricultor',
+                                      style: const TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.black87,
                                       ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Row(
+                                      children: [
+                                        const Icon(Icons.star, color: Colors.amber, size: 14),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          producto.calificacionVendedor.toStringAsFixed(1),
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w600,
+                                            color: Colors.grey.shade600,
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ],
                                 ),
-                              ],
-                            ),
-                          ],
+                              ),
+                              Icon(Icons.chevron_right, color: Colors.grey.shade400),
+                            ],
+                          ),
                         ),
                       ),
                       const SizedBox(height: 16),

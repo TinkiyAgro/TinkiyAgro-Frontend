@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:tinkiyagro_app/features/profile/data/remote/profile_service.dart';
 
 class _TransactionItem {
   final String description;
@@ -11,14 +12,44 @@ class _Transaction {
   final int orderNumber;
   final double total;
   final List<_TransactionItem> items;
-  bool isExpanded;
+  bool isExpanded = false;
 
   _Transaction({
     required this.orderNumber,
     required this.total,
     required this.items,
-    this.isExpanded = false,
   });
+
+  factory _Transaction.fromJson(Map<String, dynamic> json) {
+    final orderNum = _parseInt(json['orderNumber'] ?? json['id']);
+    final total = _parseDouble(json['total'] ?? json['totalAmount'] ?? json['amount']);
+    final productsTotal = _parseDouble(json['productsTotal']);
+    final deliveryTotal = _parseDouble(json['deliveryTotal']);
+
+    final items = <_TransactionItem>[];
+    if (productsTotal > 0) items.add(_TransactionItem('Subtotal productos', productsTotal));
+    if (deliveryTotal > 0) items.add(_TransactionItem('Gastos de envío', deliveryTotal));
+
+    return _Transaction(
+      orderNumber: orderNum,
+      total: total,
+      items: items,
+    );
+  }
+
+  static int _parseInt(dynamic v) {
+    if (v == null) return 0;
+    if (v is int) return v;
+    if (v is num) return v.toInt();
+    return int.tryParse(v.toString()) ?? 0;
+  }
+
+  static double _parseDouble(dynamic v) {
+    if (v == null) return 0.0;
+    if (v is double) return v;
+    if (v is num) return v.toDouble();
+    return double.tryParse(v.toString()) ?? 0.0;
+  }
 }
 
 class ConsumerTransactionsPage extends StatefulWidget {
@@ -30,45 +61,47 @@ class ConsumerTransactionsPage extends StatefulWidget {
 }
 
 class _ConsumerTransactionsPageState extends State<ConsumerTransactionsPage> {
-  final List<_Transaction> _transactions = [
-    _Transaction(
-      orderNumber: 3,
-      total: 92.45,
-      isExpanded: true,
-      items: const [
-        _TransactionItem('Naranja para jugo × 5 kg', 19.00),
-        _TransactionItem('Papa Blanca Yungay × 5 kg', 17.50),
-        _TransactionItem('Palta Hass × 5 kg', 25.95),
-        _TransactionItem('Piña Golden × 5 kg', 20.00),
-        _TransactionItem('Gastos de envío (Sebastian Paredes)', 5.00),
-        _TransactionItem('Gastos de envío (María Ccopa)', 5.00),
-      ],
-    ),
-    _Transaction(
-      orderNumber: 2,
-      total: 92.45,
-      items: const [
-        _TransactionItem('Naranja para jugo × 5 kg', 19.00),
-        _TransactionItem('Papa Blanca Yungay × 5 kg', 17.50),
-        _TransactionItem('Palta Hass × 5 kg', 25.95),
-        _TransactionItem('Piña Golden × 5 kg', 20.00),
-        _TransactionItem('Gastos de envío (Sebastian Paredes)', 5.00),
-        _TransactionItem('Gastos de envío (María Ccopa)', 5.00),
-      ],
-    ),
-  ];
+  final _service = ProfileService();
+  List<_Transaction> _transactions = [];
+  bool _cargando = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _cargar();
+  }
+
+  Future<void> _cargar() async {
+    setState(() {
+      _cargando = true;
+      _error = null;
+    });
+    try {
+      final data = await _service.obtenerTransacciones();
+      if (mounted) {
+        setState(() {
+          _transactions = data.map(_Transaction.fromJson).toList();
+          if (_transactions.isNotEmpty) _transactions.first.isExpanded = true;
+          _cargando = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = e.toString();
+          _cargando = false;
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF7F8FA),
       appBar: _buildAppBar(context),
-      body: ListView.builder(
-        padding: const EdgeInsets.all(20),
-        itemCount: _transactions.length,
-        itemBuilder: (context, index) =>
-            _buildTransactionCard(_transactions[index]),
-      ),
+      body: _buildBody(),
     );
   }
 
@@ -93,6 +126,65 @@ class _ConsumerTransactionsPageState extends State<ConsumerTransactionsPage> {
       bottom: PreferredSize(
         preferredSize: const Size.fromHeight(1),
         child: Container(height: 1, color: Colors.grey.shade200),
+      ),
+    );
+  }
+
+  Widget _buildBody() {
+    if (_cargando) {
+      return const Center(
+        child: CircularProgressIndicator(color: Color(0xFF5CA399)),
+      );
+    }
+    if (_error != null) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.error_outline, color: Colors.grey.shade400, size: 48),
+            const SizedBox(height: 12),
+            Text(
+              'No se pudieron cargar las transacciones',
+              style: TextStyle(fontSize: 15, color: Colors.grey.shade600),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: _cargar,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF5CA399),
+                foregroundColor: Colors.white,
+                shape: const StadiumBorder(),
+              ),
+              child: const Text('Reintentar'),
+            ),
+          ],
+        ),
+      );
+    }
+    if (_transactions.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.receipt_long_outlined,
+                size: 64, color: Colors.grey.shade300),
+            const SizedBox(height: 16),
+            Text(
+              'Sin transacciones aún',
+              style: TextStyle(fontSize: 16, color: Colors.grey.shade500),
+            ),
+          ],
+        ),
+      );
+    }
+    return RefreshIndicator(
+      color: const Color(0xFF5CA399),
+      onRefresh: _cargar,
+      child: ListView.builder(
+        padding: const EdgeInsets.all(20),
+        itemCount: _transactions.length,
+        itemBuilder: (context, index) =>
+            _buildTransactionCard(_transactions[index]),
       ),
     );
   }
@@ -161,16 +253,13 @@ class _ConsumerTransactionsPageState extends State<ConsumerTransactionsPage> {
               ],
             ),
           ),
-          // Expanded items
-          if (tx.isExpanded) ...[
+          if (tx.isExpanded && tx.items.isNotEmpty) ...[
             const Divider(height: 1, indent: 16, endIndent: 16),
             Padding(
               padding:
                   const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               child: Column(
-                children: tx.items
-                    .map((item) => _buildItemRow(item))
-                    .toList(),
+                children: tx.items.map(_buildItemRow).toList(),
               ),
             ),
           ],
