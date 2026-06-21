@@ -338,7 +338,7 @@ class _RoleSelectionPageState extends State<RoleSelectionPage> {
                 child: ElevatedButton(
                   onPressed: () {
                     Navigator.pop(context);
-                    final dest = roleName == 'REPARTIDOR' ? '/repartidor_home' : '/home';
+                    final dest = roleName == 'REPARTIDOR' ? '/courier_home' : '/home';
                     Navigator.of(context).pushNamedAndRemoveUntil(dest, (route) => false);
                   },
                   style: ElevatedButton.styleFrom(

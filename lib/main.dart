@@ -18,8 +18,8 @@ import 'features/orders/presentation/pages/order_detail_page.dart';
 import 'features/orders/presentation/pages/checkout_shipping_page.dart';
 import 'features/orders/presentation/pages/checkout_address_page.dart';
 import 'features/orders/presentation/pages/checkout_payment_page.dart';
-import 'features/driver/presentation/pages/driver_home_page.dart';
-import 'features/driver/presentation/pages/driver_delivery_page.dart';
+import 'features/courier/presentation/pages/courier_home_page.dart';
+import 'features/courier/presentation/pages/courier_delivery_page.dart';
 import 'features/reviews/presentation/pages/reviews_page.dart';
 import 'features/reviews/presentation/pages/write_review_page.dart';
 
@@ -37,7 +37,7 @@ class TinkiyAgroApp extends StatelessWidget {
     final session = SessionManager();
     String initialRoute = '/welcome';
     if (session.isLoggedIn) {
-      initialRoute = session.rol == 'REPARTIDOR' ? '/repartidor_home' : '/home';
+      initialRoute = session.rol == 'REPARTIDOR' ? '/courier_home' : '/home';
     }
 
     return MaterialApp(
@@ -99,8 +99,8 @@ class TinkiyAgroApp extends StatelessWidget {
             const FarmerDeliveryConfirmPage(),
         '/farmer_entrega_form': (context) => const FarmerEntregaFormPage(),
         '/farmer_pickup_points': (context) => const FarmerPickupPointsPage(),
-        '/repartidor_home': (context) => const RepartidorHomePage(),
-        '/repartidor_delivery': (context) => const RepartidorDeliveryPage(),
+        '/courier_home': (context) => const CourierHomePage(),
+        '/courier_delivery': (context) => const CourierDeliveryPage(),
       },
     );
   }

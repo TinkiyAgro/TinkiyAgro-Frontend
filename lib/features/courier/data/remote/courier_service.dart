@@ -2,14 +2,14 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:tinkiyagro_app/core/api_client.dart';
 import 'package:tinkiyagro_app/core/constants/app_constants.dart';
-import '../driver_model.dart';
+import '../courier_model.dart';
 
-class DriverService {
+class CourierService {
   /// GET /api/courier/deliveries
-  Future<List<RepartidorDeliveryGroup>> listarEntregas() async {
-    debugPrint('[DriverService] listarEntregas → ${AppConstants.listAssignedDeliveriesEndpoint}');
+  Future<List<CourierDeliveryGroup>> listDeliveries() async {
+    debugPrint('[CourierService] listDeliveries → ${AppConstants.listAssignedDeliveriesEndpoint}');
     final response = await ApiClient.get(AppConstants.listAssignedDeliveriesEndpoint);
-    debugPrint('[DriverService] listarEntregas ${response.statusCode}: ${response.body}');
+    debugPrint('[CourierService] listDeliveries ${response.statusCode}: ${response.body}');
     if (response.statusCode == 200) {
       final body = jsonDecode(response.body);
       final List<dynamic> list;
@@ -22,18 +22,18 @@ class DriverService {
       }
       return list
           .whereType<Map>()
-          .map((e) => RepartidorDeliveryGroup.fromJson(e.cast<String, dynamic>()))
+          .map((e) => CourierDeliveryGroup.fromJson(e.cast<String, dynamic>()))
           .toList();
     }
     throw Exception('Error al listar entregas: ${response.statusCode}');
   }
 
   /// POST /api/courier/deliveries/{subOrderId}/confirm
-  Future<void> confirmarEntrega(String subOrderId) async {
+  Future<void> confirmDelivery(String subOrderId) async {
     final url = AppConstants.confirmDeliveryCourierEndpoint.replaceAll('{subOrderId}', subOrderId);
-    debugPrint('[DriverService] confirmarEntrega → $url');
+    debugPrint('[CourierService] confirmDelivery → $url');
     final response = await ApiClient.post(url, {'productsDelivered': true, 'paymentReceived': true});
-    debugPrint('[DriverService] confirmarEntrega ${response.statusCode}: ${response.body}');
+    debugPrint('[CourierService] confirmDelivery ${response.statusCode}: ${response.body}');
     if (response.statusCode != 200 &&
         response.statusCode != 201 &&
         response.statusCode != 204) {

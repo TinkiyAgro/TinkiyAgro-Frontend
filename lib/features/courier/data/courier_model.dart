@@ -1,73 +1,73 @@
 import 'package:flutter/material.dart';
 import 'package:tinkiyagro_app/features/catalog/data/product_model.dart';
 
-class RepartidorOrderItem {
+class CourierOrderItem {
   final String productName;
-  final String cantidad;
-  final double precio;
+  final String quantity;
+  final double price;
 
-  const RepartidorOrderItem({
+  const CourierOrderItem({
     required this.productName,
-    required this.cantidad,
-    required this.precio,
+    required this.quantity,
+    required this.price,
   });
 
-  factory RepartidorOrderItem.fromJson(Map<String, dynamic> json) {
+  factory CourierOrderItem.fromJson(Map<String, dynamic> json) {
     final qty = (json['quantity'] ?? json['cantidad'] ?? '').toString().trim();
     final rawFormat = (json['saleFormat'] ?? '').toString().trim();
     final rawUnit = (json['unit'] ?? json['unidad'] ?? '').toString().trim();
     final unit = rawUnit.isNotEmpty ? rawUnit : _saleFormatToUnit(rawFormat);
-    final cantidad = qty.isEmpty
+    final displayQty = qty.isEmpty
         ? unit
         : unit.isEmpty
             ? qty
             : '$qty $unit';
-    return RepartidorOrderItem(
+    return CourierOrderItem(
       productName: json['productName']?.toString() ?? json['name']?.toString() ?? '',
-      cantidad: cantidad,
-      precio: _parseDouble(json['unitPrice'] ?? json['price'] ?? json['total']),
+      quantity: displayQty,
+      price: _parseDouble(json['unitPrice'] ?? json['price'] ?? json['total']),
     );
   }
 }
 
-class RepartidorCustomer {
+class CourierCustomer {
   final String subOrderId;
-  final String clienteInicial;
-  final Color clienteColor;
-  final String clienteNombre;
+  final String clientInitial;
+  final Color clientColor;
+  final String clientName;
   final String customerProfileImageUrl;
   final String destinationAddress;
-  final List<RepartidorOrderItem> items;
+  final List<CourierOrderItem> items;
   final double deliveryCost;
   final double total;
-  final String tipoEntrega; // 'Recojo' | 'Delivery'
-  final String metodoPago; // 'Efectivo' | 'Yape'
-  final String? yapeNumero;
-  bool entregaConfirmada;
-  bool pagoConfirmado;
+  final String deliveryType; // 'Recojo' | 'Delivery'
+  final String paymentMethod; // 'Efectivo' | 'Yape'
+  final String? yapePhoneNumber;
+  bool deliveryConfirmed;
+  bool paymentConfirmed;
 
-  RepartidorCustomer({
+  CourierCustomer({
     this.subOrderId = '',
-    required this.clienteInicial,
-    required this.clienteColor,
-    required this.clienteNombre,
+    required this.clientInitial,
+    required this.clientColor,
+    required this.clientName,
     this.customerProfileImageUrl = '',
     this.destinationAddress = '',
     required this.items,
     this.deliveryCost = 0,
     required this.total,
-    required this.tipoEntrega,
-    required this.metodoPago,
-    this.yapeNumero,
-    this.entregaConfirmada = false,
-    this.pagoConfirmado = false,
+    required this.deliveryType,
+    required this.paymentMethod,
+    this.yapePhoneNumber,
+    this.deliveryConfirmed = false,
+    this.paymentConfirmed = false,
   });
 
-  factory RepartidorCustomer.fromJson(Map<String, dynamic> json, {int index = 1}) {
-    debugPrint('[RepartidorCustomer.fromJson] keys=${json.keys.toList()} json=$json');
+  factory CourierCustomer.fromJson(Map<String, dynamic> json, {int index = 1}) {
+    debugPrint('[CourierCustomer.fromJson] keys=${json.keys.toList()} json=$json');
     final rawItems = (json['items'] ?? json['products'] ?? json['orderItems'] ?? []) as List;
     final items = rawItems.whereType<Map>()
-        .map((i) => RepartidorOrderItem.fromJson(i.cast<String, dynamic>()))
+        .map((i) => CourierOrderItem.fromJson(i.cast<String, dynamic>()))
         .toList();
 
     // Try flat fields first, then nested customer/consumer objects
@@ -88,9 +88,9 @@ class RepartidorCustomer {
             : null)
         ?? '';
     final rawDelivery = (json['deliveryMethod'] ?? json['deliveryType'] ?? '').toString().toUpperCase();
-    final tipo = (rawDelivery == 'PICKUP' || rawDelivery == 'RECOJO') ? 'Recojo' : 'Delivery';
+    final deliveryLabel = (rawDelivery == 'PICKUP' || rawDelivery == 'RECOJO') ? 'Recojo' : 'Delivery';
     final rawPayment = (json['paymentMethod'] ?? '').toString().toUpperCase();
-    final metodo = rawPayment == 'YAPE' ? 'Yape' : 'Efectivo';
+    final paymentLabel = rawPayment == 'YAPE' ? 'Yape' : 'Efectivo';
     final subOrderId = json['id']?.toString() ?? json['subOrderId']?.toString() ?? '';
 
     final destObj = json['destination'];
@@ -101,69 +101,69 @@ class RepartidorCustomer {
       destMap?['reference']?.toString() ?? '',
     ].where((s) => s.isNotEmpty).join(', ');
 
-    return RepartidorCustomer(
+    return CourierCustomer(
       subOrderId: subOrderId,
-      clienteInicial: name.isNotEmpty ? name[0].toUpperCase() : '#',
-      clienteColor: const Color(0xFFB2DFDB),
-      clienteNombre: name.isNotEmpty ? name : 'Pedido #$index',
+      clientInitial: name.isNotEmpty ? name[0].toUpperCase() : '#',
+      clientColor: const Color(0xFFB2DFDB),
+      clientName: name.isNotEmpty ? name : 'Pedido #$index',
       customerProfileImageUrl: resolveMediaUrl(json['customerProfileImageUrl']?.toString() ?? ''),
       destinationAddress: destAddr,
       items: items,
       deliveryCost: _parseDouble(json['deliveryCost'] ?? json['shippingCost']),
       total: _parseDouble(json['total'] ?? json['amount'] ?? json['totalAmount']),
-      tipoEntrega: tipo,
-      metodoPago: metodo,
-      yapeNumero: json['yapePhoneNumber']?.toString() ?? json['yapeNumber']?.toString() ?? json['yapeNumero']?.toString(),
+      deliveryType: deliveryLabel,
+      paymentMethod: paymentLabel,
+      yapePhoneNumber: json['yapePhoneNumber']?.toString() ?? json['yapeNumber']?.toString() ?? json['yapeNumero']?.toString(),
     );
   }
 }
 
-class RepartidorDeliveryGroup {
+class CourierDeliveryGroup {
   final String id;
   final String farmerName;
   final String farmerImageUrl;
-  final String tipoGrupo; // 'Recojo' | 'Delivery'
-  final String ubicacion;
+  final String groupType; // 'Recojo' | 'Delivery'
+  final String location;
   final String? district;
   final String? reference;
-  final List<RepartidorCustomer> clientes;
-  String estado; // 'En curso' | 'Entregado'
+  final List<CourierCustomer> customers;
+  String status; // 'En curso' | 'Entregado'
 
-  RepartidorDeliveryGroup({
+  CourierDeliveryGroup({
     required this.id,
     required this.farmerName,
     this.farmerImageUrl = '',
-    required this.tipoGrupo,
-    required this.ubicacion,
+    required this.groupType,
+    required this.location,
     this.district,
     this.reference,
-    required this.clientes,
-    required this.estado,
+    required this.customers,
+    required this.status,
   });
 
   String get fullAddress {
     final parts = <String>[
-      if (ubicacion.isNotEmpty) ubicacion,
+      if (location.isNotEmpty) location,
       if (district != null && district!.isNotEmpty) district!,
       if (reference != null && reference!.isNotEmpty) reference!,
     ];
     return parts.join(', ');
   }
 
-  factory RepartidorDeliveryGroup.fromJson(Map<String, dynamic> json) {
+  factory CourierDeliveryGroup.fromJson(Map<String, dynamic> json) {
     final rawStatus = (json['status'] ?? '').toString().toUpperCase();
-    final estado = (rawStatus == 'DELIVERED') ? 'Entregado' : 'En curso';
+    final status = (rawStatus == 'DELIVERED') ? 'Entregado' : 'En curso';
 
     final rawSubOrders = (json['subOrders'] ?? json['orders'] ?? []) as List;
 
     int idx = 0;
-    final clientes = rawSubOrders.whereType<Map>().map((e) {
+    final customers = rawSubOrders.whereType<Map>().map((e) {
       idx++;
-      return RepartidorCustomer.fromJson(e.cast<String, dynamic>(), index: idx);
+      return CourierCustomer.fromJson(e.cast<String, dynamic>(), index: idx);
     }).toList();
 
     final rawDelivery = (json['deliveryMethod'] ?? '').toString().toUpperCase();
-    final tipoGrupo = (rawDelivery == 'PICKUP' || rawDelivery == 'RECOJO') ? 'Recojo' : 'Delivery';
+    final groupType = (rawDelivery == 'PICKUP' || rawDelivery == 'RECOJO') ? 'Recojo' : 'Delivery';
 
     // Use the first subOrder's destination as fallback for district/reference.
     final firstSubOrder = rawSubOrders.whereType<Map>().isNotEmpty
@@ -204,16 +204,16 @@ class RepartidorDeliveryGroup {
           ?? '',
     );
 
-    return RepartidorDeliveryGroup(
+    return CourierDeliveryGroup(
       id: json['groupKey']?.toString() ?? json['id']?.toString() ?? '',
       farmerName: farmerName,
       farmerImageUrl: farmerImageUrl,
-      tipoGrupo: tipoGrupo,
-      ubicacion: address,
+      groupType: groupType,
+      location: address,
       district: district.isEmpty ? null : district,
       reference: reference.isEmpty ? null : reference,
-      clientes: clientes,
-      estado: estado,
+      customers: customers,
+      status: status,
     );
   }
 }

@@ -1,33 +1,33 @@
 import 'package:flutter/material.dart';
 import 'package:tinkiyagro_app/core/constants/app_constants.dart';
 import 'package:tinkiyagro_app/features/orders/data/remote/location_tracking_service.dart';
-import '../../data/driver_model.dart';
-import '../../data/remote/driver_service.dart';
+import '../../data/courier_model.dart';
+import '../../data/remote/courier_service.dart';
 
-class RepartidorDeliveryPage extends StatefulWidget {
-  const RepartidorDeliveryPage({super.key});
+class CourierDeliveryPage extends StatefulWidget {
+  const CourierDeliveryPage({super.key});
 
   @override
-  State<RepartidorDeliveryPage> createState() => _RepartidorDeliveryPageState();
+  State<CourierDeliveryPage> createState() => _CourierDeliveryPageState();
 }
 
-class _RepartidorDeliveryPageState extends State<RepartidorDeliveryPage> {
-  final _service = DriverService();
+class _CourierDeliveryPageState extends State<CourierDeliveryPage> {
+  final _service = CourierService();
   final _tracking = LocationTrackingService();
 
-  late RepartidorDeliveryGroup _group;
+  late CourierDeliveryGroup _group;
   bool _initialized = false;
   bool _trackingActive = false;
 
-  final Map<String, bool> _confirmando = {};
-  final Set<String> _confirmados = {};
+  final Map<String, bool> _confirming = {};
+  final Set<String> _confirmed = {};
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (!_initialized) {
       _initialized = true;
-      _group = ModalRoute.of(context)!.settings.arguments as RepartidorDeliveryGroup;
+      _group = ModalRoute.of(context)!.settings.arguments as CourierDeliveryGroup;
       WidgetsBinding.instance.addPostFrameCallback((_) => _startTracking());
     }
   }
@@ -43,7 +43,7 @@ class _RepartidorDeliveryPageState extends State<RepartidorDeliveryPage> {
     if (!mounted) return;
     final granted = await _tracking.requestPermission();
     if (!granted || !mounted) return;
-    final ids = _group.clientes.map((c) => c.subOrderId).toList();
+    final ids = _group.customers.map((c) => c.subOrderId).toList();
     _tracking.start(
       subOrderIds: ids,
       endpointTemplate: AppConstants.updateTrackingCourierEndpoint,
@@ -51,17 +51,17 @@ class _RepartidorDeliveryPageState extends State<RepartidorDeliveryPage> {
     if (mounted) setState(() => _trackingActive = true);
   }
 
-  Future<void> _confirmar(RepartidorCustomer customer) async {
-    setState(() => _confirmando[customer.subOrderId] = true);
+  Future<void> _confirmDelivery(CourierCustomer customer) async {
+    setState(() => _confirming[customer.subOrderId] = true);
     try {
-      await _service.confirmarEntrega(customer.subOrderId);
+      await _service.confirmDelivery(customer.subOrderId);
       if (!mounted) return;
-      setState(() => _confirmados.add(customer.subOrderId));
+      setState(() => _confirmed.add(customer.subOrderId));
 
-      final todosConfirmados =
-          _group.clientes.every((c) => _confirmados.contains(c.subOrderId));
-      if (todosConfirmados) {
-        _group.estado = 'Entregado';
+      final allConfirmed =
+          _group.customers.every((c) => _confirmed.contains(c.subOrderId));
+      if (allConfirmed) {
+        _group.status = 'Entregado';
         _tracking.stop(); // todas entregadas → detener tracking
         Navigator.pop(context);
       }
@@ -80,7 +80,7 @@ class _RepartidorDeliveryPageState extends State<RepartidorDeliveryPage> {
         ),
       );
     } finally {
-      if (mounted) setState(() => _confirmando[customer.subOrderId] = false);
+      if (mounted) setState(() => _confirming[customer.subOrderId] = false);
     }
   }
 
@@ -144,8 +144,8 @@ class _RepartidorDeliveryPageState extends State<RepartidorDeliveryPage> {
             Builder(builder: (context) {
               final addr = _group.fullAddress.isNotEmpty
                   ? _group.fullAddress
-                  : _group.clientes.isNotEmpty
-                      ? _group.clientes.first.destinationAddress
+                  : _group.customers.isNotEmpty
+                      ? _group.customers.first.destinationAddress
                       : '';
               if (addr.isEmpty) return const SizedBox.shrink();
               return Row(
@@ -163,7 +163,7 @@ class _RepartidorDeliveryPageState extends State<RepartidorDeliveryPage> {
               );
             }),
             const SizedBox(height: 16),
-            ..._group.clientes.map((c) => Padding(
+            ..._group.customers.map((c) => Padding(
                   padding: const EdgeInsets.only(bottom: 16),
                   child: _buildCustomerCard(c),
                 )),
@@ -176,11 +176,11 @@ class _RepartidorDeliveryPageState extends State<RepartidorDeliveryPage> {
     );
   }
 
-  Widget _buildCustomerCard(RepartidorCustomer customer) {
-    final isBusy = _confirmando[customer.subOrderId] == true;
-    final yaConfirmado = _confirmados.contains(customer.subOrderId);
+  Widget _buildCustomerCard(CourierCustomer customer) {
+    final isBusy = _confirming[customer.subOrderId] == true;
+    final alreadyConfirmed = _confirmed.contains(customer.subOrderId);
     final canConfirm =
-        customer.entregaConfirmada && customer.pagoConfirmado && !isBusy && !yaConfirmado;
+        customer.deliveryConfirmed && customer.paymentConfirmed && !isBusy && !alreadyConfirmed;
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -202,13 +202,13 @@ class _RepartidorDeliveryPageState extends State<RepartidorDeliveryPage> {
             children: [
               CircleAvatar(
                 radius: 19,
-                backgroundColor: customer.clienteColor,
+                backgroundColor: customer.clientColor,
                 backgroundImage: customer.customerProfileImageUrl.isNotEmpty
                     ? NetworkImage(customer.customerProfileImageUrl)
                     : null,
                 child: customer.customerProfileImageUrl.isEmpty
                     ? Text(
-                        customer.clienteInicial,
+                        customer.clientInitial,
                         style: const TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 15,
@@ -223,13 +223,13 @@ class _RepartidorDeliveryPageState extends State<RepartidorDeliveryPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      customer.clienteNombre,
+                      customer.clientName,
                       style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                     ),
                   ],
                 ),
               ),
-              _buildTypeBadge(customer.tipoEntrega),
+              _buildTypeBadge(customer.deliveryType),
             ],
           ),
           const SizedBox(height: 12),
@@ -242,11 +242,11 @@ class _RepartidorDeliveryPageState extends State<RepartidorDeliveryPage> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    '${item.productName} × ${item.cantidad}',
+                    '${item.productName} × ${item.quantity}',
                     style: const TextStyle(fontSize: 13),
                   ),
                   Text(
-                    'S/. ${item.precio.toStringAsFixed(2)}',
+                    'S/. ${item.price.toStringAsFixed(2)}',
                     style: const TextStyle(fontSize: 13),
                   ),
                 ],
@@ -323,8 +323,8 @@ class _RepartidorDeliveryPageState extends State<RepartidorDeliveryPage> {
                       style: TextStyle(color: Colors.white70, fontSize: 11),
                     ),
                     Text(
-                      customer.metodoPago == 'Yape'
-                          ? 'Yape - ${customer.yapeNumero ?? ''}'
+                      customer.paymentMethod == 'Yape'
+                          ? 'Yape - ${customer.yapePhoneNumber ?? ''}'
                           : 'Efectivo',
                       style: const TextStyle(
                         color: Colors.white,
@@ -341,14 +341,14 @@ class _RepartidorDeliveryPageState extends State<RepartidorDeliveryPage> {
 
           _buildToggleRow(
             'Entregué los productos al cliente',
-            customer.entregaConfirmada,
-            (isBusy || yaConfirmado) ? null : (v) => setState(() => customer.entregaConfirmada = v),
+            customer.deliveryConfirmed,
+            (isBusy || alreadyConfirmed) ? null : (v) => setState(() => customer.deliveryConfirmed = v),
           ),
           const SizedBox(height: 6),
           _buildToggleRow(
             'Recibí el pago',
-            customer.pagoConfirmado,
-            (isBusy || yaConfirmado) ? null : (v) => setState(() => customer.pagoConfirmado = v),
+            customer.paymentConfirmed,
+            (isBusy || alreadyConfirmed) ? null : (v) => setState(() => customer.paymentConfirmed = v),
           ),
           const SizedBox(height: 14),
 
@@ -356,7 +356,7 @@ class _RepartidorDeliveryPageState extends State<RepartidorDeliveryPage> {
             width: double.infinity,
             height: 48,
             child: ElevatedButton(
-              onPressed: canConfirm ? () => _confirmar(customer) : null,
+              onPressed: canConfirm ? () => _confirmDelivery(customer) : null,
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF5CA399),
                 foregroundColor: Colors.white,
@@ -370,7 +370,7 @@ class _RepartidorDeliveryPageState extends State<RepartidorDeliveryPage> {
                       child: CircularProgressIndicator(
                           color: Colors.white, strokeWidth: 2))
                   : Text(
-                      yaConfirmado ? 'Entrega confirmada ✓' : 'Confirmar entrega',
+                      alreadyConfirmed ? 'Entrega confirmada ✓' : 'Confirmar entrega',
                       style: const TextStyle(
                           fontSize: 15, fontWeight: FontWeight.bold),
                     ),

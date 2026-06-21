@@ -585,7 +585,7 @@ class _AuthPageState extends State<AuthPage>
         const SnackBar(content: Text('Inicio de sesión exitoso')),
       );
 
-      final destination = role == 'REPARTIDOR' ? '/repartidor_home' : '/home';
+      final destination = role == 'REPARTIDOR' ? '/courier_home' : '/home';
       Navigator.pushNamedAndRemoveUntil(
           context, destination, (route) => false);
     } catch (e) {

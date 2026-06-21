@@ -1,44 +1,44 @@
 import 'package:flutter/material.dart';
-import '../../data/driver_model.dart';
-import '../../data/remote/driver_service.dart';
+import '../../data/courier_model.dart';
+import '../../data/remote/courier_service.dart';
 import 'package:tinkiyagro_app/features/orders/data/remote/location_tracking_service.dart';
 import 'package:tinkiyagro_app/features/profile/presentation/pages/driver_profile_page.dart';
 
-class RepartidorHomePage extends StatefulWidget {
-  const RepartidorHomePage({super.key});
+class CourierHomePage extends StatefulWidget {
+  const CourierHomePage({super.key});
 
   @override
-  State<RepartidorHomePage> createState() => _RepartidorHomePageState();
+  State<CourierHomePage> createState() => _CourierHomePageState();
 }
 
-class _RepartidorHomePageState extends State<RepartidorHomePage> {
-  final _service = DriverService();
+class _CourierHomePageState extends State<CourierHomePage> {
+  final _service = CourierService();
 
   int _tabIndex = 0; // 0: Entregas, 1: Perfil
   int _filterIndex = 0;
   static const _filters = ['Todo', 'En curso', 'Entregados'];
-  List<RepartidorDeliveryGroup> _groups = [];
-  bool _cargando = true;
+  List<CourierDeliveryGroup> _groups = [];
+  bool _loading = true;
   String? _error;
 
   @override
   void initState() {
     super.initState();
-    _cargar();
+    _load();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       LocationTrackingService().requestPermission();
     });
   }
 
-  Future<void> _cargar() async {
-    setState(() { _cargando = true; _error = null; });
+  Future<void> _load() async {
+    setState(() { _loading = true; _error = null; });
     try {
-      final groups = await _service.listarEntregas();
+      final groups = await _service.listDeliveries();
       if (mounted) setState(() => _groups = groups);
     } catch (e) {
       if (mounted) setState(() => _error = e.toString());
     } finally {
-      if (mounted) setState(() => _cargando = false);
+      if (mounted) setState(() => _loading = false);
     }
   }
 
@@ -101,8 +101,8 @@ class _RepartidorHomePageState extends State<RepartidorHomePage> {
         : _groups
             .where((g) =>
                 _filterIndex == 1
-                    ? g.estado == 'En curso'
-                    : g.estado == 'Entregado')
+                    ? g.status == 'En curso'
+                    : g.status == 'Entregado')
             .toList();
 
     return SafeArea(
@@ -196,8 +196,8 @@ class _RepartidorHomePageState extends State<RepartidorHomePage> {
     );
   }
 
-  Widget _buildListBody(List<RepartidorDeliveryGroup> filtered) {
-    if (_cargando) {
+  Widget _buildListBody(List<CourierDeliveryGroup> filtered) {
+    if (_loading) {
       return const Center(
         child: CircularProgressIndicator(color: Color(0xFF5CA399)),
       );
@@ -213,7 +213,7 @@ class _RepartidorHomePageState extends State<RepartidorHomePage> {
                 style: TextStyle(color: Colors.grey.shade600)),
             const SizedBox(height: 16),
             ElevatedButton(
-              onPressed: _cargar,
+              onPressed: _load,
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF5CA399),
                 foregroundColor: Colors.white,
@@ -235,7 +235,7 @@ class _RepartidorHomePageState extends State<RepartidorHomePage> {
     }
     return RefreshIndicator(
       color: const Color(0xFF5CA399),
-      onRefresh: _cargar,
+      onRefresh: _load,
       child: ListView.builder(
         padding: const EdgeInsets.symmetric(horizontal: 16),
         itemCount: filtered.length,
@@ -244,14 +244,14 @@ class _RepartidorHomePageState extends State<RepartidorHomePage> {
     );
   }
 
-  Widget _buildGroupCard(RepartidorDeliveryGroup group) {
-    final entregado = group.estado == 'Entregado';
+  Widget _buildGroupCard(CourierDeliveryGroup group) {
+    final entregado = group.status == 'Entregado';
     return GestureDetector(
       onTap: entregado
           ? null
           : () => Navigator.pushNamed(
                 context,
-                '/repartidor_delivery',
+                '/courier_delivery',
                 arguments: group,
               ).then((_) => setState(() {})),
       child: Opacity(
@@ -298,10 +298,10 @@ class _RepartidorHomePageState extends State<RepartidorHomePage> {
                           style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
                         ),
                         Text(
-                          '${group.clientes.length} pedido${group.clientes.length != 1 ? 's' : ''}',
+                          '${group.customers.length} pedido${group.customers.length != 1 ? 's' : ''}',
                           style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
                         ),
-                        if (group.ubicacion.isNotEmpty) ...[
+                        if (group.location.isNotEmpty) ...[
                           const SizedBox(height: 2),
                           Row(
                             children: [
@@ -339,12 +339,12 @@ class _RepartidorHomePageState extends State<RepartidorHomePage> {
                       ),
                     )
                   else
-                    _buildTypeBadge(group.tipoGrupo),
+                    _buildTypeBadge(group.groupType),
                 ],
               ),
               const SizedBox(height: 8),
               // Customers
-              ...group.clientes.map((c) => _buildCustomerRow(c)),
+              ...group.customers.map((c) => _buildCustomerRow(c)),
             ],
           ),
         ),
@@ -352,7 +352,7 @@ class _RepartidorHomePageState extends State<RepartidorHomePage> {
     );
   }
 
-  Widget _buildCustomerRow(RepartidorCustomer customer) {
+  Widget _buildCustomerRow(CourierCustomer customer) {
     return Container(
       margin: const EdgeInsets.only(top: 6),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -365,13 +365,13 @@ class _RepartidorHomePageState extends State<RepartidorHomePage> {
         children: [
           CircleAvatar(
             radius: 17,
-            backgroundColor: customer.clienteColor,
+            backgroundColor: customer.clientColor,
             backgroundImage: customer.customerProfileImageUrl.isNotEmpty
                 ? NetworkImage(customer.customerProfileImageUrl)
                 : null,
             child: customer.customerProfileImageUrl.isEmpty
                 ? Text(
-                    customer.clienteInicial,
+                    customer.clientInitial,
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 13,
@@ -386,11 +386,11 @@ class _RepartidorHomePageState extends State<RepartidorHomePage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  customer.clienteNombre,
+                  customer.clientName,
                   style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                 ),
                 ...customer.items.map((i) => Text(
-                  '${i.productName} × ${i.cantidad}',
+                  '${i.productName} × ${i.quantity}',
                   style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
                 )),
               ],

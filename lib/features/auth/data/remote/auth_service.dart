@@ -22,7 +22,9 @@ class AuthService {
       if (response.statusCode == 200) {
         return InicioSesionDto.fromJson(jsonDecode(response.body));
       } else {
-        throw Exception('Error al iniciar sesión: ${response.statusCode}');
+        final body = jsonDecode(response.body);
+        final msg = body is Map ? (body['message']?.toString() ?? '') : '';
+        throw Exception(msg.isNotEmpty ? msg : 'Error al iniciar sesión: ${response.statusCode}');
       }
     } on SocketException {
       throw Exception(
