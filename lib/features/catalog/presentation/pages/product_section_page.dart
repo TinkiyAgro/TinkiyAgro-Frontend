@@ -89,29 +89,45 @@ class SeccionProductosPage extends StatelessWidget {
     );
   }
 
+  static String? _productStatusLabel(Producto p) {
+    if (p.purchasable) return null;
+    return p.availabilityMessage.isNotEmpty ? p.availabilityMessage : 'No disponible';
+  }
+
+  static Color _productStatusColor(Producto p) {
+    if (p.purchaseStatus.toUpperCase() == 'OUT_OF_STOCK') {
+      return const Color(0xFFE57373);
+    }
+    return const Color(0xFFFF9800);
+  }
+
   Widget _buildTarjetaProducto(
     BuildContext context,
     Producto producto,
     CatalogoRepositorio repositorio,
   ) {
+    final statusLabel = _productStatusLabel(producto);
+    final bool unavailable = statusLabel != null;
     return GestureDetector(
-      onTap: () {
-        Navigator.pushNamed(context, '/detalle_producto', arguments: producto);
-      },
+      onTap: unavailable
+          ? null
+          : () {
+              Navigator.pushNamed(context, '/detalle_producto',
+                  arguments: producto);
+            },
       child: Container(
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.04),
+              color: Colors.black.withValues(alpha: 0.04),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
           ],
         ),
         child: Stack(
-          clipBehavior: Clip.none,
           children: [
             Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -123,47 +139,52 @@ class SeccionProductosPage extends StatelessWidget {
                     children: [
                       Expanded(
                         child: Center(
-                          child: Container(
-                            width: 90,
-                            height: 90,
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              shape: BoxShape.circle,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.06),
-                                  blurRadius: 10,
-                                  offset: const Offset(0, 4),
+                          child: Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              Container(
+                                width: 90,
+                                height: 90,
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  shape: BoxShape.circle,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(alpha: 0.06),
+                                      blurRadius: 10,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
                                 ),
-                              ],
-                            ),
-                            child: ClipOval(
-                              child: Image.network(
-                                producto.urlImagen,
-                                fit: BoxFit.cover,
-                                loadingBuilder:
-                                    (context, child, loadingProgress) {
-                                      if (loadingProgress == null) return child;
-                                      return const Center(
-                                        child: SizedBox(
-                                          width: 16,
-                                          height: 16,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 2,
-                                            color: Color(0xFF5CA399),
-                                          ),
-                                        ),
+                                child: ClipOval(
+                                  child: Image.network(
+                                    producto.urlImagen,
+                                    fit: BoxFit.cover,
+                                    loadingBuilder:
+                                        (context, child, loadingProgress) {
+                                          if (loadingProgress == null) return child;
+                                          return const Center(
+                                            child: SizedBox(
+                                              width: 16,
+                                              height: 16,
+                                              child: CircularProgressIndicator(
+                                                strokeWidth: 2,
+                                                color: Color(0xFF5CA399),
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                    errorBuilder: (context, error, stackTrace) {
+                                      return const Icon(
+                                        Icons.eco_outlined,
+                                        size: 32,
+                                        color: Color(0xFF5CA399),
                                       );
                                     },
-                                errorBuilder: (context, error, stackTrace) {
-                                  return const Icon(
-                                    Icons.eco_outlined,
-                                    size: 32,
-                                    color: Color(0xFF5CA399),
-                                  );
-                                },
+                                  ),
+                                ),
                               ),
-                            ),
+                            ],
                           ),
                         ),
                       ),
@@ -211,9 +232,40 @@ class SeccionProductosPage extends StatelessWidget {
                 ),
               ],
             ),
+            if (unavailable)
+              Positioned.fill(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(20),
+                  child: Container(
+                    color: Colors.black.withValues(alpha: 0.35),
+                  ),
+                ),
+              ),
+            if (statusLabel != null)
+              Positioned.fill(
+                child: Align(
+                  alignment: const Alignment(0, -0.3),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: _productStatusColor(producto),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      statusLabel,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
             Positioned(
-              top: -10,
-              right: -10,
+              top: 8,
+              right: 8,
               child: Material(
                 color: Colors.white,
                 shape: const CircleBorder(),

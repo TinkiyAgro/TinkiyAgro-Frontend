@@ -68,10 +68,10 @@ class _CheckoutDireccionPageState extends State<CheckoutDireccionPage> {
         farmerUsername: username,
         name: p.name,
         address: p.address,
-        deliveryDays: [],
+        deliveryDate: '',
         availableFrom: '',
         availableTo: '',
-        orderDeadlineDay: '',
+        orderDeadlineDate: '',
         orderDeadlineTime: '',
         status: 'ACTIVE',
       )).toList();

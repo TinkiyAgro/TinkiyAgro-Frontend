@@ -3,14 +3,6 @@ import '../../data/pickup_point_model.dart';
 import '../../data/remote/pickup_point_service.dart';
 import 'farmer_pickup_point_form_page.dart';
 
-const _kDayOrder = [
-  'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY',
-];
-const _kDayLabels = ['L', 'M', 'Mi', 'J', 'V', 'S', 'D'];
-
-List<bool> _toBoolDays(List<String> days) =>
-    _kDayOrder.map(days.contains).toList();
-
 class FarmerEntregasPage extends StatefulWidget {
   const FarmerEntregasPage({super.key});
 
@@ -233,7 +225,16 @@ class _FarmerEntregasPageState extends State<FarmerEntregasPage> {
               ),
             ),
             const SizedBox(height: 8),
-            _buildDayPills(_toBoolDays(punto.deliveryDays)),
+            Text(
+              punto.deliveryDate.isNotEmpty
+                  ? PuntoRecojo.formatDate(punto.deliveryDate)
+                  : '—',
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF5CA399),
+              ),
+            ),
             const SizedBox(height: 8),
             Text(
               '${_horaCorta(punto.availableFrom)} - ${_horaCorta(punto.availableTo)}',
@@ -247,33 +248,6 @@ class _FarmerEntregasPageState extends State<FarmerEntregasPage> {
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildDayPills(List<bool> diasActivos) {
-    return Row(
-      children: List.generate(7, (i) {
-        final active = diasActivos[i];
-        return Container(
-          width: 30,
-          height: 30,
-          margin: const EdgeInsets.only(right: 5),
-          decoration: BoxDecoration(
-            color: active ? const Color(0xFF8CAF3F) : Colors.grey.shade200,
-            shape: BoxShape.circle,
-          ),
-          child: Center(
-            child: Text(
-              _kDayLabels[i],
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                color: active ? Colors.white : Colors.grey.shade600,
-              ),
-            ),
-          ),
-        );
-      }),
     );
   }
 
@@ -301,8 +275,13 @@ class _FarmerEntregasPageState extends State<FarmerEntregasPage> {
                     fontSize: 13, color: Colors.grey.shade600),
               ),
               const SizedBox(height: 12),
-              _buildDayPills(_toBoolDays(punto.deliveryDays)),
-              const SizedBox(height: 12),
+              _buildDetailRow(
+                'Fecha de entrega',
+                punto.deliveryDate.isNotEmpty
+                    ? PuntoRecojo.formatDate(punto.deliveryDate)
+                    : '—',
+              ),
+              const SizedBox(height: 6),
               _buildDetailRow(
                 'Hora',
                 '${_horaCorta(punto.availableFrom)} - ${_horaCorta(punto.availableTo)}',
@@ -310,7 +289,7 @@ class _FarmerEntregasPageState extends State<FarmerEntregasPage> {
               const SizedBox(height: 6),
               _buildDetailRow(
                 'Cierre de pedidos',
-                '${PuntoRecojo.diaLabelCompleto(punto.orderDeadlineDay)} ${_horaCorta(punto.orderDeadlineTime)}',
+                '${punto.orderDeadlineDate.isNotEmpty ? PuntoRecojo.formatDate(punto.orderDeadlineDate) : '—'} ${_horaCorta(punto.orderDeadlineTime)}',
               ),
               const SizedBox(height: 6),
               _buildDetailRow(

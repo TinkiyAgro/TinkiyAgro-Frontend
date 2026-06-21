@@ -26,6 +26,10 @@ class Producto {
   final double? unidadesCajaReferencial;
   final String farmerDescription;
   final String farmerPhone;
+  final String productStatus;
+  final bool purchasable;
+  final String availabilityMessage;
+  final String purchaseStatus;
 
   Producto({
     required this.id,
@@ -52,6 +56,10 @@ class Producto {
     this.unidadesCajaReferencial,
     this.farmerDescription = '',
     this.farmerPhone = '',
+    this.productStatus = '',
+    this.purchasable = true,
+    this.availabilityMessage = '',
+    this.purchaseStatus = '',
   });
 
   factory Producto.fromJson(Map<String, dynamic> json) {
@@ -195,6 +203,10 @@ class Producto {
           : boxFormat?['unitsPerBox'] != null
           ? asDouble(boxFormat?['unitsPerBox'])
           : null,
+      productStatus: json['productStatus']?.toString() ?? json['status']?.toString() ?? '',
+      purchasable: json['purchasable'] as bool? ?? true,
+      availabilityMessage: json['availabilityMessage']?.toString() ?? '',
+      purchaseStatus: json['purchaseStatus']?.toString() ?? '',
     );
   }
 
@@ -248,6 +260,10 @@ class Producto {
     double? unidadesCajaReferencial,
     String? farmerDescription,
     String? farmerPhone,
+    String? productStatus,
+    bool? purchasable,
+    String? availabilityMessage,
+    String? purchaseStatus,
   }) {
     return Producto(
       id: id ?? this.id,
@@ -275,6 +291,10 @@ class Producto {
           unidadesCajaReferencial ?? this.unidadesCajaReferencial,
       farmerDescription: farmerDescription ?? this.farmerDescription,
       farmerPhone: farmerPhone ?? this.farmerPhone,
+      productStatus: productStatus ?? this.productStatus,
+      purchasable: purchasable ?? this.purchasable,
+      availabilityMessage: availabilityMessage ?? this.availabilityMessage,
+      purchaseStatus: purchaseStatus ?? this.purchaseStatus,
     );
   }
 }

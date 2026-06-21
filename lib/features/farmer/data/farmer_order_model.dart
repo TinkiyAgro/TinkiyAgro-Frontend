@@ -119,6 +119,7 @@ class FarmerOrderGroup {
   final String? reference;
   final String diaEntrega; // "Martes 25"
   final String horaEntrega; // "9pm a 11pm"
+  final String pickupSchedule; // "Viernes 26/06/2026 • 10:00 - 12:00"
   final List<ProductoAPreparar> productosAPreparar;
   final List<FarmerCustomerOrder> clientes;
   final String deliveryMethod; // 'PICKUP' | 'DELIVERY'
@@ -137,6 +138,7 @@ class FarmerOrderGroup {
     this.reference,
     required this.diaEntrega,
     required this.horaEntrega,
+    this.pickupSchedule = '',
     required this.productosAPreparar,
     required this.clientes,
     this.deliveryMethod = 'PICKUP',
@@ -272,6 +274,7 @@ class FarmerOrderGroup {
       reference: reference?.isEmpty == true ? null : reference,
       diaEntrega: _formatDeliveryDay(deliveryDateRaw),
       horaEntrega: _formatTimeRange(fromTime, toTime),
+      pickupSchedule: json['pickupSchedule']?.toString() ?? '',
       productosAPreparar: productosAPreparar,
       clientes: clientes,
       deliveryMethod: deliveryMethod,

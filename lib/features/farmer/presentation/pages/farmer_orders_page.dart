@@ -323,9 +323,13 @@ class _FarmerOrdersPageState extends State<FarmerOrdersPage> {
                 children: [
                   const Icon(Icons.calendar_today_outlined, size: 14, color: Colors.grey),
                   const SizedBox(width: 5),
-                  Text(
-                    '${group.diaEntrega} • ${group.horaEntrega}',
-                    style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+                  Expanded(
+                    child: Text(
+                      group.pickupSchedule.isNotEmpty
+                          ? group.pickupSchedule
+                          : '${group.diaEntrega} • ${group.horaEntrega}',
+                      style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+                    ),
                   ),
                 ],
               ),

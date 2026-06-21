@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:tinkiyagro_app/core/api_client.dart';
 import 'package:tinkiyagro_app/core/constants/app_constants.dart';
+import 'package:tinkiyagro_app/features/catalog/data/product_model.dart';
 import '../order_model.dart';
 
 class DeliveryOptionsService {
@@ -36,23 +37,34 @@ class DeliveryOptionsService {
     throw Exception('obtenerOpciones error: ${response.statusCode}');
   }
 
-  /// GET /api/orders/checkout/payment-options
-  /// Returns available payment methods and optionally totals.
-  Future<PaymentSummary> obtenerPaymentOptions() async {
+  /// POST /api/orders/checkout/payment-options
+  /// Returns available payment methods (and optionally totals) per farmer.
+  Future<PaymentSummary> obtenerPaymentOptions(List<CheckoutFarmer> farmers) async {
+    final payload = {
+      'farmers': farmers.map((f) {
+        final method = f.tipoEntrega == 'Recojo' ? 'PICKUP' : 'DELIVERY';
+        return <String, dynamic>{
+          'farmerUsername': f.farmerUsername,
+          'deliveryMethod': method,
+          if (method == 'PICKUP' && f.selectedPickupPoint != null)
+            'pickupPointId': f.selectedPickupPoint,
+          if (method == 'DELIVERY' && f.selectedAddressId != null)
+            'addressId': f.selectedAddressId,
+        };
+      }).toList(),
+    };
     debugPrint('[DeliveryOptionsService] paymentOptions → ${AppConstants.paymentOptionsEndpoint}');
-    final response = await ApiClient.get(AppConstants.paymentOptionsEndpoint);
+    final response = await ApiClient.post(AppConstants.paymentOptionsEndpoint, payload);
     debugPrint('[DeliveryOptionsService] paymentOptions ${response.statusCode}: ${response.body}');
     if (response.statusCode == 200) {
       final body = jsonDecode(response.body);
       if (body is Map<String, dynamic>) {
         return PaymentSummary.fromJson(body);
       }
-      // Array of payment method strings/objects
       if (body is List) {
         return PaymentSummary.fromJson({'paymentMethods': body});
       }
     }
-    // Default: cash only (Yape only shown when API confirms it's configured)
     return const PaymentSummary(paymentMethods: ['Efectivo']);
   }
 
@@ -82,7 +94,8 @@ class CheckoutFarmerOptions {
   final String farmerDisplayName;
   final String farmerAvatarUrl;
   final List<DeliveryOption> options;
-  final double productsSubtotal; // if returned by checkoutOptionsEndpoint
+  final double productsSubtotal;
+  final List<String> paymentMethods; // per-farmer: ['Efectivo', 'Yape']
 
   const CheckoutFarmerOptions({
     required this.farmerUsername,
@@ -90,6 +103,7 @@ class CheckoutFarmerOptions {
     required this.farmerAvatarUrl,
     required this.options,
     this.productsSubtotal = 0.0,
+    this.paymentMethods = const [],
   });
 
   factory CheckoutFarmerOptions.fromJson(Map<String, dynamic> json) {
@@ -98,9 +112,28 @@ class CheckoutFarmerOptions {
         json['farmerDisplayName']?.toString() ??
         json['displayName']?.toString() ??
         username;
-    final avatar = json['farmerAvatarUrl']?.toString() ??
-        json['avatarUrl']?.toString() ?? '';
+    final avatar = resolveMediaUrl(
+      json['farmerAvatarUrl']?.toString() ??
+          json['avatarUrl']?.toString() ??
+          '',
+    );
     final subtotal = _d(json['subtotal'] ?? json['productsSubtotal'] ?? json['productsTotal']);
+
+    // Parse per-farmer payment methods
+    final rawPm = json['paymentMethods'] ?? json['acceptedPaymentMethods'] ?? const [];
+    final pm = <String>[];
+    if (rawPm is List) {
+      for (final m in rawPm) {
+        final s = (m is Map ? (m['type'] ?? m['method']) : m)?.toString().toUpperCase() ?? '';
+        if (s == 'YAPE' || s == 'YAPE_PAY') {
+          pm.add('Yape');
+        } else if (s == 'CASH' || s == 'EFECTIVO') {
+          pm.add('Efectivo');
+        } else if (s.isNotEmpty) {
+          pm.add(s);
+        }
+      }
+    }
 
     final opts = <DeliveryOption>[];
     final rawOptions = json['options'] ?? json['deliveryOptions'];
@@ -130,6 +163,7 @@ class CheckoutFarmerOptions {
       farmerAvatarUrl: avatar,
       options: opts,
       productsSubtotal: subtotal,
+      paymentMethods: pm,
     );
   }
 

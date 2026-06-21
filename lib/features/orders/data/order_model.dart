@@ -473,8 +473,11 @@ class DeliveryOptions {
       farmerDisplayName: json['farmerName']?.toString() ??
           json['farmerDisplayName']?.toString() ??
           json['displayName']?.toString(),
-      farmerAvatarUrl: json['farmerAvatarUrl']?.toString() ??
-          json['avatarUrl']?.toString(),
+      farmerAvatarUrl: resolveMediaUrl(
+        json['farmerAvatarUrl']?.toString() ??
+            json['avatarUrl']?.toString() ??
+            '',
+      ),
       options: opts,
     );
   }
@@ -539,21 +542,43 @@ class FarmerPaymentSummary {
   final double productsSubtotal;
   final double shippingCost;
   final double total;
+  final List<String> paymentMethods;
 
   const FarmerPaymentSummary({
     required this.farmerUsername,
     required this.productsSubtotal,
     required this.shippingCost,
     required this.total,
+    this.paymentMethods = const [],
   });
 
   factory FarmerPaymentSummary.fromJson(Map<String, dynamic> json) {
+    // Response uses 'paymentOptions': [{paymentMethod, enabled, yapePhoneNumber, ...}]
+    final rawPm = json['paymentOptions'] ?? json['paymentMethods'] ?? json['acceptedPaymentMethods'] ?? [];
+    final pm = <String>[];
+    if (rawPm is List) {
+      for (final m in rawPm) {
+        if (m is Map && m['enabled'] == false) continue;
+        final key = m is Map
+            ? (m['paymentMethod'] ?? m['type'] ?? m['method'])
+            : m;
+        final s = key?.toString().toUpperCase() ?? '';
+        if (s == 'YAPE' || s == 'YAPE_PAY') {
+          pm.add('Yape');
+        } else if (s == 'CASH' || s == 'EFECTIVO') {
+          pm.add('Efectivo');
+        } else if (s.isNotEmpty) {
+          pm.add(s);
+        }
+      }
+    }
     return FarmerPaymentSummary(
       farmerUsername: json['farmerUsername']?.toString() ?? '',
       productsSubtotal:
           _d(json['productsSubtotal'] ?? json['subtotal'] ?? json['productsTotal']),
       shippingCost: _d(json['shippingCost'] ?? json['deliveryCost']),
       total: _d(json['total']),
+      paymentMethods: pm,
     );
   }
 }
@@ -594,6 +619,7 @@ class CheckoutFarmer {
   String? selectedAddressId;
   String? selectedAddressText;
   String metodoPago;
+  List<String> paymentMethods; // per-farmer, e.g. ['Efectivo', 'Yape']
 
   CheckoutFarmer({
     required this.farmerUsername,
@@ -607,9 +633,11 @@ class CheckoutFarmer {
     this.selectedAddressId,
     this.selectedAddressText,
     this.metodoPago = 'Efectivo',
+    List<String>? paymentMethods,
   })  : farmerName = farmerName ?? farmerUsername,
         farmerAvatarUrl = farmerAvatarUrl ?? '',
-        availableOptions = availableOptions ?? [];
+        availableOptions = availableOptions ?? [],
+        paymentMethods = paymentMethods ?? ['Efectivo'];
 
   DeliveryOption? get selectedOption =>
       selectedOptionIndex >= 0 && selectedOptionIndex < availableOptions.length

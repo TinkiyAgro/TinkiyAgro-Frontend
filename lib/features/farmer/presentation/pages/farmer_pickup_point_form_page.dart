@@ -2,10 +2,6 @@ import 'package:flutter/material.dart';
 import '../../data/pickup_point_model.dart';
 import '../../data/remote/pickup_point_service.dart';
 
-const _kDays = [
-  'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY',
-];
-
 class FarmerPickupPointFormPage extends StatefulWidget {
   final PuntoRecojo? puntoEditar;
 
@@ -24,10 +20,10 @@ class _FarmerPickupPointFormPageState
   late final TextEditingController _nameCtrl;
   late final TextEditingController _addressCtrl;
 
-  Set<String> _selectedDays = {};
+  DateTime? _deliveryDate;
   TimeOfDay _availableFrom = const TimeOfDay(hour: 10, minute: 0);
   TimeOfDay _availableTo = const TimeOfDay(hour: 12, minute: 0);
-  String _deadlineDay = 'SUNDAY';
+  DateTime? _deadlineDate;
   TimeOfDay _deadlineTime = const TimeOfDay(hour: 15, minute: 0);
   bool _activo = true;
 
@@ -42,10 +38,10 @@ class _FarmerPickupPointFormPageState
     _nameCtrl = TextEditingController(text: p?.name ?? '');
     _addressCtrl = TextEditingController(text: p?.address ?? '');
     if (p != null) {
-      _selectedDays = Set.from(p.deliveryDays);
+      _deliveryDate = _parseIsoDate(p.deliveryDate);
       _availableFrom = _parseTime(p.availableFrom);
       _availableTo = _parseTime(p.availableTo);
-      _deadlineDay = p.orderDeadlineDay;
+      _deadlineDate = _parseIsoDate(p.orderDeadlineDate);
       _deadlineTime = _parseTime(p.orderDeadlineTime);
       _activo = p.activo;
     }
@@ -57,6 +53,20 @@ class _FarmerPickupPointFormPageState
     _addressCtrl.dispose();
     super.dispose();
   }
+
+  DateTime? _parseIsoDate(String iso) {
+    if (iso.isEmpty) return null;
+    try {
+      return DateTime.parse(iso);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  String _formatIsoDate(DateTime d) =>
+      '${d.year.toString().padLeft(4, '0')}-'
+      '${d.month.toString().padLeft(2, '0')}-'
+      '${d.day.toString().padLeft(2, '0')}';
 
   TimeOfDay _parseTime(String t) {
     final parts = t.split(':');
@@ -90,12 +100,43 @@ class _FarmerPickupPointFormPageState
     if (picked != null) onPicked(picked);
   }
 
+  Future<void> _pickDate(
+    DateTime? initial,
+    void Function(DateTime) onPicked,
+  ) async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: initial ?? now,
+      firstDate: now,
+      lastDate: now.add(const Duration(days: 365)),
+      builder: (ctx, child) => Theme(
+        data: Theme.of(ctx).copyWith(
+          colorScheme: Theme.of(ctx)
+              .colorScheme
+              .copyWith(primary: const Color(0xFF5CA399)),
+        ),
+        child: child!,
+      ),
+    );
+    if (picked != null) onPicked(picked);
+  }
+
   Future<void> _guardar() async {
     if (!_formKey.currentState!.validate()) return;
-    if (_selectedDays.isEmpty) {
+    if (_deliveryDate == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Selecciona al menos un día de entrega.'),
+          content: Text('Selecciona una fecha de entrega.'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+    if (_deadlineDate == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Selecciona una fecha límite de pedidos.'),
           backgroundColor: Colors.orange,
         ),
       );
@@ -104,16 +145,18 @@ class _FarmerPickupPointFormPageState
 
     setState(() => _guardando = true);
     try {
-      final days = _kDays.where(_selectedDays.contains).toList();
+      final deliveryDateStr = _formatIsoDate(_deliveryDate!);
+      final deadlineDateStr = _formatIsoDate(_deadlineDate!);
+
       if (_esEdicion) {
         await _service.editar(
           id: widget.puntoEditar!.id,
           name: _nameCtrl.text.trim(),
           address: _addressCtrl.text.trim(),
-          deliveryDays: days,
+          deliveryDate: deliveryDateStr,
           availableFrom: _formatTime(_availableFrom),
           availableTo: _formatTime(_availableTo),
-          orderDeadlineDay: _deadlineDay,
+          orderDeadlineDate: deadlineDateStr,
           orderDeadlineTime: _formatTime(_deadlineTime),
           status: _activo ? 'ACTIVE' : 'INACTIVE',
         );
@@ -121,10 +164,10 @@ class _FarmerPickupPointFormPageState
         await _service.crear(
           name: _nameCtrl.text.trim(),
           address: _addressCtrl.text.trim(),
-          deliveryDays: days,
+          deliveryDate: deliveryDateStr,
           availableFrom: _formatTime(_availableFrom),
           availableTo: _formatTime(_availableTo),
-          orderDeadlineDay: _deadlineDay,
+          orderDeadlineDate: deadlineDateStr,
           orderDeadlineTime: _formatTime(_deadlineTime),
           status: _activo ? 'ACTIVE' : 'INACTIVE',
         );
@@ -177,47 +220,14 @@ class _FarmerPickupPointFormPageState
                       (v == null || v.trim().isEmpty) ? 'Campo requerido' : null),
             ]),
             const SizedBox(height: 16),
-            _buildSection('Días de entrega', [
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: _kDays.map((day) {
-                  final selected = _selectedDays.contains(day);
-                  return GestureDetector(
-                    onTap: () {
-                      setState(() {
-                        if (selected) {
-                          _selectedDays.remove(day);
-                        } else {
-                          _selectedDays.add(day);
-                        }
-                      });
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 14, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: selected
-                            ? const Color(0xFF5CA399)
-                            : Colors.grey.shade100,
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: selected
-                              ? const Color(0xFF5CA399)
-                              : Colors.grey.shade300,
-                        ),
-                      ),
-                      child: Text(
-                        PuntoRecojo.diaLabelCompleto(day),
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: selected ? Colors.white : Colors.grey.shade700,
-                        ),
-                      ),
-                    ),
-                  );
-                }).toList(),
+            _buildSection('Fecha de entrega', [
+              _buildDateTile(
+                'Fecha de entrega',
+                _deliveryDate,
+                () => _pickDate(
+                  _deliveryDate,
+                  (d) => setState(() => _deliveryDate = d),
+                ),
               ),
             ]),
             const SizedBox(height: 16),
@@ -238,7 +248,14 @@ class _FarmerPickupPointFormPageState
             ]),
             const SizedBox(height: 16),
             _buildSection('Fecha límite de pedidos', [
-              _buildDropdownDia(),
+              _buildDateTile(
+                'Fecha límite',
+                _deadlineDate,
+                () => _pickDate(
+                  _deadlineDate,
+                  (d) => setState(() => _deadlineDate = d),
+                ),
+              ),
               const SizedBox(height: 10),
               _buildTimeTile(
                 'Hora límite',
@@ -248,6 +265,34 @@ class _FarmerPickupPointFormPageState
               ),
             ]),
             const SizedBox(height: 16),
+            if (_esEdicion && !_activo) ...[
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFF3CD),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFFFB300), width: 1),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(Icons.info_outline,
+                        color: Color(0xFFE65100), size: 20),
+                    const SizedBox(width: 10),
+                    const Expanded(
+                      child: Text(
+                        'Este punto está inactivo. Actualiza la fecha de entrega y actívalo para que los consumidores puedan seleccionarlo.',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Color(0xFF6D4C41),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
             _buildSection('Estado', [
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
@@ -394,30 +439,43 @@ class _FarmerPickupPointFormPageState
     );
   }
 
-  Widget _buildDropdownDia() {
-    return DropdownButtonFormField<String>(
-      value: _deadlineDay,
-      decoration: InputDecoration(
-        labelText: 'Día límite',
-        prefixIcon:
-            const Icon(Icons.calendar_today, color: Color(0xFF5CA399), size: 18),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-        focusedBorder: OutlineInputBorder(
+  Widget _buildDateTile(String label, DateTime? date, VoidCallback onTap) {
+    final dateText = date != null
+        ? PuntoRecojo.formatDate(_formatIsoDate(date))
+        : null;
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.grey.shade300),
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFF5CA399), width: 2),
         ),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+        child: Row(
+          children: [
+            const Icon(Icons.calendar_today,
+                color: Color(0xFF5CA399), size: 20),
+            const SizedBox(width: 10),
+            Text(
+              label,
+              style: TextStyle(fontSize: 14, color: Colors.grey.shade700),
+            ),
+            const Spacer(),
+            Text(
+              dateText ?? 'Seleccionar fecha',
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: dateText != null ? FontWeight.bold : FontWeight.normal,
+                color: dateText != null
+                    ? const Color(0xFF5CA399)
+                    : Colors.grey.shade400,
+              ),
+            ),
+            const SizedBox(width: 4),
+            const Icon(Icons.chevron_right, size: 18, color: Colors.grey),
+          ],
+        ),
       ),
-      items: _kDays
-          .map((d) => DropdownMenuItem(
-                value: d,
-                child: Text(PuntoRecojo.diaLabelCompleto(d)),
-              ))
-          .toList(),
-      onChanged: (v) {
-        if (v != null) setState(() => _deadlineDay = v);
-      },
     );
   }
 }

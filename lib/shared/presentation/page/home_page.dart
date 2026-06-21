@@ -710,11 +710,28 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  String? _productStatusLabel(Producto p) {
+    if (p.purchasable) return null;
+    return p.availabilityMessage.isNotEmpty ? p.availabilityMessage : 'No disponible';
+  }
+
+  Color _productStatusColor(Producto p) {
+    if (p.purchaseStatus.toUpperCase() == 'OUT_OF_STOCK') {
+      return const Color(0xFFE57373);
+    }
+    return const Color(0xFFFF9800);
+  }
+
   Widget _buildTarjetaProductoHome(Producto producto) {
+    final statusLabel = _productStatusLabel(producto);
+    final bool unavailable = statusLabel != null;
     return GestureDetector(
-      onTap: () {
-        Navigator.pushNamed(context, '/detalle_producto', arguments: producto);
-      },
+      onTap: unavailable
+          ? null
+          : () {
+              Navigator.pushNamed(context, '/detalle_producto',
+                  arguments: producto);
+            },
       child: Container(
         decoration: BoxDecoration(
           color: Colors.white,
@@ -727,122 +744,159 @@ class _HomePageState extends State<HomePage> {
             ),
           ],
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
+        child: Stack(
           children: [
-            Expanded(
-              child: Stack(
-                alignment: Alignment.center,
-                clipBehavior: Clip.none,
-                children: [
-                  Container(
-                    width: 90,
-                    height: 90,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.06),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: ClipOval(
-                      child: producto.urlImagen.isNotEmpty
-                          ? Image.network(
-                              producto.urlImagen,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => const Icon(
-                                Icons.eco_outlined,
-                                size: 32,
-                                color: Color(0xFF5CA399),
-                              ),
-                            )
-                          : const Icon(
-                              Icons.eco_outlined,
-                              size: 32,
-                              color: Color(0xFF5CA399),
-                            ),
-                    ),
-                  ),
-                  // Botón favorito
-                  Positioned(
-                    top: 8,
-                    right: 8,
-                    child: GestureDetector(
-                      behavior: HitTestBehavior.opaque,
-                      onTap: () => _toggleFavorito(producto),
-                      child: Container(
-                        width: 32,
-                        height: 32,
-                        padding: const EdgeInsets.all(6),
+            Positioned.fill(
+              child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Expanded(
+                  child: Stack(
+                    alignment: Alignment.center,
+                    clipBehavior: Clip.none,
+                    children: [
+                      Container(
+                        width: 90,
+                        height: 90,
                         decoration: BoxDecoration(
                           color: Colors.white,
                           shape: BoxShape.circle,
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.08),
-                              blurRadius: 6,
-                              offset: const Offset(0, 2),
+                              color: Colors.black.withValues(alpha: 0.06),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
                             ),
                           ],
                         ),
-                        child: Icon(
-                          producto.esFavorito
-                              ? Icons.favorite
-                              : Icons.favorite_border,
-                          color: producto.esFavorito
-                              ? Colors.red
-                              : Colors.grey.shade400,
-                          size: 20,
+                        child: ClipOval(
+                          child: producto.urlImagen.isNotEmpty
+                              ? Image.network(
+                                  producto.urlImagen,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) => const Icon(
+                                    Icons.eco_outlined,
+                                    size: 32,
+                                    color: Color(0xFF5CA399),
+                                  ),
+                                )
+                              : const Icon(
+                                  Icons.eco_outlined,
+                                  size: 32,
+                                  color: Color(0xFF5CA399),
+                                ),
                         ),
+                      ),
+                      // Botón favorito
+                      Positioned(
+                        top: 8,
+                        right: 8,
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: () => _toggleFavorito(producto),
+                          child: Container(
+                            width: 32,
+                            height: 32,
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.08),
+                                  blurRadius: 6,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: Icon(
+                              producto.esFavorito
+                                  ? Icons.favorite
+                                  : Icons.favorite_border,
+                              color: producto.esFavorito
+                                  ? Colors.red
+                                  : Colors.grey.shade400,
+                              size: 20,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(10, 0, 10, 14),
+                  child: Column(
+                    children: [
+                      Text(
+                        's/. ${producto.precio.toStringAsFixed(2)} x ${producto.unidad}',
+                        style: const TextStyle(
+                          color: Color(0xFF4A7C73),
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        producto.nombre,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black,
+                        ),
+                        textAlign: TextAlign.center,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        producto.textoPesoUnidad,
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Colors.grey.shade500,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        textAlign: TextAlign.center,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            ),
+            if (unavailable)
+              Positioned.fill(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(20),
+                  child: Container(
+                    color: Colors.black.withValues(alpha: 0.35),
+                  ),
+                ),
+              ),
+            if (statusLabel != null)
+              Positioned.fill(
+                child: Align(
+                  alignment: const Alignment(0, -0.3),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: _productStatusColor(producto),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      statusLabel,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
                       ),
                     ),
                   ),
-                ],
+                ),
               ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(10, 0, 10, 14),
-              child: Column(
-                children: [
-                  Text(
-                    's/. ${producto.precio.toStringAsFixed(2)} x ${producto.unidad}',
-                    style: const TextStyle(
-                      color: Color(0xFF4A7C73),
-                      fontSize: 13,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    producto.nombre,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black,
-                    ),
-                    textAlign: TextAlign.center,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    producto.textoPesoUnidad,
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: Colors.grey.shade500,
-                      fontWeight: FontWeight.w500,
-                    ),
-                    textAlign: TextAlign.center,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
-            ),
           ],
         ),
       ),

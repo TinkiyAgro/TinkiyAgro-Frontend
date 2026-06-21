@@ -66,6 +66,7 @@ class _CheckoutEnvioPageState extends State<CheckoutEnvioPage> {
         productsTotal: items.fold(0.0, (s, i) => s + i.total),
         availableOptions: fo.options,
         selectedOptionIndex: fo.options.isNotEmpty ? 0 : -1,
+        paymentMethods: fo.paymentMethods.isNotEmpty ? fo.paymentMethods : null,
       );
       return farmer;
     }).toList();

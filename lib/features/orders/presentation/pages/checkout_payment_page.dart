@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../data/order_model.dart';
-import '../../data/remote/delivery_options_service.dart';
 import '../../data/remote/order_service.dart';
+import '../../data/remote/delivery_options_service.dart';
 import '../../../cart/data/cart_manager.dart';
 import '../../../cart/data/remote/cart_service.dart';
 
@@ -13,14 +13,10 @@ class CheckoutPagoPage extends StatefulWidget {
 }
 
 class _CheckoutPagoPageState extends State<CheckoutPagoPage> {
-  final _paymentService = DeliveryOptionsService();
   final _orderService = OrderService();
 
   late List<CheckoutFarmer> _farmers;
   bool _initialized = false;
-
-  PaymentSummary? _paymentSummary;
-  bool _cargandoPago = true;
   bool _confirmando = false;
 
   @override
@@ -30,67 +26,53 @@ class _CheckoutPagoPageState extends State<CheckoutPagoPage> {
       _initialized = true;
       _farmers =
           ModalRoute.of(context)!.settings.arguments as List<CheckoutFarmer>;
-      _cargarPaymentOptions();
+      for (final f in _farmers) {
+        if (f.paymentMethods.isNotEmpty &&
+            !f.paymentMethods.contains(f.metodoPago)) {
+          f.metodoPago = f.paymentMethods.first;
+        }
+      }
+      _loadPaymentOptions();
     }
   }
 
-  Future<void> _cargarPaymentOptions() async {
+  Future<void> _loadPaymentOptions() async {
     try {
-      final summary = await _paymentService.obtenerPaymentOptions();
-      if (mounted) {
-        setState(() {
-          _paymentSummary = summary;
-          _syncPaymentMethods(summary);
-        });
-      }
+      final summary = await DeliveryOptionsService().obtenerPaymentOptions(_farmers);
+      if (!mounted) return;
+      setState(() {
+        // Apply per-farmer methods from breakdown
+        for (final fs in summary.farmerBreakdown) {
+          if (fs.paymentMethods.isEmpty) continue;
+          final farmer = _farmers.firstWhere(
+            (f) => f.farmerUsername == fs.farmerUsername,
+            orElse: () => _farmers.first,
+          );
+          farmer.paymentMethods = List<String>.from(fs.paymentMethods);
+          if (!farmer.paymentMethods.contains(farmer.metodoPago)) {
+            farmer.metodoPago = farmer.paymentMethods.first;
+          }
+        }
+        // If no per-farmer breakdown but global methods returned, apply to all
+        if (summary.farmerBreakdown.isEmpty && summary.paymentMethods.isNotEmpty) {
+          for (final f in _farmers) {
+            f.paymentMethods = List<String>.from(summary.paymentMethods);
+            if (!f.paymentMethods.contains(f.metodoPago)) {
+              f.metodoPago = f.paymentMethods.first;
+            }
+          }
+        }
+      });
     } catch (_) {
-      // Default methods still shown via fallback in PaymentSummary
-    } finally {
-      if (mounted) setState(() => _cargandoPago = false);
+      // Keep methods from the checkout options step
     }
   }
-
-  // Ensure all farmers have a valid metodoPago among available methods.
-  void _syncPaymentMethods(PaymentSummary summary) {
-    final methods = summary.paymentMethods;
-    if (methods.isEmpty) return;
-    for (final f in _farmers) {
-      if (!methods.contains(f.metodoPago)) {
-        f.metodoPago = methods.first;
-      }
-    }
-  }
-
-  List<String> get _availableMethods =>
-      _paymentSummary?.paymentMethods ?? ['Efectivo', 'Yape'];
 
   double get _productosTotal =>
-      _farmers.fold(0.0, (s, f) => s + _subtotalFor(f));
+      _farmers.fold(0.0, (s, f) => s + f.productsTotal);
 
   double get _totalGeneral =>
-      _farmers.fold(0.0, (s, f) => s + _totalFor(f));
-
-  double _subtotalFor(CheckoutFarmer farmer) {
-    final api = _paymentSummary?.farmerBreakdown
-        .where((b) => b.farmerUsername == farmer.farmerUsername)
-        .firstOrNull;
-    return api?.productsSubtotal ?? farmer.productsTotal;
-  }
-
-  double _shippingFor(CheckoutFarmer farmer) {
-    final api = _paymentSummary?.farmerBreakdown
-        .where((b) => b.farmerUsername == farmer.farmerUsername)
-        .firstOrNull;
-    return api?.shippingCost ?? farmer.costoEnvio;
-  }
-
-  double _totalFor(CheckoutFarmer farmer) {
-    final api = _paymentSummary?.farmerBreakdown
-        .where((b) => b.farmerUsername == farmer.farmerUsername)
-        .firstOrNull;
-    if (api != null && api.total > 0) return api.total;
-    return _subtotalFor(farmer) + _shippingFor(farmer);
-  }
+      _farmers.fold(0.0, (s, f) => s + f.productsTotal + f.costoEnvio);
 
   bool get _todosPagosSeleccionados =>
       _farmers.every((f) => f.metodoPago.isNotEmpty);
@@ -119,18 +101,14 @@ class _CheckoutPagoPageState extends State<CheckoutPagoPage> {
           _buildStepIndicator(3),
           const SizedBox(height: 16),
           Expanded(
-            child: _cargandoPago
-                ? const Center(
-                    child:
-                        CircularProgressIndicator(color: Color(0xFF5CA399)))
-                : ListView(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    children: [
-                      ..._farmers.map((f) => _buildFarmerCard(f)),
-                      _buildSummary(),
-                      const SizedBox(height: 80),
-                    ],
-                  ),
+            child: ListView(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              children: [
+                ..._farmers.map((f) => _buildFarmerCard(f)),
+                _buildSummary(),
+                const SizedBox(height: 80),
+              ],
+            ),
           ),
           _buildConfirmButton(context),
         ],
@@ -202,7 +180,7 @@ class _CheckoutPagoPageState extends State<CheckoutPagoPage> {
   }
 
   Widget _buildFarmerCard(CheckoutFarmer farmer) {
-    final total = _totalFor(farmer);
+    final total = farmer.productsTotal + farmer.costoEnvio;
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(16),
@@ -286,7 +264,9 @@ class _CheckoutPagoPageState extends State<CheckoutPagoPage> {
   }
 
   Widget _buildPaymentMethodsRow(CheckoutFarmer farmer) {
-    final methods = _availableMethods;
+    final methods = farmer.paymentMethods.isNotEmpty
+        ? farmer.paymentMethods
+        : const ['Efectivo', 'Yape'];
     return Row(
       children: [
         for (int i = 0; i < methods.length; i++) ...[
@@ -358,9 +338,7 @@ class _CheckoutPagoPageState extends State<CheckoutPagoPage> {
   }
 
   Widget _buildSummary() {
-    final grandTotal = _paymentSummary != null && _paymentSummary!.grandTotal > 0
-        ? _paymentSummary!.grandTotal
-        : _totalGeneral;
+    final grandTotal = _totalGeneral;
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -380,13 +358,11 @@ class _CheckoutPagoPageState extends State<CheckoutPagoPage> {
           _buildSummaryRow(
               'Productos', 'S/. ${_productosTotal.toStringAsFixed(2)}'),
           ..._farmers.map((f) {
-            final shipping = _shippingFor(f);
-            final name =
-                f.farmerName.isNotEmpty ? f.farmerName : f.farmerUsername;
+            final name = f.farmerName.isNotEmpty ? f.farmerName : f.farmerUsername;
             return _buildSummaryRow(
               'Envío ($name)',
-              shipping > 0
-                  ? 'S/. ${shipping.toStringAsFixed(2)}'
+              f.costoEnvio > 0
+                  ? 'S/. ${f.costoEnvio.toStringAsFixed(2)}'
                   : 'Por confirmar',
             );
           }),
@@ -439,7 +415,7 @@ class _CheckoutPagoPageState extends State<CheckoutPagoPage> {
         width: double.infinity,
         height: 52,
         child: ElevatedButton(
-          onPressed: (!_cargandoPago && !_confirmando && _todosPagosSeleccionados)
+          onPressed: (!_confirmando && _todosPagosSeleccionados)
               ? _confirmOrder
               : null,
           style: ElevatedButton.styleFrom(
