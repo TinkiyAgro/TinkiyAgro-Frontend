@@ -393,21 +393,6 @@ class _RepartidorHomePageState extends State<RepartidorHomePage> {
                   '${i.productName} × ${i.cantidad}',
                   style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
                 )),
-                if (customer.destinationAddress.isNotEmpty)
-                  Row(
-                    children: [
-                      Icon(Icons.location_on_outlined, size: 12, color: Colors.grey.shade500),
-                      const SizedBox(width: 2),
-                      Expanded(
-                        child: Text(
-                          customer.destinationAddress,
-                          style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
               ],
             ),
           ),

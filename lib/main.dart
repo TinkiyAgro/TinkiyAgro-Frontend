@@ -9,6 +9,7 @@ import 'features/catalog/presentation/pages/product_filters_page.dart';
 import 'features/catalog/presentation/pages/product_detail_page.dart';
 import 'features/catalog/presentation/pages/product_section_page.dart';
 import 'features/farmer/presentation/pages/add_product_page.dart';
+import 'features/farmer/presentation/pages/farmer_courier_status_page.dart';
 import 'features/farmer/presentation/pages/farmer_delivery_confirm_page.dart';
 import 'features/farmer/presentation/pages/farmer_deliveries_page.dart';
 import 'features/farmer/presentation/pages/farmer_pickup_points_page.dart';
@@ -93,6 +94,7 @@ class TinkiyAgroApp extends StatelessWidget {
         '/checkout_envio': (context) => const CheckoutEnvioPage(),
         '/checkout_direccion': (context) => const CheckoutDireccionPage(),
         '/checkout_pago': (context) => const CheckoutPagoPage(),
+        '/farmer_courier_status': (context) => const FarmerCourierStatusPage(),
         '/farmer_delivery_confirm': (context) =>
             const FarmerDeliveryConfirmPage(),
         '/farmer_entrega_form': (context) => const FarmerEntregaFormPage(),

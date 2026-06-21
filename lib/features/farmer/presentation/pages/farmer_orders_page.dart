@@ -434,7 +434,9 @@ class _FarmerOrdersPageState extends State<FarmerOrdersPage> {
                   'Gestionar entregas',
                   () => Navigator.pushNamed(
                     context,
-                    '/farmer_delivery_confirm',
+                    group.despachoType == 'Repartidor'
+                        ? '/farmer_courier_status'
+                        : '/farmer_delivery_confirm',
                     arguments: group,
                   ),
                 ),

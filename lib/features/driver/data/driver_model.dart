@@ -113,7 +113,7 @@ class RepartidorCustomer {
       total: _parseDouble(json['total'] ?? json['amount'] ?? json['totalAmount']),
       tipoEntrega: tipo,
       metodoPago: metodo,
-      yapeNumero: json['yapeNumber']?.toString() ?? json['yapeNumero']?.toString(),
+      yapeNumero: json['yapePhoneNumber']?.toString() ?? json['yapeNumber']?.toString() ?? json['yapeNumero']?.toString(),
     );
   }
 }

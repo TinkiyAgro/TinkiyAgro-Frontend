@@ -223,13 +223,34 @@ class FarmerOrderGroup {
         .toUpperCase();
     final deliveryMethod = rawMethod == 'DELIVERY' ? 'DELIVERY' : 'PICKUP';
 
-    // Dispatcher info (set when order was already dispatched)
-    final dispatcherType = (json['dispatcherType'] ?? '').toString().toUpperCase();
-    final courierUsername = json['courierUsername']?.toString()
-        ?? json['courier']?.toString()
+    // Dispatcher info: the backend returns it nested inside each subOrder as
+    // subOrder.dispatcher.{ dispatcherType, username, name, ... }.
+    // Fall back to flat group-level fields for older API versions.
+    final firstSubOrderMap = rawSubOrders.whereType<Map>().isNotEmpty
+        ? rawSubOrders.whereType<Map>().first.cast<String, dynamic>()
+        : <String, dynamic>{};
+    final dispatcherObj = json['dispatcher'] ?? firstSubOrderMap['dispatcher'];
+    final dispatcherMap = dispatcherObj is Map
+        ? dispatcherObj.cast<String, dynamic>()
+        : <String, dynamic>{};
+
+    final dispatcherType = [
+      dispatcherMap['dispatcherType'],
+      json['dispatcherType'],
+    ].map((v) => (v?.toString() ?? '').trim().toUpperCase())
+        .firstWhere((s) => s.isNotEmpty, orElse: () => '');
+
+    final courierUsername = (dispatcherType == 'COURIER'
+            ? dispatcherMap['username']?.toString()
+            : null)
+        ?? json['courierUsername']?.toString()
         ?? json['dispatcherUsername']?.toString()
         ?? json['assignedCourier']?.toString();
-    final courierName = json['courierName']?.toString()
+
+    final courierName = (dispatcherType == 'COURIER'
+            ? dispatcherMap['name']?.toString()
+            : null)
+        ?? json['courierName']?.toString()
         ?? json['courierFullName']?.toString()
         ?? json['dispatcherName']?.toString();
 
