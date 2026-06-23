@@ -14,6 +14,7 @@ class SessionManager {
   String? _apellido;
   String? _telefono;
   String? _email;
+  bool _requiresReauthentication = false;
 
   String? get token => _token;
   String? get refreshToken => _refreshToken;
@@ -23,6 +24,7 @@ class SessionManager {
   String? get apellido => _apellido;
   String? get telefono => _telefono;
   String? get email => _email;
+  bool get requiresReauthentication => _requiresReauthentication;
 
   bool get isLoggedIn => _token != null && _token!.isNotEmpty;
 
@@ -36,7 +38,10 @@ class SessionManager {
     String? telefono,
     String? email,
   }) {
-    if (token != null) _token = token;
+    if (token != null) {
+      _token = token;
+      _requiresReauthentication = false;
+    }
     if (refreshToken != null) _refreshToken = refreshToken;
     if (rol != null) _rol = rol.toUpperCase();
     if (username != null) _username = username;
@@ -56,7 +61,12 @@ class SessionManager {
     _apellido = null;
     _telefono = null;
     _email = null;
+    _requiresReauthentication = false;
     _clearPrefs();
+  }
+
+  void requireReauthentication() {
+    _requiresReauthentication = true;
   }
 
   /// Loads persisted session from SharedPreferences.
@@ -82,7 +92,9 @@ class SessionManager {
     try {
       final prefs = await SharedPreferences.getInstance();
       if (_token != null) prefs.setString('s_token', _token!);
-      if (_refreshToken != null) prefs.setString('s_refresh_token', _refreshToken!);
+      if (_refreshToken != null) {
+        prefs.setString('s_refresh_token', _refreshToken!);
+      }
       if (_rol != null) prefs.setString('s_rol', _rol!);
       if (_username != null) prefs.setString('s_username', _username!);
       if (_nombre != null) prefs.setString('s_nombre', _nombre!);

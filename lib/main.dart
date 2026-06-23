@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'core/session_manager.dart';
 import 'core/app_navigator.dart';
+import 'core/offline/sync_coordinator.dart';
 import 'features/auth/presentation/pages/welcome_page.dart';
 import 'features/auth/presentation/pages/auth_page.dart';
 import 'features/auth/presentation/pages/role_selection_page.dart';
@@ -26,6 +27,7 @@ import 'features/reviews/presentation/pages/write_review_page.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await SessionManager().loadSession();
+  SyncCoordinator.instance.start();
   runApp(const TinkiyAgroApp());
 }
 
@@ -86,8 +88,9 @@ class TinkiyAgroApp extends StatelessWidget {
         '/seccion_productos': (context) => const SeccionProductosPage(),
         '/add_product': (context) => const AddProductPage(),
         '/write_review': (context) => WriteReviewsPage(
-              productId: ModalRoute.of(context)!.settings.arguments as String? ?? '',
-            ),
+          productId:
+              ModalRoute.of(context)!.settings.arguments as String? ?? '',
+        ),
         '/resenas': (context) => const ResenasPage(),
         '/consumer_orders': (context) => const ConsumerOrdersPage(),
         '/order_detail': (context) => const OrderDetailPage(),

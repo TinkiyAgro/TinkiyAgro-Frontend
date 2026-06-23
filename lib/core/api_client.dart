@@ -27,7 +27,9 @@ class ApiClient {
 
     _refreshing = true;
     try {
-      final url = Uri.parse('${AppConstants.baseUrl}${AppConstants.refreshTokenEndpoint}');
+      final url = Uri.parse(
+        '${AppConstants.baseUrl}${AppConstants.refreshTokenEndpoint}',
+      );
       final response = await http.post(
         url,
         headers: {'Content-Type': 'application/json'},
@@ -35,15 +37,21 @@ class ApiClient {
       );
       if (response.statusCode == 200) {
         final body = jsonDecode(response.body);
-        final newToken = body['accessToken']?.toString() ?? body['token']?.toString();
+        final newToken =
+            body['accessToken']?.toString() ?? body['token']?.toString();
         final newRefresh = body['refreshToken']?.toString();
         if (newToken != null && newToken.isNotEmpty) {
-          SessionManager().setSession(token: newToken, refreshToken: newRefresh);
+          SessionManager().setSession(
+            token: newToken,
+            refreshToken: newRefresh,
+          );
           debugPrint('[ApiClient] Token refreshed successfully');
           return newToken;
         }
       }
-      debugPrint('[ApiClient] Refresh failed: ${response.statusCode} ${response.body}');
+      debugPrint(
+        '[ApiClient] Refresh failed: ${response.statusCode} ${response.body}',
+      );
     } catch (e) {
       debugPrint('[ApiClient] Refresh error: $e');
     } finally {
@@ -53,16 +61,25 @@ class ApiClient {
   }
 
   static void _redirectToLogin() {
+    final session = SessionManager();
+    if (session.rol == 'AGRICULTOR' || session.rol == 'REPARTIDOR') {
+      session.requireReauthentication();
+      return;
+    }
     SessionManager().clearSession();
-    appNavigatorKey.currentState
-        ?.pushNamedAndRemoveUntil('/welcome', (_) => false);
+    appNavigatorKey.currentState?.pushNamedAndRemoveUntil(
+      '/welcome',
+      (_) => false,
+    );
   }
 
   static Future<http.Response> _withRetry(
     Future<http.Response> Function(Map<String, String> headers) call,
   ) async {
     final first = await call(_headers());
-    debugPrint('[ApiClient] status=${first.statusCode} token=${SessionManager().token != null ? "present" : "NULL"}');
+    debugPrint(
+      '[ApiClient] status=${first.statusCode} token=${SessionManager().token != null ? "present" : "NULL"}',
+    );
     if (first.statusCode == 401 || first.statusCode == 403) {
       final newToken = await _tryRefresh();
       if (newToken != null) {
@@ -86,31 +103,46 @@ class ApiClient {
     }
   }
 
-  static Future<http.Response> post(String endpoint, Map<String, dynamic> body) async {
+  static Future<http.Response> post(
+    String endpoint,
+    Map<String, dynamic> body,
+  ) async {
     final url = Uri.parse('${AppConstants.baseUrl}$endpoint');
     debugPrint('[ApiClient] POST $url');
     try {
-      return await _withRetry((h) => http.post(url, headers: h, body: jsonEncode(body)));
+      return await _withRetry(
+        (h) => http.post(url, headers: h, body: jsonEncode(body)),
+      );
     } on SocketException {
       throw Exception('Sin conexión al servidor.');
     }
   }
 
-  static Future<http.Response> put(String endpoint, Map<String, dynamic> body) async {
+  static Future<http.Response> put(
+    String endpoint,
+    Map<String, dynamic> body,
+  ) async {
     final url = Uri.parse('${AppConstants.baseUrl}$endpoint');
     debugPrint('[ApiClient] PUT $url');
     try {
-      return await _withRetry((h) => http.put(url, headers: h, body: jsonEncode(body)));
+      return await _withRetry(
+        (h) => http.put(url, headers: h, body: jsonEncode(body)),
+      );
     } on SocketException {
       throw Exception('Sin conexión al servidor.');
     }
   }
 
-  static Future<http.Response> patch(String endpoint, Map<String, dynamic> body) async {
+  static Future<http.Response> patch(
+    String endpoint,
+    Map<String, dynamic> body,
+  ) async {
     final url = Uri.parse('${AppConstants.baseUrl}$endpoint');
     debugPrint('[ApiClient] PATCH $url');
     try {
-      return await _withRetry((h) => http.patch(url, headers: h, body: jsonEncode(body)));
+      return await _withRetry(
+        (h) => http.patch(url, headers: h, body: jsonEncode(body)),
+      );
     } on SocketException {
       throw Exception('Sin conexión al servidor.');
     }
@@ -132,27 +164,33 @@ class ApiClient {
     String field = 'file',
   }) async {
     final url = Uri.parse('${AppConstants.baseUrl}$endpoint');
-    debugPrint('[ApiClient] MULTIPART POST $url field=$field path=${file.path}');
+    debugPrint(
+      '[ApiClient] MULTIPART POST $url field=$field path=${file.path}',
+    );
     final bytes = await file.readAsBytes();
     final ext = file.path.toLowerCase().split('.').last;
-    final contentType = <String, MediaType>{
-      'jpg': MediaType('image', 'jpeg'),
-      'jpeg': MediaType('image', 'jpeg'),
-      'png': MediaType('image', 'png'),
-      'webp': MediaType('image', 'webp'),
-    }[ext] ?? MediaType('image', 'jpeg');
+    final contentType =
+        <String, MediaType>{
+          'jpg': MediaType('image', 'jpeg'),
+          'jpeg': MediaType('image', 'jpeg'),
+          'png': MediaType('image', 'png'),
+          'webp': MediaType('image', 'webp'),
+        }[ext] ??
+        MediaType('image', 'jpeg');
     final filename = file.path.split('/').last;
     try {
       return await _withRetry((headers) async {
         final request = http.MultipartRequest('POST', url);
         final auth = headers['Authorization'];
         if (auth != null) request.headers['Authorization'] = auth;
-        request.files.add(http.MultipartFile.fromBytes(
-          field,
-          bytes,
-          filename: filename,
-          contentType: contentType,
-        ));
+        request.files.add(
+          http.MultipartFile.fromBytes(
+            field,
+            bytes,
+            filename: filename,
+            contentType: contentType,
+          ),
+        );
         final streamed = await request.send();
         return http.Response.fromStream(streamed);
       });

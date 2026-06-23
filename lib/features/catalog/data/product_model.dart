@@ -2,6 +2,7 @@ import 'package:tinkiyagro_app/core/constants/app_constants.dart';
 
 class Producto {
   final String id;
+  final int version;
   final String nombre;
   final double precio;
   final String unidad; // 'Kg' o 'Und.'
@@ -33,6 +34,7 @@ class Producto {
 
   Producto({
     required this.id,
+    this.version = 0,
     required this.nombre,
     required this.precio,
     required this.unidad,
@@ -64,7 +66,9 @@ class Producto {
 
   factory Producto.fromJson(Map<String, dynamic> json) {
     final farmerObj = json['farmer'];
-    final farmerMap = farmerObj is Map ? farmerObj.cast<String, dynamic>() : null;
+    final farmerMap = farmerObj is Map
+        ? farmerObj.cast<String, dynamic>()
+        : null;
 
     double asDouble(dynamic value, [double fallback = 0.0]) {
       if (value is num) return value.toDouble();
@@ -100,6 +104,7 @@ class Producto {
 
     return Producto(
       id: json['id']?.toString() ?? '',
+      version: asInt(json['version']),
       nombre: json['nombre'] ?? json['name'] ?? '',
       // Card: priceFrom | Detail/Farmer: per-format | fallback
       precio: asDouble(
@@ -161,9 +166,9 @@ class Producto {
       ),
       urlAvatarVendedor: resolveMediaUrl(
         farmerMap?['profileImageUrl']?.toString() ??
-        json['urlAvatarVendedor'] ??
-        json['sellerAvatarUrl'] ??
-        '',
+            json['urlAvatarVendedor'] ??
+            json['sellerAvatarUrl'] ??
+            '',
       ),
       farmerDescription:
           farmerMap?['description']?.toString() ??
@@ -203,7 +208,8 @@ class Producto {
           : boxFormat?['unitsPerBox'] != null
           ? asDouble(boxFormat?['unitsPerBox'])
           : null,
-      productStatus: json['productStatus']?.toString() ?? json['status']?.toString() ?? '',
+      productStatus:
+          json['productStatus']?.toString() ?? json['status']?.toString() ?? '',
       purchasable: json['purchasable'] as bool? ?? true,
       availabilityMessage: json['availabilityMessage']?.toString() ?? '',
       purchaseStatus: json['purchaseStatus']?.toString() ?? '',
@@ -211,6 +217,7 @@ class Producto {
   }
 
   Map<String, dynamic> toJson() => {
+    'version': version,
     'nombre': nombre,
     'precio': precio,
     'unidad': unidad,
@@ -237,6 +244,7 @@ class Producto {
   // Copia el producto modificando ciertos atributos
   Producto copiarCon({
     String? id,
+    int? version,
     String? nombre,
     double? precio,
     String? unidad,
@@ -267,6 +275,7 @@ class Producto {
   }) {
     return Producto(
       id: id ?? this.id,
+      version: version ?? this.version,
       nombre: nombre ?? this.nombre,
       precio: precio ?? this.precio,
       unidad: unidad ?? this.unidad,

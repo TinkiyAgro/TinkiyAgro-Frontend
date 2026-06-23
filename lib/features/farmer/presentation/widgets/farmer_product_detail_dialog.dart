@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import '../../../../shared/presentation/widgets/product_image.dart';
 import '../../../catalog/data/product_model.dart';
-import '../../data/remote/farmer_product_service.dart';
+import '../../data/farmer_product_repository.dart';
 
 class FarmerProductDetailDialog extends StatelessWidget {
   final Producto product;
@@ -14,12 +15,10 @@ class FarmerProductDetailDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final service = FarmerProductService();
+    final repository = FarmerProductRepository.instance;
 
     return Dialog(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(24.0),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24.0)),
       elevation: 8,
       backgroundColor: Colors.white,
       child: Padding(
@@ -46,7 +45,9 @@ class FarmerProductDetailDialog extends StatelessWidget {
                       const SizedBox(height: 6),
                       Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 4),
+                          horizontal: 12,
+                          vertical: 4,
+                        ),
                         decoration: BoxDecoration(
                           color: Colors.grey.shade100,
                           borderRadius: BorderRadius.circular(12),
@@ -79,18 +80,7 @@ class FarmerProductDetailDialog extends StatelessWidget {
                     ],
                   ),
                   child: ClipOval(
-                    child: product.urlImagen.isNotEmpty
-                        ? Image.network(
-                            product.urlImagen,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => const Icon(
-                              Icons.eco_outlined,
-                              size: 40,
-                              color: Color(0xFF5CA399),
-                            ),
-                          )
-                        : const Icon(Icons.eco_outlined,
-                            size: 40, color: Color(0xFF5CA399)),
+                    child: ProductImage(source: product.urlImagen, size: 90),
                   ),
                 ),
               ],
@@ -125,13 +115,15 @@ class FarmerProductDetailDialog extends StatelessWidget {
                 title: 'Por caja',
                 icon: Icons.all_inbox_outlined,
                 price: product.precioCaja ?? (product.precio * 15 * 0.9),
-                stock: product.stockCaja ??
+                stock:
+                    product.stockCaja ??
                     (product.stockDisponible / 15).floor().toDouble(),
                 stockLabel: 'cajas',
                 lastColLabel: 'U. por caja:',
                 lastColVal:
                     '${(product.unidadesCajaReferencial ?? 15.0).toStringAsFixed(0)} und.',
-                available: (product.stockCaja ??
+                available:
+                    (product.stockCaja ??
                         (product.stockDisponible / 15).floor().toDouble()) >
                     0,
               ),
@@ -143,16 +135,19 @@ class FarmerProductDetailDialog extends StatelessWidget {
                   child: SizedBox(
                     height: 48,
                     child: ElevatedButton.icon(
-                      onPressed: () =>
-                          _confirmDelete(context, service),
-                      icon: const Icon(Icons.delete_outline,
-                          color: Colors.white, size: 20),
+                      onPressed: () => _confirmDelete(context, repository),
+                      icon: const Icon(
+                        Icons.delete_outline,
+                        color: Colors.white,
+                        size: 20,
+                      ),
                       label: const Text(
                         'Eliminar',
                         style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white),
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
                       ),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFFE57373),
@@ -177,14 +172,18 @@ class FarmerProductDetailDialog extends StatelessWidget {
                           arguments: product,
                         ).then((_) => onProductoModificado?.call());
                       },
-                      icon: const Icon(Icons.edit_outlined,
-                          color: Colors.white, size: 20),
+                      icon: const Icon(
+                        Icons.edit_outlined,
+                        color: Colors.white,
+                        size: 20,
+                      ),
                       label: const Text(
                         'Editar',
                         style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white),
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
                       ),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF5CA399),
@@ -218,14 +217,15 @@ class FarmerProductDetailDialog extends StatelessWidget {
       width: double.infinity,
       decoration: BoxDecoration(
         border: Border.all(
-            color: const Color(0xFF5CA399).withValues(alpha: 0.5), width: 1.5),
+          color: const Color(0xFF5CA399).withValues(alpha: 0.5),
+          width: 1.5,
+        ),
         borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
         children: [
           Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: const BoxDecoration(
               border: Border(
                 bottom: BorderSide(color: Color(0xFFE5ECEB), width: 1.5),
@@ -242,31 +242,31 @@ class FarmerProductDetailDialog extends StatelessWidget {
                   child: Icon(icon, color: const Color(0xFF5CA399), size: 20),
                 ),
                 const SizedBox(width: 12),
-                Text(title,
-                    style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87)),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
+                ),
               ],
             ),
           ),
           Padding(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 _buildCol('Precio:', 'S/. ${price.toStringAsFixed(2)}'),
-                _buildCol('Stock:',
-                    '${stock.toStringAsFixed(0)} $stockLabel'),
+                _buildCol('Stock:', '${stock.toStringAsFixed(0)} $stockLabel'),
                 _buildCol(lastColLabel, lastColVal),
               ],
             ),
           ),
           Container(
             width: double.infinity,
-            padding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             decoration: const BoxDecoration(
               color: Color(0xFFF9FBFB),
               borderRadius: BorderRadius.only(
@@ -276,18 +276,19 @@ class FarmerProductDetailDialog extends StatelessWidget {
             ),
             child: Row(
               children: [
-                const Text('Estado: ',
-                    style: TextStyle(
-                        fontSize: 13,
-                        color: Colors.grey,
-                        fontWeight: FontWeight.w500)),
+                const Text(
+                  'Estado: ',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Colors.grey,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
                 Text(
                   available ? 'Disponible' : 'Agotado',
                   style: TextStyle(
                     fontSize: 13,
-                    color: available
-                        ? const Color(0xFF5CA399)
-                        : Colors.red,
+                    color: available ? const Color(0xFF5CA399) : Colors.red,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -303,46 +304,57 @@ class FarmerProductDetailDialog extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label,
-            style: const TextStyle(
-                fontSize: 12,
-                color: Colors.grey,
-                fontWeight: FontWeight.w500)),
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 12,
+            color: Colors.grey,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
         const SizedBox(height: 2),
-        Text(value,
-            style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.bold,
-                color: Colors.black87)),
+        Text(
+          value,
+          style: const TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.bold,
+            color: Colors.black87,
+          ),
+        ),
       ],
     );
   }
 
-  void _confirmDelete(BuildContext context, FarmerProductService service) {
+  void _confirmDelete(
+    BuildContext context,
+    FarmerProductRepository repository,
+  ) {
     showDialog(
       context: context,
       builder: (confirmContext) => AlertDialog(
         title: const Text('¿Eliminar producto?'),
         content: Text(
-            '¿Estás seguro de que deseas eliminar "${product.nombre}"?'),
+          '¿Estás seguro de que deseas eliminar "${product.nombre}"?',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(confirmContext),
-            child: const Text('Cancelar',
-                style: TextStyle(color: Colors.grey)),
+            child: const Text('Cancelar', style: TextStyle(color: Colors.grey)),
           ),
           TextButton(
             onPressed: () async {
               Navigator.pop(confirmContext);
               Navigator.pop(context);
               try {
-                await service.eliminarProducto(product.id);
+                await repository.deleteProduct(product.id);
                 onProductoModificado?.call();
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                        content: Text(
-                            '"${product.nombre}" eliminado exitosamente.')),
+                      content: Text(
+                        '"${product.nombre}" eliminado localmente.',
+                      ),
+                    ),
                   );
                 }
               } catch (e) {
@@ -356,9 +368,10 @@ class FarmerProductDetailDialog extends StatelessWidget {
                 }
               }
             },
-            child: const Text('Eliminar',
-                style: TextStyle(
-                    color: Colors.red, fontWeight: FontWeight.bold)),
+            child: const Text(
+              'Eliminar',
+              style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+            ),
           ),
         ],
       ),

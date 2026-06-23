@@ -1,6 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
-import '../../../catalog/data/product_model.dart';
-import '../../data/remote/farmer_product_service.dart';
+
+import '../../../../core/offline/sync_coordinator.dart';
+import '../../../../core/offline/sync_types.dart';
+import '../../../../shared/presentation/widgets/product_image.dart';
+import '../../data/farmer_product_repository.dart';
+import '../../data/offline_farmer_product.dart';
 import '../widgets/farmer_product_detail_dialog.dart';
 
 class FarmerProductsPage extends StatefulWidget {
@@ -11,181 +17,164 @@ class FarmerProductsPage extends StatefulWidget {
 }
 
 class _FarmerProductsPageState extends State<FarmerProductsPage> {
-  final _service = FarmerProductService();
-  List<Producto> _productos = [];
-  List<Producto> _filtrados = [];
-  bool _cargando = true;
-  String? _error;
+  final _repository = FarmerProductRepository.instance;
+  StreamSubscription<List<OfflineFarmerProduct>>? _productsSubscription;
+  StreamSubscription<int>? _pendingSubscription;
+  List<OfflineFarmerProduct> _products = const [];
   String _searchQuery = '';
+  bool _loading = true;
+  bool _syncing = false;
+  int _pendingCount = 0;
+  DateTime? _lastSyncedAt;
+
+  List<OfflineFarmerProduct> get _filtered {
+    if (_searchQuery.isEmpty) return _products;
+    final query = _searchQuery.toLowerCase();
+    return _products
+        .where(
+          (item) =>
+              item.product.nombre.toLowerCase().contains(query) ||
+              item.product.descripcion.toLowerCase().contains(query),
+        )
+        .toList();
+  }
 
   @override
   void initState() {
     super.initState();
-    _cargarProductos();
+    _productsSubscription = _repository.watchProducts().listen(
+      (products) {
+        if (!mounted) return;
+        setState(() {
+          _products = products;
+          _loading = false;
+        });
+      },
+      onError: (_) {
+        if (mounted) setState(() => _loading = false);
+      },
+    );
+    _pendingSubscription = _repository.watchPendingCount().listen((count) {
+      if (mounted) setState(() => _pendingCount = count);
+    });
+    unawaited(_loadLastSync());
+    unawaited(_refresh());
   }
 
-  Future<void> _cargarProductos() async {
-    setState(() {
-      _cargando = true;
-      _error = null;
-    });
+  @override
+  void dispose() {
+    _productsSubscription?.cancel();
+    _pendingSubscription?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _loadLastSync() async {
+    final value = await _repository.getLastSyncedAt();
+    if (mounted) setState(() => _lastSyncedAt = value);
+  }
+
+  Future<void> _refresh() async {
+    if (_syncing) return;
+    setState(() => _syncing = true);
     try {
-      final lista = await _service.listarProductos();
-      setState(() {
-        _productos = lista;
-        _filtrados = lista;
-        _cargando = false;
-      });
-    } catch (e) {
-      setState(() {
-        _error = e.toString();
-        _cargando = false;
-      });
+      await SyncCoordinator.instance.syncNow(force: true);
+      await _loadLastSync();
+    } catch (_) {
+      // The cached list remains usable when the server is unavailable.
+    } finally {
+      if (mounted) setState(() => _syncing = false);
     }
-  }
-
-  void _filtrar(String query) {
-    setState(() {
-      _searchQuery = query;
-      if (query.isEmpty) {
-        _filtrados = _productos;
-      } else {
-        _filtrados = _productos
-            .where((p) =>
-                p.nombre.toLowerCase().contains(query.toLowerCase()) ||
-                p.descripcion.toLowerCase().contains(query.toLowerCase()))
-            .toList();
-      }
-    });
   }
 
   @override
   Widget build(BuildContext context) {
+    final filtered = _filtered;
     return Scaffold(
       backgroundColor: const Color(0xFFF7F8FA),
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
-                    'TINKIAGRO',
-                    style: TextStyle(
-                      fontSize: 26,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF1E3A32),
-                      letterSpacing: 0.5,
+                  const Expanded(
+                    child: Text(
+                      'TINKIAGRO',
+                      style: TextStyle(
+                        fontSize: 26,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF1E3A32),
+                        letterSpacing: 0.5,
+                      ),
                     ),
                   ),
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFF5CA399),
-                      shape: BoxShape.circle,
-                    ),
-                    child: IconButton(
-                      icon: const Icon(Icons.notifications_none,
-                          color: Colors.white),
-                      onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                              content:
-                                  Text('No tienes notificaciones nuevas.')),
-                        );
-                      },
-                    ),
+                  IconButton(
+                    tooltip: 'Sincronizar',
+                    onPressed: _syncing ? null : _refresh,
+                    icon: _syncing
+                        ? const SizedBox.square(
+                            dimension: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : Badge(
+                            isLabelVisible: _pendingCount > 0,
+                            label: Text('$_pendingCount'),
+                            child: const Icon(Icons.sync),
+                          ),
                   ),
                 ],
               ),
-              const SizedBox(height: 20),
-              Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(26),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.03),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: TextField(
-                  onChanged: _filtrar,
-                  decoration: const InputDecoration(
-                    prefixIcon: Icon(Icons.search,
-                        color: Color(0xFF5CA399), size: 24),
-                    hintText: 'Buscar',
-                    hintStyle: TextStyle(color: Colors.grey, fontSize: 16),
-                    border: InputBorder.none,
-                    contentPadding:
-                        EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+              Text(
+                _lastSyncedAt == null
+                    ? 'Sin sincronización previa'
+                    : 'Última sincronización: ${_formatDate(_lastSyncedAt!)}',
+                style: const TextStyle(fontSize: 12, color: Colors.black54),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                onChanged: (value) => setState(() => _searchQuery = value),
+                decoration: InputDecoration(
+                  prefixIcon: const Icon(
+                    Icons.search,
+                    color: Color(0xFF5CA399),
+                  ),
+                  hintText: 'Buscar',
+                  filled: true,
+                  fillColor: Colors.white,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide.none,
                   ),
                 ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 20),
               const Text(
                 'Mis productos',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black,
-                ),
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 12),
               Expanded(
-                child: _cargando
-                    ? const Center(
-                        child: CircularProgressIndicator(
-                            color: Color(0xFF5CA399)))
-                    : _error != null
-                        ? Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text(_error!,
-                                    textAlign: TextAlign.center,
-                                    style: const TextStyle(
-                                        color: Colors.redAccent)),
-                                const SizedBox(height: 12),
-                                ElevatedButton(
-                                  onPressed: _cargarProductos,
-                                  style: ElevatedButton.styleFrom(
-                                      backgroundColor:
-                                          const Color(0xFF5CA399)),
-                                  child: const Text('Reintentar',
-                                      style: TextStyle(color: Colors.white)),
-                                ),
-                              ],
-                            ),
-                          )
-                        : _filtrados.isEmpty
-                            ? Center(
-                                child: Text(
-                                  _searchQuery.isEmpty
-                                      ? 'No tienes productos registrados.'
-                                      : 'Sin resultados para "$_searchQuery".',
-                                  style: const TextStyle(
-                                      fontSize: 15,
-                                      color: Colors.grey,
-                                      fontWeight: FontWeight.w500),
-                                ),
-                              )
-                            : RefreshIndicator(
-                                onRefresh: _cargarProductos,
-                                color: const Color(0xFF5CA399),
-                                child: ListView.builder(
-                                  itemCount: _filtrados.length,
-                                  itemBuilder: (context, index) {
-                                    return _buildProductCard(_filtrados[index]);
-                                  },
-                                ),
-                              ),
+                child: _loading && _products.isEmpty
+                    ? const Center(child: CircularProgressIndicator())
+                    : filtered.isEmpty
+                    ? Center(
+                        child: Text(
+                          _searchQuery.isEmpty
+                              ? 'No tienes productos guardados.'
+                              : 'Sin resultados para "$_searchQuery".',
+                          style: const TextStyle(color: Colors.black54),
+                        ),
+                      )
+                    : RefreshIndicator(
+                        onRefresh: _refresh,
+                        child: ListView.builder(
+                          itemCount: filtered.length,
+                          itemBuilder: (_, index) =>
+                              _buildProductCard(filtered[index]),
+                        ),
+                      ),
               ),
             ],
           ),
@@ -193,96 +182,106 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
-          final agregado = await Navigator.pushNamed(context, '/add_product');
-          if (agregado == true) _cargarProductos();
+          await Navigator.pushNamed(context, '/add_product');
         },
+        tooltip: 'Agregar producto',
         backgroundColor: const Color(0xFF5CA399),
         shape: const CircleBorder(),
-        elevation: 4,
-        child: const Icon(Icons.add, color: Colors.white, size: 30),
+        child: const Icon(Icons.add, color: Colors.white),
       ),
     );
   }
 
-  Widget _buildProductCard(Producto product) {
-    return GestureDetector(
-      onTap: () {
-        showDialog(
+  Widget _buildProductCard(OfflineFarmerProduct item) {
+    final product = item.product;
+    return Card(
+      margin: const EdgeInsets.only(bottom: 10),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(8),
+        onTap: () => showDialog<void>(
           context: context,
-          barrierDismissible: true,
-          builder: (context) => FarmerProductDetailDialog(
-            product: product,
-            onProductoModificado: _cargarProductos,
-          ),
-        );
-      },
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.03),
-              blurRadius: 8,
-              offset: const Offset(0, 3),
-            ),
-          ],
+          builder: (_) => FarmerProductDetailDialog(product: product),
         ),
-        child: Row(
-          children: [
-            Container(
-              width: 68,
-              height: 68,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.08),
-                    blurRadius: 6,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: ClipOval(
-                child: product.urlImagen.isNotEmpty
-                    ? Image.network(
-                        product.urlImagen,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => const Icon(
-                          Icons.eco_outlined,
-                          size: 28,
-                          color: Color(0xFF5CA399),
-                        ),
-                      )
-                    : const Icon(Icons.eco_outlined,
-                        size: 28, color: Color(0xFF5CA399)),
-              ),
-            ),
-            const SizedBox(width: 20),
-            Expanded(
-              child: Text(
-                product.nombre,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(6),
+                child: SizedBox.square(
+                  dimension: 64,
+                  child: ProductImage(source: product.urlImagen, size: 64),
                 ),
               ),
-            ),
-            Text(
-              'S/. ${product.precio.toStringAsFixed(2)}',
-              style: const TextStyle(
-                  fontSize: 13,
-                  color: Color(0xFF4A7C73),
-                  fontWeight: FontWeight.bold),
-            ),
-          ],
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      product.nombre,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 5),
+                    Text(
+                      'S/. ${product.precio.toStringAsFixed(2)}',
+                      style: const TextStyle(color: Color(0xFF4A7C73)),
+                    ),
+                    if (item.syncState != EntitySyncState.synced) ...[
+                      const SizedBox(height: 5),
+                      _syncLabel(item.syncState),
+                    ],
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right),
+            ],
+          ),
         ),
       ),
     );
+  }
+
+  Widget _syncLabel(EntitySyncState state) {
+    final (text, color, icon) = switch (state) {
+      EntitySyncState.pending => (
+        'Pendiente de sincronización',
+        Colors.orange.shade800,
+        Icons.schedule,
+      ),
+      EntitySyncState.failed => (
+        'Sincronización fallida',
+        Colors.red.shade700,
+        Icons.sync_problem,
+      ),
+      EntitySyncState.conflict => (
+        'Requiere revisión',
+        Colors.red.shade900,
+        Icons.warning_amber,
+      ),
+      EntitySyncState.synced => (
+        'Sincronizado',
+        Colors.green,
+        Icons.cloud_done,
+      ),
+    };
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 14, color: color),
+        const SizedBox(width: 4),
+        Flexible(
+          child: Text(text, style: TextStyle(fontSize: 11, color: color)),
+        ),
+      ],
+    );
+  }
+
+  String _formatDate(DateTime value) {
+    String two(int number) => number.toString().padLeft(2, '0');
+    return '${two(value.day)}/${two(value.month)} ${two(value.hour)}:${two(value.minute)}';
   }
 }

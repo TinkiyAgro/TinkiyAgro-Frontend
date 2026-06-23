@@ -1,6 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import '../../../../core/offline/sync_coordinator.dart';
+import '../../../../core/offline/sync_types.dart';
+import '../../data/offline_pickup_point.dart';
 import '../../data/pickup_point_model.dart';
-import '../../data/remote/pickup_point_service.dart';
+import '../../data/pickup_point_repository.dart';
 import 'farmer_pickup_point_form_page.dart';
 
 class FarmerEntregasPage extends StatefulWidget {
@@ -11,40 +16,59 @@ class FarmerEntregasPage extends StatefulWidget {
 }
 
 class _FarmerEntregasPageState extends State<FarmerEntregasPage> {
-  final _service = PickupPointService();
+  final _repository = PickupPointRepository.instance;
   final _searchCtrl = TextEditingController();
+  StreamSubscription<List<OfflinePickupPoint>>? _pointsSubscription;
+  StreamSubscription<int>? _pendingSubscription;
+  StreamSubscription<DateTime?>? _lastSyncSubscription;
 
   List<PuntoRecojo> _puntos = [];
+  Map<String, EntitySyncState> _syncStates = const {};
   bool _cargando = true;
+  bool _sincronizando = false;
+  int _pendientes = 0;
+  DateTime? _ultimaSincronizacion;
 
   @override
   void initState() {
     super.initState();
+    _pointsSubscription = _repository.watchPickupPoints().listen((items) {
+      if (!mounted) return;
+      setState(() {
+        _puntos = items.map((item) => item.pickupPoint).toList();
+        _syncStates = {
+          for (final item in items) item.pickupPoint.id: item.syncState,
+        };
+        _cargando = false;
+      });
+    });
+    _pendingSubscription = _repository.watchPendingCount().listen((count) {
+      if (mounted) setState(() => _pendientes = count);
+    });
+    _lastSyncSubscription = _repository.watchLastSyncedAt().listen((value) {
+      if (mounted) setState(() => _ultimaSincronizacion = value);
+    });
     _cargar();
   }
 
   @override
   void dispose() {
     _searchCtrl.dispose();
+    _pointsSubscription?.cancel();
+    _pendingSubscription?.cancel();
+    _lastSyncSubscription?.cancel();
     super.dispose();
   }
 
   Future<void> _cargar() async {
-    setState(() => _cargando = true);
+    if (_sincronizando) return;
+    setState(() => _sincronizando = true);
     try {
-      final lista = await _service.listar();
-      if (mounted) setState(() => _puntos = lista);
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error al cargar puntos: $e'),
-            backgroundColor: Colors.redAccent,
-          ),
-        );
-      }
+      await SyncCoordinator.instance.syncNow(force: true);
+    } catch (_) {
+      // La lista local permanece disponible.
     } finally {
-      if (mounted) setState(() => _cargando = false);
+      if (mounted) setState(() => _sincronizando = false);
     }
   }
 
@@ -52,16 +76,17 @@ class _FarmerEntregasPageState extends State<FarmerEntregasPage> {
     final q = _searchCtrl.text.toLowerCase();
     if (q.isEmpty) return _puntos;
     return _puntos
-        .where((p) =>
-            p.name.toLowerCase().contains(q) ||
-            p.address.toLowerCase().contains(q))
+        .where(
+          (p) =>
+              p.name.toLowerCase().contains(q) ||
+              p.address.toLowerCase().contains(q),
+        )
         .toList();
   }
 
   Future<void> _eliminar(PuntoRecojo punto) async {
     try {
-      await _service.eliminar(punto.id);
-      setState(() => _puntos.removeWhere((p) => p.id == punto.id));
+      await _repository.deletePickupPoint(punto.id);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -89,7 +114,7 @@ class _FarmerEntregasPageState extends State<FarmerEntregasPage> {
         builder: (_) => FarmerPickupPointFormPage(puntoEditar: punto),
       ),
     );
-    if (result == true) _cargar();
+    if (result == true && mounted) setState(() {});
   }
 
   @override
@@ -100,15 +125,45 @@ class _FarmerEntregasPageState extends State<FarmerEntregasPage> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Padding(
-                padding: EdgeInsets.fromLTRB(20, 20, 20, 12),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 20, 12, 12),
+                child: Row(
+                  children: [
+                    const Expanded(
+                      child: Text(
+                        'Mis entregas',
+                        style: TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: 'Sincronizar',
+                      onPressed: _sincronizando ? null : _cargar,
+                      icon: _sincronizando
+                          ? const SizedBox.square(
+                              dimension: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : Badge(
+                              isLabelVisible: _pendientes > 0,
+                              label: Text('$_pendientes'),
+                              child: const Icon(Icons.sync),
+                            ),
+                    ),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
                 child: Text(
-                  'Mis entregas',
-                  style: TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black,
-                  ),
+                  _ultimaSincronizacion == null
+                      ? 'Sin sincronización previa'
+                      : 'Última sincronización: '
+                            '${_formatearFecha(_ultimaSincronizacion!)}',
+                  style: const TextStyle(fontSize: 12, color: Colors.black54),
                 ),
               ),
               Padding(
@@ -132,7 +187,9 @@ class _FarmerEntregasPageState extends State<FarmerEntregasPage> {
                       prefixIcon: Icon(Icons.search, color: Colors.grey),
                       border: InputBorder.none,
                       contentPadding: EdgeInsets.symmetric(
-                          vertical: 14, horizontal: 16),
+                        vertical: 14,
+                        horizontal: 16,
+                      ),
                     ),
                   ),
                 ),
@@ -142,43 +199,48 @@ class _FarmerEntregasPageState extends State<FarmerEntregasPage> {
                 child: _cargando
                     ? const Center(
                         child: CircularProgressIndicator(
-                            color: Color(0xFF5CA399)))
+                          color: Color(0xFF5CA399),
+                        ),
+                      )
                     : _filtered.isEmpty
-                        ? Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(Icons.location_on_outlined,
-                                    size: 64,
-                                    color: Colors.grey.shade300),
-                                const SizedBox(height: 12),
-                                Text(
-                                  'No tienes puntos de recojo.',
-                                  style: TextStyle(
-                                      fontSize: 15,
-                                      color: Colors.grey.shade500),
-                                ),
-                                const SizedBox(height: 6),
-                                Text(
-                                  'Toca + para agregar uno.',
-                                  style: TextStyle(
-                                      fontSize: 13,
-                                      color: Colors.grey.shade400),
-                                ),
-                              ],
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.location_on_outlined,
+                              size: 64,
+                              color: Colors.grey.shade300,
                             ),
-                          )
-                        : RefreshIndicator(
-                            onRefresh: _cargar,
-                            color: const Color(0xFF5CA399),
-                            child: ListView.builder(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 16),
-                              itemCount: _filtered.length,
-                              itemBuilder: (context, i) =>
-                                  _buildEntregaCard(_filtered[i]),
+                            const SizedBox(height: 12),
+                            Text(
+                              'No tienes puntos de recojo.',
+                              style: TextStyle(
+                                fontSize: 15,
+                                color: Colors.grey.shade500,
+                              ),
                             ),
-                          ),
+                            const SizedBox(height: 6),
+                            Text(
+                              'Toca + para agregar uno.',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: Colors.grey.shade400,
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    : RefreshIndicator(
+                        onRefresh: _cargar,
+                        color: const Color(0xFF5CA399),
+                        child: ListView.builder(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          itemCount: _filtered.length,
+                          itemBuilder: (context, i) =>
+                              _buildEntregaCard(_filtered[i]),
+                        ),
+                      ),
               ),
             ],
           ),
@@ -245,6 +307,23 @@ class _FarmerEntregasPageState extends State<FarmerEntregasPage> {
               'Estado: ${punto.activo ? "Activo" : "Inactivo"}',
               style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
             ),
+            if (_syncStates[punto.id] != null &&
+                _syncStates[punto.id] != EntitySyncState.synced) ...[
+              const SizedBox(height: 4),
+              Text(
+                _syncStates[punto.id] == EntitySyncState.conflict
+                    ? 'Requiere revisión'
+                    : _syncStates[punto.id] == EntitySyncState.failed
+                    ? 'Sincronización fallida'
+                    : 'Pendiente de sincronización',
+                style: TextStyle(
+                  fontSize: 11,
+                  color: _syncStates[punto.id] == EntitySyncState.conflict
+                      ? Colors.red
+                      : Colors.orange,
+                ),
+              ),
+            ],
           ],
         ),
       ),
@@ -255,8 +334,7 @@ class _FarmerEntregasPageState extends State<FarmerEntregasPage> {
     showDialog(
       context: context,
       builder: (_) => Dialog(
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         child: Padding(
           padding: const EdgeInsets.all(24),
           child: Column(
@@ -266,13 +344,14 @@ class _FarmerEntregasPageState extends State<FarmerEntregasPage> {
               Text(
                 punto.name,
                 style: const TextStyle(
-                    fontSize: 22, fontWeight: FontWeight.bold),
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const SizedBox(height: 4),
               Text(
                 punto.address,
-                style: TextStyle(
-                    fontSize: 13, color: Colors.grey.shade600),
+                style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
               ),
               const SizedBox(height: 12),
               _buildDetailRow(
@@ -292,8 +371,7 @@ class _FarmerEntregasPageState extends State<FarmerEntregasPage> {
                 '${punto.orderDeadlineDate.isNotEmpty ? PuntoRecojo.formatDate(punto.orderDeadlineDate) : '—'} ${_horaCorta(punto.orderDeadlineTime)}',
               ),
               const SizedBox(height: 6),
-              _buildDetailRow(
-                  'Estado', punto.activo ? 'Activo' : 'Inactivo'),
+              _buildDetailRow('Estado', punto.activo ? 'Activo' : 'Inactivo'),
               const SizedBox(height: 20),
               Row(
                 children: [
@@ -309,8 +387,10 @@ class _FarmerEntregasPageState extends State<FarmerEntregasPage> {
                         shape: const StadiumBorder(),
                         elevation: 0,
                       ),
-                      child: const Text('Eliminar',
-                          style: TextStyle(fontWeight: FontWeight.bold)),
+                      child: const Text(
+                        'Eliminar',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -326,8 +406,10 @@ class _FarmerEntregasPageState extends State<FarmerEntregasPage> {
                         shape: const StadiumBorder(),
                         elevation: 0,
                       ),
-                      child: const Text('Editar',
-                          style: TextStyle(fontWeight: FontWeight.bold)),
+                      child: const Text(
+                        'Editar',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
                     ),
                   ),
                 ],
@@ -343,11 +425,11 @@ class _FarmerEntregasPageState extends State<FarmerEntregasPage> {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('$label: ',
-            style: const TextStyle(
-                fontWeight: FontWeight.bold, fontSize: 14)),
-        Expanded(
-            child: Text(value, style: const TextStyle(fontSize: 14))),
+        Text(
+          '$label: ',
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+        ),
+        Expanded(child: Text(value, style: const TextStyle(fontSize: 14))),
       ],
     );
   }
@@ -368,10 +450,11 @@ class _FarmerEntregasPageState extends State<FarmerEntregasPage> {
               Navigator.pop(context);
               _eliminar(punto);
             },
-            style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.redAccent),
-            child: const Text('Eliminar',
-                style: TextStyle(color: Colors.white)),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+            child: const Text(
+              'Eliminar',
+              style: TextStyle(color: Colors.white),
+            ),
           ),
         ],
       ),
@@ -382,6 +465,12 @@ class _FarmerEntregasPageState extends State<FarmerEntregasPage> {
     final parts = t.split(':');
     if (parts.length >= 2) return '${parts[0]}:${parts[1]}';
     return t;
+  }
+
+  String _formatearFecha(DateTime value) {
+    String two(int number) => number.toString().padLeft(2, '0');
+    return '${two(value.day)}/${two(value.month)} '
+        '${two(value.hour)}:${two(value.minute)}';
   }
 }
 

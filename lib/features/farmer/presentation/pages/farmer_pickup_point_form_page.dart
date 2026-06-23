@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../data/pickup_point_model.dart';
-import '../../data/remote/pickup_point_service.dart';
+import '../../data/pickup_point_repository.dart';
 
 class FarmerPickupPointFormPage extends StatefulWidget {
   final PuntoRecojo? puntoEditar;
@@ -12,10 +12,9 @@ class FarmerPickupPointFormPage extends StatefulWidget {
       _FarmerPickupPointFormPageState();
 }
 
-class _FarmerPickupPointFormPageState
-    extends State<FarmerPickupPointFormPage> {
+class _FarmerPickupPointFormPageState extends State<FarmerPickupPointFormPage> {
   final _formKey = GlobalKey<FormState>();
-  final _service = PickupPointService();
+  final _repository = PickupPointRepository.instance;
 
   late final TextEditingController _nameCtrl;
   late final TextEditingController _addressCtrl;
@@ -90,9 +89,9 @@ class _FarmerPickupPointFormPageState
       helpText: label,
       builder: (ctx, child) => Theme(
         data: Theme.of(ctx).copyWith(
-          colorScheme: Theme.of(ctx)
-              .colorScheme
-              .copyWith(primary: const Color(0xFF5CA399)),
+          colorScheme: Theme.of(
+            ctx,
+          ).colorScheme.copyWith(primary: const Color(0xFF5CA399)),
         ),
         child: child!,
       ),
@@ -112,9 +111,9 @@ class _FarmerPickupPointFormPageState
       lastDate: now.add(const Duration(days: 365)),
       builder: (ctx, child) => Theme(
         data: Theme.of(ctx).copyWith(
-          colorScheme: Theme.of(ctx)
-              .colorScheme
-              .copyWith(primary: const Color(0xFF5CA399)),
+          colorScheme: Theme.of(
+            ctx,
+          ).colorScheme.copyWith(primary: const Color(0xFF5CA399)),
         ),
         child: child!,
       ),
@@ -148,31 +147,28 @@ class _FarmerPickupPointFormPageState
       final deliveryDateStr = _formatIsoDate(_deliveryDate!);
       final deadlineDateStr = _formatIsoDate(_deadlineDate!);
 
+      final payload = <String, dynamic>{
+        'name': _nameCtrl.text.trim(),
+        'address': _addressCtrl.text.trim(),
+        'deliveryDate': deliveryDateStr,
+        'availableFrom': _formatTime(_availableFrom),
+        'availableTo': _formatTime(_availableTo),
+        'orderDeadlineDate': deadlineDateStr,
+        'orderDeadlineTime': _formatTime(_deadlineTime),
+        'status': _activo ? 'ACTIVE' : 'INACTIVE',
+      };
+
       if (_esEdicion) {
-        await _service.editar(
-          id: widget.puntoEditar!.id,
-          name: _nameCtrl.text.trim(),
-          address: _addressCtrl.text.trim(),
-          deliveryDate: deliveryDateStr,
-          availableFrom: _formatTime(_availableFrom),
-          availableTo: _formatTime(_availableTo),
-          orderDeadlineDate: deadlineDateStr,
-          orderDeadlineTime: _formatTime(_deadlineTime),
-          status: _activo ? 'ACTIVE' : 'INACTIVE',
-        );
+        await _repository.updatePickupPoint(widget.puntoEditar!.id, payload);
       } else {
-        await _service.crear(
-          name: _nameCtrl.text.trim(),
-          address: _addressCtrl.text.trim(),
-          deliveryDate: deliveryDateStr,
-          availableFrom: _formatTime(_availableFrom),
-          availableTo: _formatTime(_availableTo),
-          orderDeadlineDate: deadlineDateStr,
-          orderDeadlineTime: _formatTime(_deadlineTime),
-          status: _activo ? 'ACTIVE' : 'INACTIVE',
-        );
+        await _repository.createPickupPoint(payload);
       }
-      if (mounted) Navigator.pop(context, true);
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Guardado localmente.')));
+        Navigator.pop(context, true);
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -201,7 +197,10 @@ class _FarmerPickupPointFormPageState
         title: Text(
           _esEdicion ? 'Editar punto de recojo' : 'Nuevo punto de recojo',
           style: const TextStyle(
-              color: Colors.black, fontSize: 17, fontWeight: FontWeight.bold),
+            color: Colors.black,
+            fontSize: 17,
+            fontWeight: FontWeight.bold,
+          ),
         ),
         centerTitle: true,
       ),
@@ -211,13 +210,21 @@ class _FarmerPickupPointFormPageState
           padding: const EdgeInsets.all(16),
           children: [
             _buildSection('Información básica', [
-              _buildTextField(_nameCtrl, 'Nombre del punto', Icons.location_on_outlined,
-                  validator: (v) =>
-                      (v == null || v.trim().isEmpty) ? 'Campo requerido' : null),
+              _buildTextField(
+                _nameCtrl,
+                'Nombre del punto',
+                Icons.location_on_outlined,
+                validator: (v) =>
+                    (v == null || v.trim().isEmpty) ? 'Campo requerido' : null,
+              ),
               const SizedBox(height: 12),
-              _buildTextField(_addressCtrl, 'Dirección', Icons.map_outlined,
-                  validator: (v) =>
-                      (v == null || v.trim().isEmpty) ? 'Campo requerido' : null),
+              _buildTextField(
+                _addressCtrl,
+                'Dirección',
+                Icons.map_outlined,
+                validator: (v) =>
+                    (v == null || v.trim().isEmpty) ? 'Campo requerido' : null,
+              ),
             ]),
             const SizedBox(height: 16),
             _buildSection('Fecha de entrega', [
@@ -235,15 +242,21 @@ class _FarmerPickupPointFormPageState
               _buildTimeTile(
                 'Desde',
                 _availableFrom,
-                () => _pickTime('Hora de inicio', _availableFrom,
-                    (t) => setState(() => _availableFrom = t)),
+                () => _pickTime(
+                  'Hora de inicio',
+                  _availableFrom,
+                  (t) => setState(() => _availableFrom = t),
+                ),
               ),
               const SizedBox(height: 10),
               _buildTimeTile(
                 'Hasta',
                 _availableTo,
-                () => _pickTime('Hora de cierre', _availableTo,
-                    (t) => setState(() => _availableTo = t)),
+                () => _pickTime(
+                  'Hora de cierre',
+                  _availableTo,
+                  (t) => setState(() => _availableTo = t),
+                ),
               ),
             ]),
             const SizedBox(height: 16),
@@ -260,8 +273,11 @@ class _FarmerPickupPointFormPageState
               _buildTimeTile(
                 'Hora límite',
                 _deadlineTime,
-                () => _pickTime('Hora límite', _deadlineTime,
-                    (t) => setState(() => _deadlineTime = t)),
+                () => _pickTime(
+                  'Hora límite',
+                  _deadlineTime,
+                  (t) => setState(() => _deadlineTime = t),
+                ),
               ),
             ]),
             const SizedBox(height: 16),
@@ -276,8 +292,11 @@ class _FarmerPickupPointFormPageState
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Icon(Icons.info_outline,
-                        color: Color(0xFFE65100), size: 20),
+                    const Icon(
+                      Icons.info_outline,
+                      color: Color(0xFFE65100),
+                      size: 20,
+                    ),
                     const SizedBox(width: 10),
                     const Expanded(
                       child: Text(
@@ -300,16 +319,16 @@ class _FarmerPickupPointFormPageState
                   _activo ? 'Activo' : 'Inactivo',
                   style: TextStyle(
                     fontWeight: FontWeight.w600,
-                    color:
-                        _activo ? const Color(0xFF5CA399) : Colors.grey.shade600,
+                    color: _activo
+                        ? const Color(0xFF5CA399)
+                        : Colors.grey.shade600,
                   ),
                 ),
                 subtitle: Text(
                   _activo
                       ? 'Los consumidores pueden seleccionarlo al comprar.'
                       : 'No aparecerá en el checkout.',
-                  style:
-                      TextStyle(fontSize: 12, color: Colors.grey.shade500),
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
                 ),
                 value: _activo,
                 activeColor: const Color(0xFF5CA399),
@@ -333,12 +352,16 @@ class _FarmerPickupPointFormPageState
                         width: 22,
                         height: 22,
                         child: CircularProgressIndicator(
-                            strokeWidth: 2.5, color: Colors.white),
+                          strokeWidth: 2.5,
+                          color: Colors.white,
+                        ),
                       )
                     : Text(
                         _esEdicion ? 'Guardar cambios' : 'Crear punto',
                         style: const TextStyle(
-                            fontSize: 16, fontWeight: FontWeight.bold),
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
               ),
             ),
@@ -369,9 +392,10 @@ class _FarmerPickupPointFormPageState
           Text(
             title,
             style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-                color: Colors.black87),
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
           ),
           const SizedBox(height: 12),
           ...children,
@@ -397,8 +421,10 @@ class _FarmerPickupPointFormPageState
           borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: Color(0xFF5CA399), width: 2),
         ),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 12,
+          vertical: 14,
+        ),
       ),
     );
   }
@@ -414,25 +440,23 @@ class _FarmerPickupPointFormPageState
         ),
         child: Row(
           children: [
-            const Icon(Icons.access_time,
-                color: Color(0xFF5CA399), size: 20),
+            const Icon(Icons.access_time, color: Color(0xFF5CA399), size: 20),
             const SizedBox(width: 10),
             Text(
               label,
-              style:
-                  TextStyle(fontSize: 14, color: Colors.grey.shade700),
+              style: TextStyle(fontSize: 14, color: Colors.grey.shade700),
             ),
             const Spacer(),
             Text(
               time.format(context),
               style: const TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF5CA399)),
+                fontSize: 15,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF5CA399),
+              ),
             ),
             const SizedBox(width: 4),
-            const Icon(Icons.chevron_right,
-                size: 18, color: Colors.grey),
+            const Icon(Icons.chevron_right, size: 18, color: Colors.grey),
           ],
         ),
       ),
@@ -453,8 +477,11 @@ class _FarmerPickupPointFormPageState
         ),
         child: Row(
           children: [
-            const Icon(Icons.calendar_today,
-                color: Color(0xFF5CA399), size: 20),
+            const Icon(
+              Icons.calendar_today,
+              color: Color(0xFF5CA399),
+              size: 20,
+            ),
             const SizedBox(width: 10),
             Text(
               label,
@@ -465,7 +492,9 @@ class _FarmerPickupPointFormPageState
               dateText ?? 'Seleccionar fecha',
               style: TextStyle(
                 fontSize: 15,
-                fontWeight: dateText != null ? FontWeight.bold : FontWeight.normal,
+                fontWeight: dateText != null
+                    ? FontWeight.bold
+                    : FontWeight.normal,
                 color: dateText != null
                     ? const Color(0xFF5CA399)
                     : Colors.grey.shade400,

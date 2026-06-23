@@ -2,7 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../catalog/data/product_model.dart';
-import '../../data/remote/farmer_product_service.dart';
+import '../../data/farmer_product_repository.dart';
 
 class AddProductPage extends StatefulWidget {
   const AddProductPage({super.key});
@@ -13,7 +13,7 @@ class AddProductPage extends StatefulWidget {
 
 class _AddProductPageState extends State<AddProductPage> {
   final _formKey = GlobalKey<FormState>();
-  final _service = FarmerProductService();
+  final _repository = FarmerProductRepository.instance;
   bool _guardando = false;
 
   // Route arguments to determine if we are editing
@@ -41,7 +41,7 @@ class _AddProductPageState extends State<AddProductPage> {
     'Frutas',
     'Hierbas',
     'Tubérculos',
-    'Granos y cereales'
+    'Granos y cereales',
   ];
 
   @override
@@ -59,10 +59,13 @@ class _AddProductPageState extends State<AddProductPage> {
         _sellByKilo = _editingProduct!.ventaPorKilo;
         _sellByBox = _editingProduct!.ventaPorCaja;
         _existingImageUrl = _editingProduct!.urlImagen;
-        
-        _priceBoxCtrl.text = _editingProduct!.precioCaja?.toStringAsFixed(2) ?? '';
-        _stockBoxCtrl.text = _editingProduct!.stockCaja?.toStringAsFixed(0) ?? '';
-        _unitsBoxCtrl.text = _editingProduct!.unidadesCajaReferencial?.toStringAsFixed(0) ?? '';
+
+        _priceBoxCtrl.text =
+            _editingProduct!.precioCaja?.toStringAsFixed(2) ?? '';
+        _stockBoxCtrl.text =
+            _editingProduct!.stockCaja?.toStringAsFixed(0) ?? '';
+        _unitsBoxCtrl.text =
+            _editingProduct!.unidadesCajaReferencial?.toStringAsFixed(0) ?? '';
       }
       _isInit = false;
     }
@@ -101,14 +104,18 @@ class _AddProductPageState extends State<AddProductPage> {
 
     if (!_sellByKilo && !_sellByBox) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Selecciona al menos un formato de venta.')),
+        const SnackBar(
+          content: Text('Selecciona al menos un formato de venta.'),
+        ),
       );
       return;
     }
 
     if (_editingProduct == null && _selectedImage == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Selecciona una imagen para el producto.')),
+        const SnackBar(
+          content: Text('Selecciona una imagen para el producto.'),
+        ),
       );
       return;
     }
@@ -149,21 +156,23 @@ class _AddProductPageState extends State<AddProductPage> {
 
     try {
       if (_editingProduct == null) {
-        await _service.agregarProducto(datos, imageFile: _selectedImage!);
+        await _repository.createProduct(datos, imageFile: _selectedImage!);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('"$name" agregado exitosamente.')),
+            SnackBar(
+              content: Text('"$name" guardado. Sincronización pendiente.'),
+            ),
           );
         }
       } else {
-        await _service.modificarProducto(
+        await _repository.updateProduct(
           _editingProduct!.id,
           datos,
           imageFile: _selectedImage,
         );
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('"$name" modificado exitosamente.')),
+            SnackBar(content: Text('"$name" actualizado localmente.')),
           );
         }
       }
@@ -192,7 +201,11 @@ class _AddProductPageState extends State<AddProductPage> {
         backgroundColor: Colors.white,
         elevation: 0.5,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.black87, size: 20),
+          icon: const Icon(
+            Icons.arrow_back_ios_new,
+            color: Colors.black87,
+            size: 20,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
@@ -241,33 +254,33 @@ class _AddProductPageState extends State<AddProductPage> {
                             ),
                           )
                         : _existingImageUrl.isNotEmpty
-                            ? ClipOval(
-                                child: Image.network(
-                                  _existingImageUrl,
-                                  fit: BoxFit.cover,
-                                  width: 140,
-                                  height: 140,
-                                ),
-                              )
-                            : const Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    Icons.camera_alt_outlined,
-                                    color: Colors.black54,
-                                    size: 28,
-                                  ),
-                                  SizedBox(height: 8),
-                                  Text(
-                                    'Subir imagen',
-                                    style: TextStyle(
-                                      color: Colors.black54,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ],
+                        ? ClipOval(
+                            child: Image.network(
+                              _existingImageUrl,
+                              fit: BoxFit.cover,
+                              width: 140,
+                              height: 140,
+                            ),
+                          )
+                        : const Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.camera_alt_outlined,
+                                color: Colors.black54,
+                                size: 28,
                               ),
+                              SizedBox(height: 8),
+                              Text(
+                                'Subir imagen',
+                                style: TextStyle(
+                                  color: Colors.black54,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
                   ),
                 ),
               ),
@@ -279,7 +292,9 @@ class _AddProductPageState extends State<AddProductPage> {
                 controller: _nameCtrl,
                 textCapitalization: TextCapitalization.sentences,
                 style: const TextStyle(fontSize: 15),
-                decoration: _buildInputDecoration('Ingresar nombre del producto'),
+                decoration: _buildInputDecoration(
+                  'Ingresar nombre del producto',
+                ),
                 validator: (value) => value == null || value.trim().isEmpty
                     ? 'Ingresa el nombre del producto'
                     : null,
@@ -293,17 +308,15 @@ class _AddProductPageState extends State<AddProductPage> {
                 style: const TextStyle(fontSize: 15, color: Colors.black),
                 decoration: _buildInputDecoration('Seleccione una categoria'),
                 items: _categories.map((cat) {
-                  return DropdownMenuItem<String>(
-                    value: cat,
-                    child: Text(cat),
-                  );
+                  return DropdownMenuItem<String>(value: cat, child: Text(cat));
                 }).toList(),
                 onChanged: (val) {
                   setState(() {
                     _selectedCategory = val;
                   });
                 },
-                validator: (value) => value == null ? 'Selecciona una categoría' : null,
+                validator: (value) =>
+                    value == null ? 'Selecciona una categoría' : null,
               ),
               const SizedBox(height: 24),
 
@@ -336,11 +349,15 @@ class _AddProductPageState extends State<AddProductPage> {
                                     _buildLabel('Precio (s/.)*'),
                                     TextFormField(
                                       controller: _priceCtrl,
-                                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                      keyboardType:
+                                          const TextInputType.numberWithOptions(
+                                            decimal: true,
+                                          ),
                                       decoration: _buildInputDecoration('0.00'),
                                       validator: (value) {
                                         if (!_sellByKilo) return null;
-                                        if (value == null || value.trim().isEmpty) {
+                                        if (value == null ||
+                                            value.trim().isEmpty) {
                                           return 'Requerido';
                                         }
                                         if (double.tryParse(value) == null) {
@@ -364,7 +381,8 @@ class _AddProductPageState extends State<AddProductPage> {
                                       decoration: _buildInputDecoration('0'),
                                       validator: (value) {
                                         if (!_sellByKilo) return null;
-                                        if (value == null || value.trim().isEmpty) {
+                                        if (value == null ||
+                                            value.trim().isEmpty) {
                                           return 'Requerido';
                                         }
                                         if (double.tryParse(value) == null) {
@@ -382,13 +400,17 @@ class _AddProductPageState extends State<AddProductPage> {
                           _buildLabel('Peso unitario referencial (kg)*'),
                           TextFormField(
                             controller: _weightCtrl,
-                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                            decoration: _buildInputDecoration('Ej: 0.4 kg por unidad'),
+                            keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true,
+                            ),
+                            decoration: _buildInputDecoration(
+                              'Ej: 0.4 kg por unidad',
+                            ),
                             validator: (value) {
                               if (!_sellByKilo) return null;
                               if (value == null || value.trim().isEmpty) {
                                 return 'Requerido';
-                                }
+                              }
                               if (double.tryParse(value) == null) {
                                 return 'Inválido';
                               }
@@ -425,11 +447,15 @@ class _AddProductPageState extends State<AddProductPage> {
                                     _buildLabel('Precio (s/.)*'),
                                     TextFormField(
                                       controller: _priceBoxCtrl,
-                                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                      keyboardType:
+                                          const TextInputType.numberWithOptions(
+                                            decimal: true,
+                                          ),
                                       decoration: _buildInputDecoration('0.00'),
                                       validator: (value) {
                                         if (!_sellByBox) return null;
-                                        if (value == null || value.trim().isEmpty) {
+                                        if (value == null ||
+                                            value.trim().isEmpty) {
                                           return 'Requerido';
                                         }
                                         if (double.tryParse(value) == null) {
@@ -453,7 +479,8 @@ class _AddProductPageState extends State<AddProductPage> {
                                       decoration: _buildInputDecoration('0'),
                                       validator: (value) {
                                         if (!_sellByBox) return null;
-                                        if (value == null || value.trim().isEmpty) {
+                                        if (value == null ||
+                                            value.trim().isEmpty) {
                                           return 'Requerido';
                                         }
                                         if (double.tryParse(value) == null) {
@@ -471,8 +498,12 @@ class _AddProductPageState extends State<AddProductPage> {
                           _buildLabel('Unidades por caja (referencial)*'),
                           TextFormField(
                             controller: _unitsBoxCtrl,
-                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                            decoration: _buildInputDecoration('Ej: 15 unidades por caja'),
+                            keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true,
+                            ),
+                            decoration: _buildInputDecoration(
+                              'Ej: 15 unidades por caja',
+                            ),
                             validator: (value) {
                               if (!_sellByBox) return null;
                               if (value == null || value.trim().isEmpty) {
@@ -498,13 +529,19 @@ class _AddProductPageState extends State<AddProductPage> {
                       child: OutlinedButton(
                         onPressed: () => Navigator.pop(context),
                         style: OutlinedButton.styleFrom(
-                          side: const BorderSide(color: Color(0xFFD6D6D6), width: 1.5),
+                          side: const BorderSide(
+                            color: Color(0xFFD6D6D6),
+                            width: 1.5,
+                          ),
                           shape: const StadiumBorder(),
                           foregroundColor: Colors.black87,
                         ),
                         child: const Text(
                           'Volver',
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                     ),
@@ -526,13 +563,16 @@ class _AddProductPageState extends State<AddProductPage> {
                                 width: 22,
                                 height: 22,
                                 child: CircularProgressIndicator(
-                                    color: Colors.white, strokeWidth: 2),
+                                  color: Colors.white,
+                                  strokeWidth: 2,
+                                ),
                               )
                             : Text(
                                 isEditing ? 'Guardar' : 'Agregar',
                                 style: const TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold),
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                       ),
                     ),
@@ -598,7 +638,9 @@ class _AddProductPageState extends State<AddProductPage> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: isActive ? const Color(0xFF5CA399).withOpacity(0.5) : Colors.grey.shade200,
+          color: isActive
+              ? const Color(0xFF5CA399).withOpacity(0.5)
+              : Colors.grey.shade200,
           width: 1.5,
         ),
       ),
@@ -610,7 +652,9 @@ class _AddProductPageState extends State<AddProductPage> {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: isActive ? const Color(0xFFE0F2F1) : Colors.grey.shade100,
+                  color: isActive
+                      ? const Color(0xFFE0F2F1)
+                      : Colors.grey.shade100,
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
@@ -637,7 +681,9 @@ class _AddProductPageState extends State<AddProductPage> {
                       isActive ? 'Activo • completa los datos' : 'Inactivo',
                       style: TextStyle(
                         fontSize: 11,
-                        color: isActive ? const Color(0xFF5CA399) : Colors.grey.shade500,
+                        color: isActive
+                            ? const Color(0xFF5CA399)
+                            : Colors.grey.shade500,
                         fontWeight: FontWeight.w500,
                       ),
                     ),

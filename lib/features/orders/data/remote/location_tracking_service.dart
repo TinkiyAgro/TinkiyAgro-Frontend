@@ -3,6 +3,8 @@ import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:tinkiyagro_app/core/api_client.dart';
+import 'package:tinkiyagro_app/core/session_manager.dart';
+import 'package:tinkiyagro_app/features/courier/data/courier_tracking_repository.dart';
 
 /// Singleton que envía la ubicación GPS al backend cada hora.
 /// Persiste mientras el usuario esté logueado y tenga pedidos en tránsito.
@@ -56,7 +58,9 @@ class LocationTrackingService {
     _sendAll(); // envío inmediato al iniciar
     _timer = Timer.periodic(_interval, (_) => _sendAll());
 
-    debugPrint('[LocationTracking] iniciado para $ids — cada ${_interval.inHours}h');
+    debugPrint(
+      '[LocationTracking] iniciado para $ids — cada ${_interval.inHours}h',
+    );
   }
 
   /// Detiene el tracking. Llamar en logout o al confirmar todas las entregas.
@@ -86,7 +90,17 @@ class LocationTrackingService {
       debugPrint('[LocationTracking] enviando: $body');
       for (final id in _subOrderIds) {
         final endpoint = _endpointTemplate.replaceAll('{subOrderId}', id);
-        await ApiClient.post(endpoint, body);
+        if (SessionManager().rol == 'REPARTIDOR' &&
+            endpoint.startsWith('/api/courier/')) {
+          await CourierTrackingRepository.instance.recordLocation(
+            subOrderId: id,
+            label: label,
+            latitude: position.latitude,
+            longitude: position.longitude,
+          );
+        } else {
+          await ApiClient.post(endpoint, body);
+        }
       }
     } catch (e) {
       debugPrint('[LocationTracking] error al enviar: $e');
@@ -100,7 +114,8 @@ class LocationTrackingService {
         final p = placemarks.first;
         final parts = <String>[
           if (p.locality != null && p.locality!.isNotEmpty) p.locality!,
-          if (p.subLocality != null && p.subLocality!.isNotEmpty) p.subLocality!,
+          if (p.subLocality != null && p.subLocality!.isNotEmpty)
+            p.subLocality!,
         ];
         if (parts.isNotEmpty) return parts.join(' - ');
       }

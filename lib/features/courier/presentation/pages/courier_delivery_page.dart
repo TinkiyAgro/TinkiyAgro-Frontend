@@ -1,7 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:tinkiyagro_app/core/constants/app_constants.dart';
+import 'package:tinkiyagro_app/core/offline/sync_types.dart';
 import 'package:tinkiyagro_app/features/orders/data/remote/location_tracking_service.dart';
 import '../../data/courier_model.dart';
+import '../../data/courier_tracking_repository.dart';
 import '../../data/remote/courier_service.dart';
 
 class CourierDeliveryPage extends StatefulWidget {
@@ -14,10 +18,13 @@ class CourierDeliveryPage extends StatefulWidget {
 class _CourierDeliveryPageState extends State<CourierDeliveryPage> {
   final _service = CourierService();
   final _tracking = LocationTrackingService();
+  final _trackingRepository = CourierTrackingRepository.instance;
+  StreamSubscription<List<CourierTrackingStatus>>? _trackingSubscription;
 
   late CourierDeliveryGroup _group;
   bool _initialized = false;
   bool _trackingActive = false;
+  List<CourierTrackingStatus> _trackingStatuses = const [];
 
   final Map<String, bool> _confirming = {};
   final Set<String> _confirmed = {};
@@ -27,7 +34,16 @@ class _CourierDeliveryPageState extends State<CourierDeliveryPage> {
     super.didChangeDependencies();
     if (!_initialized) {
       _initialized = true;
-      _group = ModalRoute.of(context)!.settings.arguments as CourierDeliveryGroup;
+      _group =
+          ModalRoute.of(context)!.settings.arguments as CourierDeliveryGroup;
+      final ids = _group.customers
+          .map((customer) => customer.subOrderId)
+          .toList();
+      _trackingSubscription = _trackingRepository.watchStatuses(ids).listen((
+        statuses,
+      ) {
+        if (mounted) setState(() => _trackingStatuses = statuses);
+      });
       WidgetsBinding.instance.addPostFrameCallback((_) => _startTracking());
     }
   }
@@ -36,6 +52,7 @@ class _CourierDeliveryPageState extends State<CourierDeliveryPage> {
   void dispose() {
     // El singleton sigue enviando aunque se cierre la página.
     // Se detiene en logout o al confirmar la última entrega.
+    _trackingSubscription?.cancel();
     super.dispose();
   }
 
@@ -58,8 +75,9 @@ class _CourierDeliveryPageState extends State<CourierDeliveryPage> {
       if (!mounted) return;
       setState(() => _confirmed.add(customer.subOrderId));
 
-      final allConfirmed =
-          _group.customers.every((c) => _confirmed.contains(c.subOrderId));
+      final allConfirmed = _group.customers.every(
+        (c) => _confirmed.contains(c.subOrderId),
+      );
       if (allConfirmed) {
         _group.status = 'Entregado';
         _tracking.stop(); // todas entregadas → detener tracking
@@ -74,8 +92,9 @@ class _CourierDeliveryPageState extends State<CourierDeliveryPage> {
           content: Text(e.toString()),
           actions: [
             TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('OK')),
+              onPressed: () => Navigator.pop(context),
+              child: const Text('OK'),
+            ),
           ],
         ),
       );
@@ -106,21 +125,35 @@ class _CourierDeliveryPageState extends State<CourierDeliveryPage> {
       ),
       body: Column(
         children: [
-          if (_trackingActive)
+          if (_trackingActive || _trackingStatuses.isNotEmpty)
             Container(
               width: double.infinity,
-              color: const Color(0xFF5CA399).withValues(alpha: 0.12),
+              color: _hasTrackingConflict
+                  ? Colors.red.withValues(alpha: 0.10)
+                  : const Color(0xFF5CA399).withValues(alpha: 0.12),
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: Row(
                 children: [
-                  const Icon(Icons.location_on, color: Color(0xFF5CA399), size: 16),
+                  Icon(
+                    _hasTrackingConflict
+                        ? Icons.warning_amber
+                        : Icons.location_on,
+                    color: _hasTrackingConflict
+                        ? Colors.red
+                        : const Color(0xFF5CA399),
+                    size: 16,
+                  ),
                   const SizedBox(width: 8),
-                  const Text(
-                    'Compartiendo ubicación con los clientes',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF5CA399),
+                  Expanded(
+                    child: Text(
+                      _trackingStatusText,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: _hasTrackingConflict
+                            ? Colors.red
+                            : const Color(0xFF5CA399),
+                      ),
                     ),
                   ),
                 ],
@@ -128,49 +161,59 @@ class _CourierDeliveryPageState extends State<CourierDeliveryPage> {
             ),
           Expanded(
             child: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Entrega de ${_group.farmerName}',
-              style: const TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-                color: Colors.black,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Builder(builder: (context) {
-              final addr = _group.fullAddress.isNotEmpty
-                  ? _group.fullAddress
-                  : _group.customers.isNotEmpty
-                      ? _group.customers.first.destinationAddress
-                      : '';
-              if (addr.isEmpty) return const SizedBox.shrink();
-              return Row(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(Icons.location_on_outlined,
-                      size: 14, color: Colors.grey),
-                  const SizedBox(width: 4),
-                  Expanded(
-                    child: Text(
-                      'Entregar en: $addr',
-                      style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                  Text(
+                    'Entrega de ${_group.farmerName}',
+                    style: const TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Builder(
+                    builder: (context) {
+                      final addr = _group.fullAddress.isNotEmpty
+                          ? _group.fullAddress
+                          : _group.customers.isNotEmpty
+                          ? _group.customers.first.destinationAddress
+                          : '';
+                      if (addr.isEmpty) return const SizedBox.shrink();
+                      return Row(
+                        children: [
+                          const Icon(
+                            Icons.location_on_outlined,
+                            size: 14,
+                            color: Colors.grey,
+                          ),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              'Entregar en: $addr',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey.shade600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  ..._group.customers.map(
+                    (c) => Padding(
+                      padding: const EdgeInsets.only(bottom: 16),
+                      child: _buildCustomerCard(c),
                     ),
                   ),
                 ],
-              );
-            }),
-            const SizedBox(height: 16),
-            ..._group.customers.map((c) => Padding(
-                  padding: const EdgeInsets.only(bottom: 16),
-                  child: _buildCustomerCard(c),
-                )),
-          ],
-        ),
-      ),
-    ),
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -180,7 +223,10 @@ class _CourierDeliveryPageState extends State<CourierDeliveryPage> {
     final isBusy = _confirming[customer.subOrderId] == true;
     final alreadyConfirmed = _confirmed.contains(customer.subOrderId);
     final canConfirm =
-        customer.deliveryConfirmed && customer.paymentConfirmed && !isBusy && !alreadyConfirmed;
+        customer.deliveryConfirmed &&
+        customer.paymentConfirmed &&
+        !isBusy &&
+        !alreadyConfirmed;
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -224,7 +270,10 @@ class _CourierDeliveryPageState extends State<CourierDeliveryPage> {
                   children: [
                     Text(
                       customer.clientName,
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
                     ),
                   ],
                 ),
@@ -259,10 +308,14 @@ class _CourierDeliveryPageState extends State<CourierDeliveryPage> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('Envío',
-                      style: TextStyle(fontSize: 13, color: Colors.grey.shade600)),
-                  Text('S/. ${customer.deliveryCost.toStringAsFixed(2)}',
-                      style: TextStyle(fontSize: 13, color: Colors.grey.shade600)),
+                  Text(
+                    'Envío',
+                    style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+                  ),
+                  Text(
+                    'S/. ${customer.deliveryCost.toStringAsFixed(2)}',
+                    style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+                  ),
                 ],
               ),
             ),
@@ -276,7 +329,10 @@ class _CourierDeliveryPageState extends State<CourierDeliveryPage> {
               ),
               Text(
                 'S/. ${customer.total.toStringAsFixed(2)}',
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                ),
               ),
             ],
           ),
@@ -342,13 +398,17 @@ class _CourierDeliveryPageState extends State<CourierDeliveryPage> {
           _buildToggleRow(
             'Entregué los productos al cliente',
             customer.deliveryConfirmed,
-            (isBusy || alreadyConfirmed) ? null : (v) => setState(() => customer.deliveryConfirmed = v),
+            (isBusy || alreadyConfirmed)
+                ? null
+                : (v) => setState(() => customer.deliveryConfirmed = v),
           ),
           const SizedBox(height: 6),
           _buildToggleRow(
             'Recibí el pago',
             customer.paymentConfirmed,
-            (isBusy || alreadyConfirmed) ? null : (v) => setState(() => customer.paymentConfirmed = v),
+            (isBusy || alreadyConfirmed)
+                ? null
+                : (v) => setState(() => customer.paymentConfirmed = v),
           ),
           const SizedBox(height: 14),
 
@@ -368,11 +428,18 @@ class _CourierDeliveryPageState extends State<CourierDeliveryPage> {
                       width: 20,
                       height: 20,
                       child: CircularProgressIndicator(
-                          color: Colors.white, strokeWidth: 2))
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
+                    )
                   : Text(
-                      alreadyConfirmed ? 'Entrega confirmada ✓' : 'Confirmar entrega',
+                      alreadyConfirmed
+                          ? 'Entrega confirmada ✓'
+                          : 'Confirmar entrega',
                       style: const TextStyle(
-                          fontSize: 15, fontWeight: FontWeight.bold),
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
             ),
           ),
@@ -386,9 +453,7 @@ class _CourierDeliveryPageState extends State<CourierDeliveryPage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: isDelivery
-            ? const Color(0xFFE8D5F5)
-            : const Color(0xFFD5E8F5),
+        color: isDelivery ? const Color(0xFFE8D5F5) : const Color(0xFFD5E8F5),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(
@@ -396,9 +461,7 @@ class _CourierDeliveryPageState extends State<CourierDeliveryPage> {
         style: TextStyle(
           fontSize: 11,
           fontWeight: FontWeight.bold,
-          color: isDelivery
-              ? const Color(0xFF7B2D8B)
-              : const Color(0xFF1976D2),
+          color: isDelivery ? const Color(0xFF7B2D8B) : const Color(0xFF1976D2),
         ),
       ),
     );
@@ -419,15 +482,49 @@ class _CourierDeliveryPageState extends State<CourierDeliveryPage> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label,
-              style: const TextStyle(fontSize: 13, color: Colors.black87)),
+          Text(
+            label,
+            style: const TextStyle(fontSize: 13, color: Colors.black87),
+          ),
           Switch(
             value: value,
             onChanged: onChanged,
-            activeColor: const Color(0xFF5CA399),
+            activeThumbColor: const Color(0xFF5CA399),
           ),
         ],
       ),
     );
+  }
+
+  bool get _hasTrackingConflict => _trackingStatuses.any(
+    (status) => status.syncState == EntitySyncState.conflict,
+  );
+
+  String get _trackingStatusText {
+    if (_trackingStatuses.isEmpty) {
+      return 'Capturando ubicación...';
+    }
+    final latest = _trackingStatuses.reduce(
+      (a, b) => a.capturedAt.isAfter(b.capturedAt) ? a : b,
+    );
+    final captured = _formatTime(latest.capturedAt);
+    switch (latest.syncState) {
+      case EntitySyncState.synced:
+        final synced = latest.syncedAt == null
+            ? ''
+            : ' · sincronizada ${_formatTime(latest.syncedAt!)}';
+        return 'Ubicación registrada $captured$synced';
+      case EntitySyncState.pending:
+        return 'Ubicación registrada $captured · pendiente de sincronización';
+      case EntitySyncState.failed:
+        return 'Ubicación registrada $captured · reintentando';
+      case EntitySyncState.conflict:
+        return 'No se puede actualizar ubicación · requiere revisión';
+    }
+  }
+
+  String _formatTime(DateTime value) {
+    String two(int number) => number.toString().padLeft(2, '0');
+    return '${two(value.hour)}:${two(value.minute)}';
   }
 }

@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import '../../../../core/offline/sync_coordinator.dart';
+import '../../data/courier_delivery_repository.dart';
 import '../../data/courier_model.dart';
-import '../../data/remote/courier_service.dart';
 import 'package:tinkiyagro_app/features/orders/data/remote/location_tracking_service.dart';
 import 'package:tinkiyagro_app/features/profile/presentation/pages/driver_profile_page.dart';
 
@@ -12,33 +15,54 @@ class CourierHomePage extends StatefulWidget {
 }
 
 class _CourierHomePageState extends State<CourierHomePage> {
-  final _service = CourierService();
+  final _repository = CourierDeliveryRepository.instance;
+  StreamSubscription<List<CourierDeliveryGroup>>? _deliveriesSubscription;
+  StreamSubscription<DateTime?>? _lastSyncSubscription;
 
   int _tabIndex = 0; // 0: Entregas, 1: Perfil
   int _filterIndex = 0;
   static const _filters = ['Todo', 'En curso', 'Entregados'];
   List<CourierDeliveryGroup> _groups = [];
   bool _loading = true;
-  String? _error;
+  bool _syncing = false;
+  DateTime? _lastSyncedAt;
 
   @override
   void initState() {
     super.initState();
+    _deliveriesSubscription = _repository.watchDeliveries().listen((groups) {
+      if (mounted) {
+        setState(() {
+          _groups = groups;
+          _loading = false;
+        });
+      }
+    });
+    _lastSyncSubscription = _repository.watchLastSyncedAt().listen((value) {
+      if (mounted) setState(() => _lastSyncedAt = value);
+    });
     _load();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       LocationTrackingService().requestPermission();
     });
   }
 
+  @override
+  void dispose() {
+    _deliveriesSubscription?.cancel();
+    _lastSyncSubscription?.cancel();
+    super.dispose();
+  }
+
   Future<void> _load() async {
-    setState(() { _loading = true; _error = null; });
+    if (_syncing) return;
+    setState(() => _syncing = true);
     try {
-      final groups = await _service.listDeliveries();
-      if (mounted) setState(() => _groups = groups);
-    } catch (e) {
-      if (mounted) setState(() => _error = e.toString());
+      await SyncCoordinator.instance.syncNow(force: true);
+    } catch (_) {
+      // Las entregas descargadas permanecen disponibles.
     } finally {
-      if (mounted) setState(() => _loading = false);
+      if (mounted) setState(() => _syncing = false);
     }
   }
 
@@ -99,11 +123,12 @@ class _CourierHomePageState extends State<CourierHomePage> {
     final filtered = _filterIndex == 0
         ? _groups
         : _groups
-            .where((g) =>
-                _filterIndex == 1
+              .where(
+                (g) => _filterIndex == 1
                     ? g.status == 'En curso'
-                    : g.status == 'Entregado')
-            .toList();
+                    : g.status == 'Entregado',
+              )
+              .toList();
 
     return SafeArea(
       child: Column(
@@ -123,20 +148,26 @@ class _CourierHomePageState extends State<CourierHomePage> {
                     letterSpacing: 0.5,
                   ),
                 ),
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF5CA399),
-                    shape: BoxShape.circle,
-                  ),
-                  child: IconButton(
-                    icon: const Icon(Icons.notifications_none,
-                        color: Colors.white, size: 22),
-                    onPressed: () {},
-                  ),
+                IconButton(
+                  tooltip: 'Sincronizar',
+                  onPressed: _syncing ? null : _load,
+                  icon: _syncing
+                      ? const SizedBox.square(
+                          dimension: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.sync),
                 ),
               ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 4, 20, 4),
+            child: Text(
+              _lastSyncedAt == null
+                  ? 'Sin sincronización previa'
+                  : 'Última sincronización: ${_formatDate(_lastSyncedAt!)}',
+              style: const TextStyle(fontSize: 12, color: Colors.black54),
             ),
           ),
           const SizedBox(height: 8),
@@ -177,8 +208,9 @@ class _CourierHomePageState extends State<CourierHomePage> {
                 color: active ? const Color(0xFF5CA399) : Colors.white,
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
-                  color:
-                      active ? const Color(0xFF5CA399) : Colors.grey.shade300,
+                  color: active
+                      ? const Color(0xFF5CA399)
+                      : Colors.grey.shade300,
                 ),
               ),
               child: Text(
@@ -200,29 +232,6 @@ class _CourierHomePageState extends State<CourierHomePage> {
     if (_loading) {
       return const Center(
         child: CircularProgressIndicator(color: Color(0xFF5CA399)),
-      );
-    }
-    if (_error != null) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.error_outline, color: Colors.redAccent, size: 48),
-            const SizedBox(height: 12),
-            Text('No se pudieron cargar las entregas',
-                style: TextStyle(color: Colors.grey.shade600)),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: _load,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF5CA399),
-                foregroundColor: Colors.white,
-                shape: const StadiumBorder(),
-              ),
-              child: const Text('Reintentar'),
-            ),
-          ],
-        ),
       );
     }
     if (filtered.isEmpty) {
@@ -250,10 +259,10 @@ class _CourierHomePageState extends State<CourierHomePage> {
       onTap: entregado
           ? null
           : () => Navigator.pushNamed(
-                context,
-                '/courier_delivery',
-                arguments: group,
-              ).then((_) => setState(() {})),
+              context,
+              '/courier_delivery',
+              arguments: group,
+            ).then((_) => _load()),
       child: Opacity(
         opacity: entregado ? 0.6 : 1.0,
         child: Container(
@@ -283,8 +292,14 @@ class _CourierHomePageState extends State<CourierHomePage> {
                         : null,
                     child: group.farmerImageUrl.isEmpty
                         ? Text(
-                            group.farmerName.isNotEmpty ? group.farmerName[0].toUpperCase() : '?',
-                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+                            group.farmerName.isNotEmpty
+                                ? group.farmerName[0].toUpperCase()
+                                : '?',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 18,
+                            ),
                           )
                         : null,
                   ),
@@ -295,22 +310,35 @@ class _CourierHomePageState extends State<CourierHomePage> {
                       children: [
                         Text(
                           group.farmerName,
-                          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                         Text(
                           '${group.customers.length} pedido${group.customers.length != 1 ? 's' : ''}',
-                          style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey.shade600,
+                          ),
                         ),
                         if (group.location.isNotEmpty) ...[
                           const SizedBox(height: 2),
                           Row(
                             children: [
-                              Icon(Icons.location_on_outlined, size: 12, color: Colors.grey.shade500),
+                              Icon(
+                                Icons.location_on_outlined,
+                                size: 12,
+                                color: Colors.grey.shade500,
+                              ),
                               const SizedBox(width: 2),
                               Expanded(
                                 child: Text(
                                   group.fullAddress,
-                                  style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: Colors.grey.shade500,
+                                  ),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                 ),
@@ -324,7 +352,9 @@ class _CourierHomePageState extends State<CourierHomePage> {
                   if (entregado)
                     Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 4),
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: const Color(0xFFE8F5E9),
                         borderRadius: BorderRadius.circular(20),
@@ -387,12 +417,17 @@ class _CourierHomePageState extends State<CourierHomePage> {
               children: [
                 Text(
                   customer.clientName,
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
                 ),
-                ...customer.items.map((i) => Text(
-                  '${i.productName} × ${i.quantity}',
-                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-                )),
+                ...customer.items.map(
+                  (i) => Text(
+                    '${i.productName} × ${i.quantity}',
+                    style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                  ),
+                ),
               ],
             ),
           ),
@@ -410,9 +445,7 @@ class _CourierHomePageState extends State<CourierHomePage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: isDelivery
-            ? const Color(0xFFE8D5F5)
-            : const Color(0xFFD5E8F5),
+        color: isDelivery ? const Color(0xFFE8D5F5) : const Color(0xFFD5E8F5),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(
@@ -420,12 +453,15 @@ class _CourierHomePageState extends State<CourierHomePage> {
         style: TextStyle(
           fontSize: 11,
           fontWeight: FontWeight.bold,
-          color: isDelivery
-              ? const Color(0xFF7B2D8B)
-              : const Color(0xFF1976D2),
+          color: isDelivery ? const Color(0xFF7B2D8B) : const Color(0xFF1976D2),
         ),
       ),
     );
   }
 
+  String _formatDate(DateTime value) {
+    String two(int number) => number.toString().padLeft(2, '0');
+    return '${two(value.day)}/${two(value.month)} '
+        '${two(value.hour)}:${two(value.minute)}';
+  }
 }
