@@ -1,6 +1,9 @@
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'core/session_manager.dart';
 import 'core/app_navigator.dart';
+import 'core/notifications/push_notification_service.dart';
 import 'core/offline/sync_coordinator.dart';
 import 'features/auth/presentation/pages/welcome_page.dart';
 import 'features/auth/presentation/pages/auth_page.dart';
@@ -24,9 +27,18 @@ import 'features/courier/presentation/pages/courier_delivery_page.dart';
 import 'features/reviews/presentation/pages/reviews_page.dart';
 import 'features/reviews/presentation/pages/write_review_page.dart';
 
+@pragma('vm:entry-point')
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp();
+}
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
+  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
   await SessionManager().loadSession();
+  await PushNotificationService.instance.initialize();
+  await PushNotificationService.instance.registerCurrentDevice();
   SyncCoordinator.instance.start();
   runApp(const TinkiyAgroApp());
 }

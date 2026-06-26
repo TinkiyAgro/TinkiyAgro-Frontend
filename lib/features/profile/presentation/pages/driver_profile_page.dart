@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:tinkiyagro_app/core/notifications/push_notification_service.dart';
 import 'package:tinkiyagro_app/core/session_manager.dart';
 import 'package:tinkiyagro_app/features/courier/data/courier_delivery_repository.dart';
 import 'package:tinkiyagro_app/features/courier/data/courier_tracking_repository.dart';
@@ -205,6 +206,7 @@ class _DriverProfilePageState extends State<DriverProfilePage> {
     return GestureDetector(
       onTap: () async {
         LocationTrackingService().stop();
+        await PushNotificationService.instance.unregisterCurrentDevice();
         await CourierTrackingRepository.instance.clearCurrentUserData();
         await CourierDeliveryRepository.instance.clearCurrentUserCache();
         SessionManager().clearSession();

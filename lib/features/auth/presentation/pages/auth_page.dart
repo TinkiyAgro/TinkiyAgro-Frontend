@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:tinkiyagro_app/features/auth/data/remote/auth_service.dart';
 import 'package:tinkiyagro_app/features/auth/data/remote/login_request.dart';
+import 'package:tinkiyagro_app/core/notifications/push_notification_service.dart';
 import 'package:tinkiyagro_app/core/session_manager.dart';
 
 /// Capitalizes the first character of each word typed.
@@ -537,10 +538,7 @@ class _AuthPageState extends State<AuthPage>
         if (roleVal == null) return 'CONSUMIDOR';
         if (roleVal is List) {
           if (roleVal.isEmpty) return 'CONSUMIDOR';
-          return roleVal.first
-              .toString()
-              .toUpperCase()
-              .replaceAll('ROLE_', '');
+          return roleVal.first.toString().toUpperCase().replaceAll('ROLE_', '');
         }
         return roleVal.toString().toUpperCase().replaceAll('ROLE_', '');
       }
@@ -554,14 +552,17 @@ class _AuthPageState extends State<AuthPage>
           name = firstName;
           apellido = lastName;
         }
-        telefono = profile['phone']?.toString() ?? profile['celular']?.toString();
+        telefono =
+            profile['phone']?.toString() ?? profile['celular']?.toString();
         email = profile['email']?.toString();
       } catch (_) {
         final jwtData = SessionManager.decodeJwt(dto.token);
         if (jwtData != null) {
           role = parseRole(
-              jwtData['role'] ?? jwtData['rol'] ?? jwtData['roles']);
-          name = jwtData['firstName'] ??
+            jwtData['role'] ?? jwtData['rol'] ?? jwtData['roles'],
+          );
+          name =
+              jwtData['firstName'] ??
               jwtData['nombre'] ??
               jwtData['username'] ??
               name;
@@ -578,21 +579,20 @@ class _AuthPageState extends State<AuthPage>
         telefono: telefono,
         email: email,
       );
+      await PushNotificationService.instance.registerCurrentDevice();
 
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Inicio de sesión exitoso')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Inicio de sesión exitoso')));
 
       final destination = role == 'REPARTIDOR' ? '/courier_home' : '/home';
-      Navigator.pushNamedAndRemoveUntil(
-          context, destination, (route) => false);
+      Navigator.pushNamedAndRemoveUntil(context, destination, (route) => false);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-            content: Text(e.toString().replaceFirst('Exception: ', ''))),
+        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
       );
     } finally {
       if (mounted) setState(() => _isLoading = false);

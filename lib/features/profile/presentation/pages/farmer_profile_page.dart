@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:tinkiyagro_app/core/notifications/push_notification_service.dart';
 import 'package:tinkiyagro_app/core/session_manager.dart';
 import 'package:tinkiyagro_app/features/catalog/data/product_model.dart';
 import 'package:tinkiyagro_app/features/orders/data/remote/location_tracking_service.dart';
@@ -30,11 +31,12 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> {
   Future<void> _loadAvatar() async {
     try {
       final data = await _service.obtenerPerfilAgricultor();
-      final raw = data['profileImageUrl']
-          ?? data['avatarUrl']
-          ?? data['imageUrl']
-          ?? data['profileImage']
-          ?? data['photo'];
+      final raw =
+          data['profileImageUrl'] ??
+          data['avatarUrl'] ??
+          data['imageUrl'] ??
+          data['profileImage'] ??
+          data['photo'];
       if (raw != null && mounted) {
         setState(() => _avatarUrl = resolveMediaUrl(raw.toString()));
       }
@@ -44,13 +46,15 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> {
   @override
   Widget build(BuildContext context) {
     final session = SessionManager();
-    final name = [session.nombre, session.apellido]
-        .where((s) => s != null && s.isNotEmpty)
-        .join(' ')
-        .isNotEmpty
-        ? [session.nombre, session.apellido]
-            .where((s) => s != null && s.isNotEmpty)
-            .join(' ')
+    final name =
+        [
+          session.nombre,
+          session.apellido,
+        ].where((s) => s != null && s.isNotEmpty).join(' ').isNotEmpty
+        ? [
+            session.nombre,
+            session.apellido,
+          ].where((s) => s != null && s.isNotEmpty).join(' ')
         : session.username ?? 'Usuario';
     return SafeArea(
       child: SingleChildScrollView(
@@ -89,7 +93,9 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> {
                 child: GestureDetector(
                   onTap: () => Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (_) => const FarmerAboutMePage()),
+                    MaterialPageRoute(
+                      builder: (_) => const FarmerAboutMePage(),
+                    ),
                   ).then((_) => _loadAvatar()),
                   child: Container(
                     width: 30,
@@ -98,7 +104,11 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> {
                       color: Color(0xFF5CA399),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.camera_alt, size: 16, color: Colors.white),
+                    child: const Icon(
+                      Icons.camera_alt,
+                      size: 16,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
               ),
@@ -144,7 +154,9 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> {
             label: 'Tarifas de entrega',
             onTap: () => Navigator.push(
               context,
-              MaterialPageRoute(builder: (_) => const FarmerDeliveryRatesPage()),
+              MaterialPageRoute(
+                builder: (_) => const FarmerDeliveryRatesPage(),
+              ),
             ),
           ),
           _buildMenuItem(
@@ -159,7 +171,9 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> {
             label: 'Métodos de pago',
             onTap: () => Navigator.push(
               context,
-              MaterialPageRoute(builder: (_) => const FarmerPaymentMethodsPage()),
+              MaterialPageRoute(
+                builder: (_) => const FarmerPaymentMethodsPage(),
+              ),
             ),
           ),
           _buildMenuItem(
@@ -213,7 +227,11 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> {
                 ),
               ),
             ),
-            const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.black38),
+            const Icon(
+              Icons.arrow_forward_ios,
+              size: 16,
+              color: Colors.black38,
+            ),
           ],
         ),
       ),
@@ -224,8 +242,13 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> {
     return GestureDetector(
       onTap: () {
         LocationTrackingService().stop();
+        PushNotificationService.instance.unregisterCurrentDevice();
         SessionManager().clearSession();
-        Navigator.pushNamedAndRemoveUntil(context, '/welcome', (route) => false);
+        Navigator.pushNamedAndRemoveUntil(
+          context,
+          '/welcome',
+          (route) => false,
+        );
       },
       child: Container(
         margin: const EdgeInsets.only(bottom: 10),
@@ -247,7 +270,11 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> {
             SizedBox(width: 14),
             Text(
               'Cerrar sesión',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Colors.black87),
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+                color: Colors.black87,
+              ),
             ),
           ],
         ),

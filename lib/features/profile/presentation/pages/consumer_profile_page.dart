@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:tinkiyagro_app/core/notifications/push_notification_service.dart';
 import 'package:tinkiyagro_app/core/session_manager.dart';
 import 'package:tinkiyagro_app/features/catalog/data/product_model.dart';
 import 'package:tinkiyagro_app/features/profile/data/remote/profile_service.dart';
@@ -29,11 +30,12 @@ class _ConsumerProfilePageState extends State<ConsumerProfilePage> {
   Future<void> _loadAvatar() async {
     try {
       final data = await _service.obtenerPerfil();
-      final raw = data['profileImageUrl']
-          ?? data['avatarUrl']
-          ?? data['imageUrl']
-          ?? data['profileImage']
-          ?? data['photo'];
+      final raw =
+          data['profileImageUrl'] ??
+          data['avatarUrl'] ??
+          data['imageUrl'] ??
+          data['profileImage'] ??
+          data['photo'];
       if (raw != null && mounted) {
         setState(() => _avatarUrl = resolveMediaUrl(raw.toString()));
       }
@@ -43,13 +45,15 @@ class _ConsumerProfilePageState extends State<ConsumerProfilePage> {
   @override
   Widget build(BuildContext context) {
     final session = SessionManager();
-    final name = [session.nombre, session.apellido]
-        .where((s) => s != null && s.isNotEmpty)
-        .join(' ')
-        .isNotEmpty
-        ? [session.nombre, session.apellido]
-            .where((s) => s != null && s.isNotEmpty)
-            .join(' ')
+    final name =
+        [
+          session.nombre,
+          session.apellido,
+        ].where((s) => s != null && s.isNotEmpty).join(' ').isNotEmpty
+        ? [
+            session.nombre,
+            session.apellido,
+          ].where((s) => s != null && s.isNotEmpty).join(' ')
         : session.username ?? 'Usuario';
     return SafeArea(
       child: SingleChildScrollView(
@@ -88,7 +92,9 @@ class _ConsumerProfilePageState extends State<ConsumerProfilePage> {
                 child: GestureDetector(
                   onTap: () => Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (_) => const ConsumerAboutMePage()),
+                    MaterialPageRoute(
+                      builder: (_) => const ConsumerAboutMePage(),
+                    ),
                   ).then((_) => _loadAvatar()),
                   child: Container(
                     width: 30,
@@ -97,7 +103,11 @@ class _ConsumerProfilePageState extends State<ConsumerProfilePage> {
                       color: Color(0xFF5CA399),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.camera_alt, size: 16, color: Colors.white),
+                    child: const Icon(
+                      Icons.camera_alt,
+                      size: 16,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
               ),
@@ -158,7 +168,9 @@ class _ConsumerProfilePageState extends State<ConsumerProfilePage> {
             label: 'Transacciones',
             onTap: () => Navigator.push(
               context,
-              MaterialPageRoute(builder: (_) => const ConsumerTransactionsPage()),
+              MaterialPageRoute(
+                builder: (_) => const ConsumerTransactionsPage(),
+              ),
             ),
           ),
           _buildMenuItem(
@@ -212,7 +224,11 @@ class _ConsumerProfilePageState extends State<ConsumerProfilePage> {
                 ),
               ),
             ),
-            const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.black38),
+            const Icon(
+              Icons.arrow_forward_ios,
+              size: 16,
+              color: Colors.black38,
+            ),
           ],
         ),
       ),
@@ -222,8 +238,13 @@ class _ConsumerProfilePageState extends State<ConsumerProfilePage> {
   Widget _buildSignOutItem(BuildContext context) {
     return GestureDetector(
       onTap: () {
+        PushNotificationService.instance.unregisterCurrentDevice();
         SessionManager().clearSession();
-        Navigator.pushNamedAndRemoveUntil(context, '/welcome', (route) => false);
+        Navigator.pushNamedAndRemoveUntil(
+          context,
+          '/welcome',
+          (route) => false,
+        );
       },
       child: Container(
         margin: const EdgeInsets.only(bottom: 10),
@@ -245,7 +266,11 @@ class _ConsumerProfilePageState extends State<ConsumerProfilePage> {
             SizedBox(width: 14),
             Text(
               'Cerrar sesión',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Colors.black87),
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+                color: Colors.black87,
+              ),
             ),
           ],
         ),

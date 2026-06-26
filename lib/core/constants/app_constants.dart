@@ -21,6 +21,12 @@ class AppConstants {
 
   static const String uploadProfilePhotoEndpoint = '/api/profile/profile-image';
 
+  // Notifications
+
+  static const String registerDeviceEndpoint = '/api/notifications/devices';
+
+  static const String unregisterDeviceEndpoint = '/api/notifications/devices';
+
   //Profile - Customer
 
   static const String obtainAdressDefaultEndpoint =
