@@ -4,12 +4,14 @@ import 'package:tinkiyagro_app/features/catalog/data/product_model.dart';
 // ── Farmer real-time tracking (from obtainUbicationFarmerEndpoint) ────────────
 
 class TrackingInfo {
-  final String label;      // "La Oroya - Yauli - 2.3 km - 8 min"
+  final String? positionUpdateId;
+  final String label; // "La Oroya - Yauli - 2.3 km - 8 min"
   final double? latitude;
   final double? longitude;
   final DateTime fetchedAt;
 
   TrackingInfo({
+    this.positionUpdateId,
     required this.label,
     this.latitude,
     this.longitude,
@@ -23,12 +25,14 @@ class TrackingInfo {
       if (v is int) return v.toDouble();
       return double.tryParse(v.toString());
     }
+
     // Usar updatedAt del backend si está disponible; si no, DateTime.now()
     final rawUpdated = json['updatedAt']?.toString();
     final updatedAt = rawUpdated != null
         ? (DateTime.tryParse(rawUpdated) ?? DateTime.now())
         : DateTime.now();
     return TrackingInfo(
+      positionUpdateId: json['positionUpdateId']?.toString(),
       label: json['label']?.toString() ?? '',
       latitude: parseDouble(json['latitude']),
       longitude: parseDouble(json['longitude']),
@@ -37,7 +41,7 @@ class TrackingInfo {
   }
 
   String get subtextActualizado {
-    final diff = DateTime.now().difference(fetchedAt);
+    final diff = DateTime.now().difference(fetchedAt).abs();
     if (diff.inSeconds < 60) return 'actualizado hace ${diff.inSeconds}s';
     return 'actualizado hace ${diff.inMinutes} min';
   }
@@ -79,7 +83,8 @@ class SubPedido {
   final String estadoTexto;
   final List<TimelineEvent> timeline;
   final TrackingInfo? tracking; // null cuando no está en camino
-  final bool isCourierDelivery; // true cuando hay repartidor asignado en tránsito
+  final bool
+  isCourierDelivery; // true cuando hay repartidor asignado en tránsito
 
   const SubPedido({
     required this.id,
@@ -94,8 +99,12 @@ class SubPedido {
   });
 
   factory SubPedido.fromJson(Map<String, dynamic> json) {
-    final rawDelivery = (json['deliveryType'] ?? json['deliveryMethod'] ?? '').toString().toUpperCase();
-    final tipo = (rawDelivery == 'PICKUP' || rawDelivery == 'RECOJO') ? 'Recojo' : 'Delivery';
+    final rawDelivery = (json['deliveryType'] ?? json['deliveryMethod'] ?? '')
+        .toString()
+        .toUpperCase();
+    final tipo = (rawDelivery == 'PICKUP' || rawDelivery == 'RECOJO')
+        ? 'Recojo'
+        : 'Delivery';
     final rawStatus = (json['status'] ?? '').toString().toUpperCase();
     final estadoTexto = _mapSubStatus(rawStatus);
     final rawItems = (json['items'] ?? json['products'] ?? []) as List;
@@ -119,7 +128,8 @@ class SubPedido {
       timeline = rawTimeline.whereType<Map>().map((step) {
         final s = step.cast<String, dynamic>();
         final isCompleted = s['completed'] == true;
-        final isCurrent = s['current'] == true; // backend usa "current", no "active"
+        final isCurrent =
+            s['current'] == true; // backend usa "current", no "active"
         final stepLabel = (s['label'] ?? '').toString();
 
         // Tracking embebido en el paso actual del timeline
@@ -132,7 +142,11 @@ class SubPedido {
         }
         return TimelineEvent(
           label: stepLabel,
-          value: isCompleted ? 'Completado' : isCurrent ? 'En curso' : 'Pendiente',
+          value: isCompleted
+              ? 'Completado'
+              : isCurrent
+              ? 'En curso'
+              : 'Pendiente',
           completed: isCompleted,
           active: isCurrent,
         );
@@ -150,22 +164,25 @@ class SubPedido {
     }
 
     final farmerObjSub = json['farmer'];
-    final farmerMapSub = farmerObjSub is Map ? farmerObjSub.cast<String, dynamic>() : null;
+    final farmerMapSub = farmerObjSub is Map
+        ? farmerObjSub.cast<String, dynamic>()
+        : null;
 
     return SubPedido(
       isCourierDelivery: rawStatus == 'OUT_FOR_DELIVERY',
       id: json['id']?.toString() ?? '',
-      farmerName: farmerMapSub?['fullName']?.toString()
-          ?? json['farmerName']?.toString()
-          ?? json['farmerDisplayName']?.toString()
-          ?? json['farmerUsername']?.toString()
-          ?? '',
+      farmerName:
+          farmerMapSub?['fullName']?.toString() ??
+          json['farmerName']?.toString() ??
+          json['farmerDisplayName']?.toString() ??
+          json['farmerUsername']?.toString() ??
+          '',
       farmerAvatarUrl: resolveMediaUrl(
-        farmerMapSub?['profileImageUrl']?.toString()
-            ?? json['farmerAvatarUrl']?.toString()
-            ?? json['farmerProfileImageUrl']?.toString()
-            ?? json['avatarUrl']?.toString()
-            ?? '',
+        farmerMapSub?['profileImageUrl']?.toString() ??
+            json['farmerAvatarUrl']?.toString() ??
+            json['farmerProfileImageUrl']?.toString() ??
+            json['avatarUrl']?.toString() ??
+            '',
       ),
       tipo: tipo,
       itemsText: itemsText.isEmpty ? ['(sin productos)'] : itemsText,
@@ -178,13 +195,25 @@ class SubPedido {
 
 String _saleFormatUnit(String format) {
   switch (format.toUpperCase()) {
-    case 'KILO': return 'kg';
-    case 'GRAM': case 'GRAMO': return 'g';
-    case 'UNIT': case 'UNIDAD': return 'ud';
-    case 'CAJA': case 'BOX': return 'caja';
-    case 'BOLSA': case 'BAG': return 'bolsa';
-    case 'LITRO': case 'LITER': return 'L';
-    default: return format.toLowerCase();
+    case 'KILO':
+      return 'kg';
+    case 'GRAM':
+    case 'GRAMO':
+      return 'g';
+    case 'UNIT':
+    case 'UNIDAD':
+      return 'ud';
+    case 'CAJA':
+    case 'BOX':
+      return 'caja';
+    case 'BOLSA':
+    case 'BAG':
+      return 'bolsa';
+    case 'LITRO':
+    case 'LITER':
+      return 'L';
+    default:
+      return format.toLowerCase();
   }
 }
 
@@ -223,14 +252,19 @@ class PedidoConsumidor {
     final estado = (rawStatus == 'DELIVERED' || rawStatus == 'ENTREGADO')
         ? 'Entregado'
         : 'En Progreso';
-    final subList = (json['subOrders'] ?? json['items'] ?? json['orders'] ?? []) as List;
-    final subs = subList.whereType<Map>()
+    final subList =
+        (json['subOrders'] ?? json['items'] ?? json['orders'] ?? []) as List;
+    final subs = subList
+        .whereType<Map>()
         .map((e) => SubPedido.fromJson(e.cast<String, dynamic>()))
         .toList();
-    final fechaRaw = json['createdAt']?.toString() ?? json['date']?.toString() ?? '';
+    final fechaRaw =
+        json['createdAt']?.toString() ?? json['date']?.toString() ?? '';
     return PedidoConsumidor(
       id: json['id']?.toString() ?? '',
-      numero: _parseInt(json['orderNumber'] ?? json['number'] ?? json['sequenceNumber']),
+      numero: _parseInt(
+        json['orderNumber'] ?? json['number'] ?? json['sequenceNumber'],
+      ),
       fechaLarga: _formatDateLarga(fechaRaw),
       fechaCorta: _formatDateCorta(fechaRaw),
       total: _d(json['total'] ?? json['totalAmount'] ?? json['amount']),
@@ -260,24 +294,60 @@ String _formatDateLarga(String iso) {
   if (iso.isEmpty) return '';
   try {
     final dt = DateTime.parse(iso);
-    const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
-                   'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+    const meses = [
+      'Enero',
+      'Febrero',
+      'Marzo',
+      'Abril',
+      'Mayo',
+      'Junio',
+      'Julio',
+      'Agosto',
+      'Septiembre',
+      'Octubre',
+      'Noviembre',
+      'Diciembre',
+    ];
     return '${dt.day} de ${meses[dt.month - 1]} del ${dt.year}';
-  } catch (_) { return iso; }
+  } catch (_) {
+    return iso;
+  }
 }
 
 String _formatDateCorta(String iso) {
   if (iso.isEmpty) return '';
   try {
     final dt = DateTime.parse(iso);
-    const meses = ['Ene','Feb','Mar','Abr','May','Jun',
-                   'Jul','Ago','Sep','Oct','Nov','Dic'];
+    const meses = [
+      'Ene',
+      'Feb',
+      'Mar',
+      'Abr',
+      'May',
+      'Jun',
+      'Jul',
+      'Ago',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dic',
+    ];
     return '${dt.day} ${meses[dt.month - 1]} ${dt.year}';
-  } catch (_) { return iso; }
+  } catch (_) {
+    return iso;
+  }
 }
 
 List<TimelineEvent> _timelineFromStatus(String status) {
-  const order = ['PENDING','CONFIRMED','PREPARING','PREPARED','DISPATCHED','OUT_FOR_DELIVERY','DELIVERED'];
+  const order = [
+    'PENDING',
+    'CONFIRMED',
+    'PREPARING',
+    'PREPARED',
+    'DISPATCHED',
+    'OUT_FOR_DELIVERY',
+    'DELIVERED',
+  ];
   final idx = order.indexOf(status.toUpperCase());
   final steps = [
     ('Pedido confirmado', 0),
@@ -290,7 +360,11 @@ List<TimelineEvent> _timelineFromStatus(String status) {
     final active = idx == s.$2;
     return TimelineEvent(
       label: s.$1,
-      value: done ? 'Completado' : active ? 'En curso' : 'Pendiente',
+      value: done
+          ? 'Completado'
+          : active
+          ? 'En curso'
+          : 'Pendiente',
       completed: done,
       active: active,
     );
@@ -299,13 +373,21 @@ List<TimelineEvent> _timelineFromStatus(String status) {
 
 String _mapSubStatus(String s) {
   switch (s) {
-    case 'PENDING': case 'CONFIRMED': return 'Confirmado';
-    case 'PREPARING': return 'Preparando';
-    case 'PREPARED': return 'Preparado';
-    case 'DISPATCHED': return 'En camino';
-    case 'OUT_FOR_DELIVERY': return 'Repartidor en camino';
-    case 'DELIVERED': return 'Entregado';
-    default: return s.isNotEmpty ? s : 'En proceso';
+    case 'PENDING':
+    case 'CONFIRMED':
+      return 'Confirmado';
+    case 'PREPARING':
+      return 'Preparando';
+    case 'PREPARED':
+      return 'Preparado';
+    case 'DISPATCHED':
+      return 'En camino';
+    case 'OUT_FOR_DELIVERY':
+      return 'Repartidor en camino';
+    case 'DELIVERED':
+      return 'Entregado';
+    default:
+      return s.isNotEmpty ? s : 'En proceso';
   }
 }
 
@@ -352,8 +434,12 @@ class CheckoutPickupPoint {
 
   static String _dayLabel(String d) {
     const m = {
-      'MONDAY': 'Lunes', 'TUESDAY': 'Martes', 'WEDNESDAY': 'Miércoles',
-      'THURSDAY': 'Jueves', 'FRIDAY': 'Viernes', 'SATURDAY': 'Sábado',
+      'MONDAY': 'Lunes',
+      'TUESDAY': 'Martes',
+      'WEDNESDAY': 'Miércoles',
+      'THURSDAY': 'Jueves',
+      'FRIDAY': 'Viernes',
+      'SATURDAY': 'Sábado',
       'SUNDAY': 'Domingo',
     };
     return m[d.toUpperCase()] ?? d;
@@ -363,7 +449,8 @@ class CheckoutPickupPoint {
 class DeliveryOption {
   final String type; // 'PICKUP' | 'DELIVERY'
   final double cost;
-  final List<CheckoutPickupPoint> pickupPoints; // non-empty for type == 'PICKUP'
+  final List<CheckoutPickupPoint>
+  pickupPoints; // non-empty for type == 'PICKUP'
 
   const DeliveryOption({
     required this.type,
@@ -371,29 +458,39 @@ class DeliveryOption {
     this.pickupPoints = const [],
   });
 
+  DeliveryOption withPickupPoints(List<CheckoutPickupPoint> points) =>
+      DeliveryOption(type: type, cost: cost, pickupPoints: points);
+
   String get label => type == 'PICKUP' ? 'Punto de recojo' : 'Delivery';
   String get subtitle =>
       type == 'PICKUP' ? 'Recoge en un punto cercano' : 'Llega a tu puerta';
   String get tipoLocal => type == 'PICKUP' ? 'Recojo' : 'Delivery';
 
   static DeliveryOption fromJsonOption(Map<String, dynamic> raw) {
+    final enabled = raw['enabled'];
+    if (enabled == false || enabled?.toString().toLowerCase() == 'false') {
+      return const DeliveryOption(type: 'DISABLED', cost: 0);
+    }
+
     // Try every field name the backend might use for the option type
-    final rawType = (raw['type'] ??
-            raw['deliveryType'] ??
-            raw['method'] ??
-            raw['optionType'] ??
-            raw['deliveryMethod'] ??
-            raw['mode'] ??
-            '')
-        .toString()
-        .toUpperCase()
-        .trim();
+    final rawType =
+        (raw['type'] ??
+                raw['deliveryType'] ??
+                raw['method'] ??
+                raw['optionType'] ??
+                raw['deliveryMethod'] ??
+                raw['mode'] ??
+                '')
+            .toString()
+            .toUpperCase()
+            .trim();
 
     debugPrint('[DeliveryOption] raw=$raw  →  rawType=$rawType');
 
     final cost = _d(raw['cost'] ?? raw['price'] ?? raw['amount']);
 
-    final isPickup = rawType == 'PICKUP' ||
+    final isPickup =
+        rawType == 'PICKUP' ||
         rawType == 'RECOJO' ||
         rawType == 'PICK_UP' ||
         rawType == 'PICKUP_POINT' ||
@@ -401,7 +498,8 @@ class DeliveryOption {
         rawType == 'STORE_PICKUP' ||
         rawType == 'SELF_PICKUP';
 
-    final isDelivery = rawType == 'DELIVERY' ||
+    final isDelivery =
+        rawType == 'DELIVERY' ||
         rawType == 'HOME_DELIVERY' ||
         rawType == 'COURIER' ||
         rawType == 'STANDARD_DELIVERY' ||
@@ -418,10 +516,14 @@ class DeliveryOption {
           .toList();
     }
 
-    if (isPickup) return DeliveryOption(type: 'PICKUP', cost: cost, pickupPoints: pts);
+    if (isPickup) {
+      return DeliveryOption(type: 'PICKUP', cost: cost, pickupPoints: pts);
+    }
     if (isDelivery) return DeliveryOption(type: 'DELIVERY', cost: cost);
     // Unknown type — log it and treat as delivery so it at least shows
-    debugPrint('[DeliveryOption] UNKNOWN type "$rawType" — treating as DELIVERY');
+    debugPrint(
+      '[DeliveryOption] UNKNOWN type "$rawType" — treating as DELIVERY',
+    );
     return DeliveryOption(type: 'DELIVERY', cost: cost);
   }
 }
@@ -449,12 +551,21 @@ class DeliveryOptions {
 
   factory DeliveryOptions.fromJson(Map<String, dynamic> json) {
     final opts = <DeliveryOption>[];
+    final pickupPoints = parseCheckoutPickupPoints(json['pickupPoints']);
 
     final rawOptions = json['options'] ?? json['deliveryOptions'];
     if (rawOptions is List) {
       for (final o in rawOptions) {
         if (o is Map<String, dynamic>) {
-          opts.add(DeliveryOption.fromJsonOption(o));
+          final option = DeliveryOption.fromJsonOption(o);
+          if (option.type == 'PICKUP') {
+            final points = option.pickupPoints.isNotEmpty
+                ? option.pickupPoints
+                : pickupPoints;
+            if (points.isNotEmpty) opts.add(option.withPickupPoints(points));
+          } else if (option.type != 'DISABLED') {
+            opts.add(option);
+          }
         }
       }
     }
@@ -465,12 +576,17 @@ class DeliveryOptions {
       final dl = _d(json['deliveryCost'] ?? json['delivery_cost']);
       final pkAvail = json['pickupAvailable'] ?? (pk > 0);
       final dlAvail = json['deliveryAvailable'] ?? (dl > 0);
-      if (pkAvail == true) opts.add(DeliveryOption(type: 'PICKUP', cost: pk));
+      if (pkAvail == true && pickupPoints.isNotEmpty) {
+        opts.add(
+          DeliveryOption(type: 'PICKUP', cost: pk, pickupPoints: pickupPoints),
+        );
+      }
       if (dlAvail == true) opts.add(DeliveryOption(type: 'DELIVERY', cost: dl));
     }
 
     return DeliveryOptions(
-      farmerDisplayName: json['farmerName']?.toString() ??
+      farmerDisplayName:
+          json['farmerName']?.toString() ??
           json['farmerDisplayName']?.toString() ??
           json['displayName']?.toString(),
       farmerAvatarUrl: resolveMediaUrl(
@@ -481,6 +597,15 @@ class DeliveryOptions {
       options: opts,
     );
   }
+}
+
+List<CheckoutPickupPoint> parseCheckoutPickupPoints(dynamic raw) {
+  if (raw is! List) return const [];
+  return raw
+      .whereType<Map>()
+      .map((e) => CheckoutPickupPoint.fromJson(e.cast<String, dynamic>()))
+      .where((p) => p.id.isNotEmpty)
+      .toList();
 }
 
 // Payment options from paymentOptionsEndpoint
@@ -512,13 +637,17 @@ class PaymentSummary {
     final breakdown = <FarmerPaymentSummary>[];
     if (rawBreakdown is List) {
       for (final f in rawBreakdown) {
-        if (f is Map<String, dynamic>) breakdown.add(FarmerPaymentSummary.fromJson(f));
+        if (f is Map<String, dynamic>) {
+          breakdown.add(FarmerPaymentSummary.fromJson(f));
+        }
       }
     }
 
     return PaymentSummary(
       paymentMethods: methods,
-      grandTotal: _d(json['total'] ?? json['grandTotal'] ?? json['totalAmount']),
+      grandTotal: _d(
+        json['total'] ?? json['grandTotal'] ?? json['totalAmount'],
+      ),
       farmerBreakdown: breakdown,
     );
   }
@@ -554,7 +683,11 @@ class FarmerPaymentSummary {
 
   factory FarmerPaymentSummary.fromJson(Map<String, dynamic> json) {
     // Response uses 'paymentOptions': [{paymentMethod, enabled, yapePhoneNumber, ...}]
-    final rawPm = json['paymentOptions'] ?? json['paymentMethods'] ?? json['acceptedPaymentMethods'] ?? [];
+    final rawPm =
+        json['paymentOptions'] ??
+        json['paymentMethods'] ??
+        json['acceptedPaymentMethods'] ??
+        [];
     final pm = <String>[];
     if (rawPm is List) {
       for (final m in rawPm) {
@@ -574,8 +707,9 @@ class FarmerPaymentSummary {
     }
     return FarmerPaymentSummary(
       farmerUsername: json['farmerUsername']?.toString() ?? '',
-      productsSubtotal:
-          _d(json['productsSubtotal'] ?? json['subtotal'] ?? json['productsTotal']),
+      productsSubtotal: _d(
+        json['productsSubtotal'] ?? json['subtotal'] ?? json['productsTotal'],
+      ),
       shippingCost: _d(json['shippingCost'] ?? json['deliveryCost']),
       total: _d(json['total']),
       paymentMethods: pm,
@@ -598,8 +732,7 @@ class CheckoutItemData {
 
   double get total => cantidad * precioUnitario;
 
-  String get displayText =>
-      '$productName × ${cantidad.toInt()} $unidad';
+  String get displayText => '$productName × ${cantidad.toInt()} $unidad';
 }
 
 class CheckoutFarmer {
@@ -634,15 +767,15 @@ class CheckoutFarmer {
     this.selectedAddressText,
     this.metodoPago = 'Efectivo',
     List<String>? paymentMethods,
-  })  : farmerName = farmerName ?? farmerUsername,
-        farmerAvatarUrl = farmerAvatarUrl ?? '',
-        availableOptions = availableOptions ?? [],
-        paymentMethods = paymentMethods ?? ['Efectivo'];
+  }) : farmerName = farmerName ?? farmerUsername,
+       farmerAvatarUrl = farmerAvatarUrl ?? '',
+       availableOptions = availableOptions ?? [],
+       paymentMethods = paymentMethods ?? ['Efectivo'];
 
   DeliveryOption? get selectedOption =>
       selectedOptionIndex >= 0 && selectedOptionIndex < availableOptions.length
-          ? availableOptions[selectedOptionIndex]
-          : null;
+      ? availableOptions[selectedOptionIndex]
+      : null;
 
   /// 'Recojo' | 'Delivery' | '' (nothing selected)
   String get tipoEntrega => selectedOption?.tipoLocal ?? '';
@@ -672,10 +805,7 @@ List<PedidoConsumidor> buildMockPedidos() {
           farmerName: 'Sebastian Paredes',
           farmerAvatarUrl: kSebastianAvatar,
           tipo: 'Recojo',
-          itemsText: [
-            'Naranja para jugo × 5 kg',
-            'Papa Blanca Yungay × 5kg',
-          ],
+          itemsText: ['Naranja para jugo × 5 kg', 'Papa Blanca Yungay × 5kg'],
           estadoTexto: 'Preparando',
           timeline: const [
             TimelineEvent(
@@ -683,11 +813,7 @@ List<PedidoConsumidor> buildMockPedidos() {
               value: '20 Oct 2025, 10:42',
               completed: true,
             ),
-            TimelineEvent(
-              label: 'Preparado',
-              value: 'En curso',
-              active: true,
-            ),
+            TimelineEvent(label: 'Preparado', value: 'En curso', active: true),
             TimelineEvent(
               label: 'En camino',
               value: 'pendiente',

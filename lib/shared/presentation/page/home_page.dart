@@ -6,7 +6,6 @@ import '../../../features/catalog/data/catalog_repository.dart';
 import '../../../features/favorites/presentation/pages/favorites_page.dart';
 import '../../../features/favorites/data/favorites_cache.dart';
 import '../../../features/cart/presentation/pages/cart_page.dart';
-import '../../../features/orders/presentation/pages/consumer_orders_page.dart';
 import '../../../features/farmer/presentation/pages/farmer_orders_page.dart';
 import '../../../features/farmer/presentation/pages/farmer_deliveries_page.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -14,6 +13,13 @@ import 'package:tinkiyagro_app/core/session_manager.dart';
 import 'package:tinkiyagro_app/features/farmer/presentation/pages/farmer_products_page.dart';
 import 'package:tinkiyagro_app/features/profile/presentation/pages/consumer_profile_page.dart';
 import 'package:tinkiyagro_app/features/profile/presentation/pages/farmer_profile_page.dart';
+import 'package:tinkiyagro_app/features/profile/presentation/pages/notifications_page.dart';
+import 'package:tinkiyagro_app/features/organization/data/organization_service.dart';
+import 'package:tinkiyagro_app/features/wholesale/data/wholesale_service.dart';
+import 'package:tinkiyagro_app/features/wholesale/presentation/wholesale_pages.dart';
+import 'package:visibility_detector/visibility_detector.dart';
+import 'package:tinkiyagro_app/core/evaluation/evaluation_analytics_service.dart';
+import 'package:tinkiyagro_app/core/evaluation/pilot_session.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -36,6 +42,7 @@ class _HomePageState extends State<HomePage> {
   List<Producto> _recomendados = [];
   List<Producto> _tendencias = [];
   List<Producto> _resultadosBusqueda = [];
+  List<Map<String, dynamic>> _wholesaleProducts = [];
   bool _cargandoHome = true;
   bool _buscando = false;
 
@@ -48,7 +55,8 @@ class _HomePageState extends State<HomePage> {
         f.precioMaximo != null ||
         f.calificacion != null ||
         f.ventaPorKilo ||
-        f.ventaPorCaja;
+        f.ventaPorCaja ||
+        f.modalidad != 'TODOS';
   }
 
   final List<Map<String, dynamic>> _categorias = [
@@ -98,8 +106,28 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
+    if (SessionManager().rol == 'CONSUMIDOR') {
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _ensureDiscoveryPreferences(),
+      );
+    }
     if (SessionManager().rol != 'AGRICULTOR') {
       _cargarProductosHome();
+    }
+  }
+
+  Future<void> _ensureDiscoveryPreferences() async {
+    try {
+      final preference = await OrganizationService().getDiscoveryPreferences();
+      if (mounted && preference['configured'] != true) {
+        Navigator.pushNamedAndRemoveUntil(
+          context,
+          '/consumer_discovery_update',
+          (_) => false,
+        );
+      }
+    } catch (_) {
+      // Existing installations may briefly run against an older backend.
     }
   }
 
@@ -114,6 +142,15 @@ class _HomePageState extends State<HomePage> {
     setState(() => _cargandoHome = true);
     try {
       final todos = await _catalogService.buscarProductos();
+      List<Producto> populares = [];
+      try {
+        populares = await _catalogService.obtenerPopulares();
+      } catch (_) {}
+      if (populares.isEmpty) populares = todos;
+      List<Map<String, dynamic>> wholesale = [];
+      try {
+        wholesale = await WholesaleService().products();
+      } catch (_) {}
       List<Producto> recomendados = [];
       try {
         recomendados = await _catalogService.obtenerRecomendados();
@@ -122,7 +159,8 @@ class _HomePageState extends State<HomePage> {
       if (mounted) {
         setState(() {
           _recomendados = recomendados;
-          _tendencias = todos;
+          _tendencias = populares;
+          _wholesaleProducts = wholesale;
           _cargandoHome = false;
         });
       }
@@ -155,17 +193,44 @@ class _HomePageState extends State<HomePage> {
           ? labelToCategory(_categoriaSeleccionada)
           : null;
       final filtros = CatalogoRepositorio().filtrosActivos;
-      final resultados = await _catalogService.buscarProductos(
-        termino: _terminoBusqueda.isEmpty ? null : _terminoBusqueda,
-        categoria: categoriaEnum?.isNotEmpty == true ? categoriaEnum : null,
-        precioMin: filtros.precioMinimo,
-        precioMax: filtros.precioMaximo,
-        calificacion: filtros.calificacion,
-        ventaPorKilo: filtros.ventaPorKilo ? true : null,
-        ventaPorCaja: filtros.ventaPorCaja ? true : null,
-      );
+      final resultados = filtros.modalidad == 'MAYORISTA'
+          ? <Producto>[]
+          : await _catalogService.buscarProductos(
+              termino: _terminoBusqueda.isEmpty ? null : _terminoBusqueda,
+              categoria: categoriaEnum?.isNotEmpty == true
+                  ? categoriaEnum
+                  : null,
+              precioMin: filtros.precioMinimo,
+              precioMax: filtros.precioMaximo,
+              calificacion: filtros.calificacion,
+              ventaPorKilo: filtros.ventaPorKilo ? true : null,
+              ventaPorCaja: filtros.ventaPorCaja ? true : null,
+            );
+      var wholesale = await WholesaleService().products();
+      if (filtros.modalidad == 'MINORISTA') wholesale = [];
+      final term = _terminoBusqueda.toLowerCase();
+      wholesale = wholesale.where((p) {
+        final matchesTerm =
+            term.isEmpty ||
+            (p['name'] ?? '').toString().toLowerCase().contains(term);
+        final category =
+            _categoriaSeleccionada == null ||
+            (p['category'] ?? '')
+                .toString()
+                .replaceAll('_', ' ')
+                .toLowerCase()
+                .contains(
+                  _categoriaSeleccionada!.toLowerCase().replaceAll(' y ', ' '),
+                );
+        final price = (p['referencePrice'] as num?)?.toDouble() ?? 0;
+        return matchesTerm &&
+            category &&
+            (filtros.precioMinimo == null || price >= filtros.precioMinimo!) &&
+            (filtros.precioMaximo == null || price <= filtros.precioMaximo!);
+      }).toList();
       setState(() {
         _resultadosBusqueda = resultados;
+        _wholesaleProducts = wholesale;
         _buscando = false;
       });
     } catch (_) {
@@ -178,7 +243,10 @@ class _HomePageState extends State<HomePage> {
     return Scaffold(
       backgroundColor: const Color(0xFFF7F8FA),
       body: _buildCuerpoPagina(),
-      bottomNavigationBar: _buildBottomNavigationBar(),
+      bottomNavigationBar: SafeArea(
+        top: false,
+        child: _buildBottomNavigationBar(),
+      ),
     );
   }
 
@@ -210,7 +278,7 @@ class _HomePageState extends State<HomePage> {
         case 2:
           return const CarritoPage();
         case 3:
-          return const ConsumerOrdersPage();
+          return const ConsumerActivityPage();
         case 4:
           return ConsumerProfilePage(
             onTabSwitch: (i) => setState(() => _indicePestana = i),
@@ -233,9 +301,9 @@ class _HomePageState extends State<HomePage> {
               label: 'Productos',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.shopping_basket_outlined, size: 26),
-              activeIcon: Icon(Icons.shopping_basket, size: 26),
-              label: 'Pedidos',
+              icon: Icon(Icons.receipt_long_outlined, size: 26),
+              activeIcon: Icon(Icons.receipt_long, size: 26),
+              label: 'Actividad',
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.local_shipping_outlined, size: 26),
@@ -349,11 +417,10 @@ class _HomePageState extends State<HomePage> {
                             color: Colors.black87,
                           ),
                           onPressed: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                  'No tienes notificaciones nuevas.',
-                                ),
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const NotificationsPage(),
                               ),
                             );
                           },
@@ -530,28 +597,84 @@ class _HomePageState extends State<HomePage> {
               // Contenido principal: resultados o secciones
               if (_enModoFiltro)
                 _buildResultadosFiltro()
-              else ...[
-                _buildSeccionProductos(
-                  titulo: 'Recomendados para ti',
-                  productos: _recomendados,
-                  cargando: _cargandoHome,
-                  routeName: 'Recomendados para ti',
-                ),
-                const SizedBox(height: 24),
-                _buildSeccionProductos(
-                  titulo: 'Todos los productos',
-                  productos: _tendencias,
-                  cargando: _cargandoHome,
-                  routeName: 'Todos los productos',
-                ),
-                const SizedBox(height: 30),
-              ],
+              else
+                ..._buildExperimentalSections(),
             ],
           ),
         ),
       ),
     );
   }
+
+  List<Widget> _buildExperimentalSections() {
+    Widget recommended() => _buildSeccionProductos(
+      titulo: 'Recomendados para ti',
+      productos: _recomendados,
+      cargando: _cargandoHome,
+      routeName: 'Recomendados para ti',
+    );
+    Widget popular() => _buildSeccionProductos(
+      titulo: 'Populares',
+      productos: _tendencias,
+      cargando: _cargandoHome,
+      routeName: 'Populares',
+    );
+    final first = PilotSession.sectionOrder == 'POPULARES_FIRST'
+        ? popular()
+        : recommended();
+    final second = PilotSession.sectionOrder == 'POPULARES_FIRST'
+        ? recommended()
+        : popular();
+    return [
+      first,
+      const SizedBox(height: 24),
+      second,
+      const SizedBox(height: 24),
+      _buildWholesaleSection(),
+      const SizedBox(height: 30),
+    ];
+  }
+
+  Widget _buildWholesaleSection() => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          const Text(
+            'Al por mayor',
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          ),
+          IconButton(
+            icon: const Icon(Icons.arrow_forward_ios, size: 16),
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const WholesaleCatalogPage()),
+            ),
+          ),
+        ],
+      ),
+      const SizedBox(height: 12),
+      if (_cargandoHome)
+        const Center(child: CircularProgressIndicator())
+      else if (_wholesaleProducts.isEmpty)
+        const Text(
+          'No hay oferta mayorista dentro de tu radio.',
+          style: TextStyle(color: Colors.grey),
+        )
+      else
+        SizedBox(
+          height: 250,
+          child: ListView(
+            scrollDirection: Axis.horizontal,
+            children: _wholesaleProducts
+                .take(6)
+                .map((p) => WholesaleProductCard(product: p, compact: true))
+                .toList(),
+          ),
+        ),
+    ],
+  );
 
   Widget _buildResultadosFiltro() {
     return Column(
@@ -563,7 +686,7 @@ class _HomePageState extends State<HomePage> {
             Text(
               _buscando
                   ? 'Buscando...'
-                  : '${_resultadosBusqueda.length} resultado${_resultadosBusqueda.length != 1 ? "s" : ""}',
+                  : '${_resultadosBusqueda.length + _wholesaleProducts.length} resultado${_resultadosBusqueda.length + _wholesaleProducts.length != 1 ? "s" : ""}',
               style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
@@ -595,7 +718,7 @@ class _HomePageState extends State<HomePage> {
               child: CircularProgressIndicator(color: Color(0xFF5CA399)),
             ),
           )
-        else if (_resultadosBusqueda.isEmpty)
+        else if (_resultadosBusqueda.isEmpty && _wholesaleProducts.isEmpty)
           Center(
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 40),
@@ -615,20 +738,31 @@ class _HomePageState extends State<HomePage> {
               ),
             ),
           )
-        else
-          GridView.builder(
-            physics: const NeverScrollableScrollPhysics(),
-            shrinkWrap: true,
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              crossAxisSpacing: 16,
-              mainAxisSpacing: 16,
-              childAspectRatio: 0.76,
+        else ...[
+          if (_resultadosBusqueda.isNotEmpty)
+            GridView.builder(
+              physics: const NeverScrollableScrollPhysics(),
+              shrinkWrap: true,
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                crossAxisSpacing: 16,
+                mainAxisSpacing: 16,
+                childAspectRatio: 0.76,
+              ),
+              itemCount: _resultadosBusqueda.length,
+              itemBuilder: (context, index) =>
+                  _buildTarjetaProductoHome(_resultadosBusqueda[index]),
             ),
-            itemCount: _resultadosBusqueda.length,
-            itemBuilder: (context, index) =>
-                _buildTarjetaProductoHome(_resultadosBusqueda[index]),
-          ),
+          if (_wholesaleProducts.isNotEmpty) ...[
+            const SizedBox(height: 18),
+            const Text(
+              'Al por mayor',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 10),
+            ..._wholesaleProducts.map((p) => WholesaleProductCard(product: p)),
+          ],
+        ],
         const SizedBox(height: 30),
       ],
     );
@@ -703,7 +837,11 @@ class _HomePageState extends State<HomePage> {
             ),
             itemCount: productos.length > 4 ? 4 : productos.length,
             itemBuilder: (context, index) {
-              return _buildTarjetaProductoHome(productos[index]);
+              final producto = productos[index];
+              return _instrumentedProductCard(
+                producto,
+                _buildTarjetaProductoHome(producto),
+              );
             },
           ),
       ],
@@ -712,7 +850,9 @@ class _HomePageState extends State<HomePage> {
 
   String? _productStatusLabel(Producto p) {
     if (p.purchasable) return null;
-    return p.availabilityMessage.isNotEmpty ? p.availabilityMessage : 'No disponible';
+    return p.availabilityMessage.isNotEmpty
+        ? p.availabilityMessage
+        : 'No disponible';
   }
 
   Color _productStatusColor(Producto p) {
@@ -729,8 +869,20 @@ class _HomePageState extends State<HomePage> {
       onTap: unavailable
           ? null
           : () {
-              Navigator.pushNamed(context, '/detalle_producto',
-                  arguments: producto);
+              unawaited(
+                EvaluationAnalyticsService.instance.click(
+                  productId: producto.id,
+                  farmer: producto.farmerUsername,
+                  section: producto.sourceSection,
+                  position: producto.sourcePosition,
+                  requestId: producto.recommendationRequestId,
+                ),
+              );
+              Navigator.pushNamed(
+                context,
+                '/detalle_producto',
+                arguments: producto,
+              );
             },
       child: Container(
         decoration: BoxDecoration(
@@ -748,131 +900,129 @@ class _HomePageState extends State<HomePage> {
           children: [
             Positioned.fill(
               child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Expanded(
-                  child: Stack(
-                    alignment: Alignment.center,
-                    clipBehavior: Clip.none,
-                    children: [
-                      Container(
-                        width: 90,
-                        height: 90,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.06),
-                              blurRadius: 10,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: ClipOval(
-                          child: producto.urlImagen.isNotEmpty
-                              ? Image.network(
-                                  producto.urlImagen,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (_, __, ___) => const Icon(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Expanded(
+                    child: Stack(
+                      alignment: Alignment.center,
+                      clipBehavior: Clip.none,
+                      children: [
+                        Container(
+                          width: 90,
+                          height: 90,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.06),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: ClipOval(
+                            child: producto.urlImagen.isNotEmpty
+                                ? Image.network(
+                                    producto.urlImagen,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, __, ___) => const Icon(
+                                      Icons.eco_outlined,
+                                      size: 32,
+                                      color: Color(0xFF5CA399),
+                                    ),
+                                  )
+                                : const Icon(
                                     Icons.eco_outlined,
                                     size: 32,
                                     color: Color(0xFF5CA399),
                                   ),
-                                )
-                              : const Icon(
-                                  Icons.eco_outlined,
-                                  size: 32,
-                                  color: Color(0xFF5CA399),
-                                ),
+                          ),
                         ),
-                      ),
-                      // Botón favorito
-                      Positioned(
-                        top: 8,
-                        right: 8,
-                        child: GestureDetector(
-                          behavior: HitTestBehavior.opaque,
-                          onTap: () => _toggleFavorito(producto),
-                          child: Container(
-                            width: 32,
-                            height: 32,
-                            padding: const EdgeInsets.all(6),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              shape: BoxShape.circle,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.08),
-                                  blurRadius: 6,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ],
-                            ),
-                            child: Icon(
-                              producto.esFavorito
-                                  ? Icons.favorite
-                                  : Icons.favorite_border,
-                              color: producto.esFavorito
-                                  ? Colors.red
-                                  : Colors.grey.shade400,
-                              size: 20,
+                        // Botón favorito
+                        Positioned(
+                          top: 8,
+                          right: 8,
+                          child: GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onTap: () => _toggleFavorito(producto),
+                            child: Container(
+                              width: 32,
+                              height: 32,
+                              padding: const EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.08),
+                                    blurRadius: 6,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: Icon(
+                                producto.esFavorito
+                                    ? Icons.favorite
+                                    : Icons.favorite_border,
+                                color: producto.esFavorito
+                                    ? Colors.red
+                                    : Colors.grey.shade400,
+                                size: 20,
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(10, 0, 10, 14),
-                  child: Column(
-                    children: [
-                      Text(
-                        's/. ${producto.precio.toStringAsFixed(2)} x ${producto.unidad}',
-                        style: const TextStyle(
-                          color: Color(0xFF4A7C73),
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold,
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(10, 0, 10, 14),
+                    child: Column(
+                      children: [
+                        Text(
+                          's/. ${producto.precio.toStringAsFixed(2)} x ${producto.unidad}',
+                          style: const TextStyle(
+                            color: Color(0xFF4A7C73),
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        producto.nombre,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black,
+                        const SizedBox(height: 4),
+                        Text(
+                          producto.nombre,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black,
+                          ),
+                          textAlign: TextAlign.center,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        textAlign: TextAlign.center,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        producto.textoPesoUnidad,
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: Colors.grey.shade500,
-                          fontWeight: FontWeight.w500,
+                        const SizedBox(height: 2),
+                        Text(
+                          producto.textoPesoUnidad,
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Colors.grey.shade500,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          textAlign: TextAlign.center,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        textAlign: TextAlign.center,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-              ],
-            ),
+                ],
+              ),
             ),
             if (unavailable)
               Positioned.fill(
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(20),
-                  child: Container(
-                    color: Colors.black.withValues(alpha: 0.35),
-                  ),
+                  child: Container(color: Colors.black.withValues(alpha: 0.35)),
                 ),
               ),
             if (statusLabel != null)
@@ -880,7 +1030,10 @@ class _HomePageState extends State<HomePage> {
                 child: Align(
                   alignment: const Alignment(0, -0.3),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 5,
+                    ),
                     decoration: BoxDecoration(
                       color: _productStatusColor(producto),
                       borderRadius: BorderRadius.circular(20),
@@ -900,6 +1053,30 @@ class _HomePageState extends State<HomePage> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _instrumentedProductCard(Producto producto, Widget child) {
+    if (producto.sourceSection.isEmpty || producto.sourcePosition < 1) {
+      return child;
+    }
+    return VisibilityDetector(
+      key: ValueKey(
+        'evaluation-${producto.sourceSection}-${producto.id}-${producto.sourcePosition}',
+      ),
+      onVisibilityChanged: (info) {
+        if (info.visibleFraction < 0.5) return;
+        unawaited(
+          EvaluationAnalyticsService.instance.impression(
+            productId: producto.id,
+            farmer: producto.farmerUsername,
+            section: producto.sourceSection,
+            position: producto.sourcePosition,
+            requestId: producto.recommendationRequestId,
+          ),
+        );
+      },
+      child: child,
     );
   }
 

@@ -1,6 +1,9 @@
 class AppConstants {
-  static const String baseUrl = 'http://10.0.2.2:8080';
-  //static const String baseUrl = 'http://localhost:8080';
+  static const String baseUrl = String.fromEnvironment(
+    'API_BASE_URL',
+    defaultValue:
+        'https://tinkiyagro-api-a8fph4cmcxf4c5h4.eastus-01.azurewebsites.net',
+  );
 
   //Auth
   static const String registerEndpoint = '/auth/register';
@@ -26,6 +29,11 @@ class AppConstants {
   static const String registerDeviceEndpoint = '/api/notifications/devices';
 
   static const String unregisterDeviceEndpoint = '/api/notifications/devices';
+
+  static const String notificationsEndpoint = '/api/notifications';
+
+  static const String markAllNotificationsReadEndpoint =
+      '/api/notifications/read-all';
 
   //Profile - Customer
 
@@ -84,7 +92,13 @@ class AppConstants {
   static const String productDetailConsumerEndpoint =
       '/api/products/{id}'; // + /{id}
 
-  static const String recommendedProductEndpoint = '/api/products/recommended';
+  static const String recommendedProductEndpoint =
+      '/api/products/recommended/evaluation';
+  static const String popularProductEndpoint = '/api/products/popular';
+
+  static const String evaluationEventsEndpoint = '/api/evaluation/events';
+  static const String trackingReflectionEndpoint =
+      '/api/evaluation/tracking/{id}/reflected';
 
   static const String listFavoriteProductEndpoint = '/api/products/favorites';
 

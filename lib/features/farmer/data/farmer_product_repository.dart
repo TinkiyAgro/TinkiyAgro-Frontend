@@ -133,6 +133,28 @@ class FarmerProductRepository {
         }
       }
 
+      final localIds =
+          (await (_db.select(
+                _db.cachedFarmerProducts,
+              )..where((row) => row.ownerUsername.equals(owner))).get())
+              .map((row) => row.localId)
+              .toSet();
+      final productOperations =
+          await (_db.select(_db.syncOperations)..where(
+                (row) =>
+                    row.ownerUsername.equals(owner) &
+                    row.entityType.equals('PRODUCT') &
+                    row.state.isNotValue(SyncOperationState.synced.value),
+              ))
+              .get();
+      for (final operation in productOperations) {
+        if (!localIds.contains(operation.entityLocalId)) {
+          await (_db.delete(
+            _db.syncOperations,
+          )..where((row) => row.id.equals(operation.id))).go();
+        }
+      }
+
       await _db
           .into(_db.syncMetadata)
           .insertOnConflictUpdate(
@@ -195,7 +217,27 @@ class FarmerProductRepository {
     final cached = await (_db.select(
       _db.cachedFarmerProducts,
     )..where((row) => row.localId.equals(localId))).getSingle();
-    final oldPayload = jsonDecode(cached.payloadJson) as Map<String, dynamic>;
+    var oldPayload = jsonDecode(cached.payloadJson) as Map<String, dynamic>;
+    if (cached.syncState == EntitySyncState.conflict.value) {
+      try {
+        final remoteProducts = await _remote.listarProductosRaw();
+        final remoteId = cached.remoteId ?? localId;
+        final remoteProduct = remoteProducts
+            .cast<Map<String, dynamic>?>()
+            .firstWhere(
+              (item) => item?['id']?.toString() == remoteId,
+              orElse: () => null,
+            );
+        if (remoteProduct != null) {
+          oldPayload = <String, dynamic>{
+            ...oldPayload,
+            'version': remoteProduct['version'],
+          };
+        }
+      } catch (_) {
+        // Keep the local version when offline; the operation remains retryable.
+      }
+    }
     var imagePath = cached.imagePath;
     if (imageFile != null) {
       imagePath = await _images.preserve(imageFile, localId);
@@ -272,6 +314,17 @@ class FarmerProductRepository {
 
     final now = DateTime.now();
     await _db.transaction(() async {
+      // A deletion supersedes every queued update for the same product.
+      await (_db.delete(_db.syncOperations)..where(
+            (row) =>
+                row.ownerUsername.equals(_owner) &
+                row.entityLocalId.equals(localId) &
+                row.operationType.isIn([
+                  SyncOperationType.updateProduct.value,
+                  SyncOperationType.deleteProduct.value,
+                ]),
+          ))
+          .go();
       await (_db.update(
         _db.cachedFarmerProducts,
       )..where((row) => row.localId.equals(localId))).write(
@@ -302,22 +355,24 @@ class FarmerProductRepository {
     try {
       final states = [SyncOperationState.pending.value];
       if (includeFailed) states.add(SyncOperationState.failed.value);
-      final operations =
-          await (_db.select(_db.syncOperations)
-                ..where(
-              (row) =>
-                  row.ownerUsername.equals(_owner) &
-                  row.operationType.isIn([
-                    SyncOperationType.createProduct.value,
-                    SyncOperationType.updateProduct.value,
-                    SyncOperationType.deleteProduct.value,
-                  ]) &
-                  row.state.isIn(states),
-                )
-                ..orderBy([(row) => OrderingTerm.asc(row.createdAt)]))
-              .get();
-      for (final operation in operations) {
-        if (!force && !_retryWindowReached(operation)) continue;
+      while (true) {
+        final operation =
+            await (_db.select(_db.syncOperations)
+                  ..where(
+                    (row) =>
+                        row.ownerUsername.equals(_owner) &
+                        row.operationType.isIn([
+                          SyncOperationType.createProduct.value,
+                          SyncOperationType.updateProduct.value,
+                          SyncOperationType.deleteProduct.value,
+                        ]) &
+                        row.state.isIn(states),
+                  )
+                  ..orderBy([(row) => OrderingTerm.asc(row.createdAt)])
+                  ..limit(1))
+                .getSingleOrNull();
+        if (operation == null) break;
+        if (!force && !_retryWindowReached(operation)) break;
         final succeeded = await _syncOperation(operation);
         if (!succeeded) break;
       }
@@ -373,18 +428,62 @@ class FarmerProductRepository {
           )..where((row) => row.localId.equals(operation.entityLocalId))).go();
         } else {
           final remoteId = response!['id'].toString();
-          await (_db.update(
-            _db.cachedFarmerProducts,
-          )..where((row) => row.localId.equals(operation.entityLocalId))).write(
-            CachedFarmerProductsCompanion(
-              remoteId: Value(remoteId),
-              payloadJson: Value(jsonEncode(response)),
-              imagePath: const Value(null),
-              syncState: Value(EntitySyncState.synced.value),
-              updatedAt: Value(attemptAt),
-              lastSyncedAt: Value(attemptAt),
-            ),
-          );
+          final newerOperation =
+              await (_db.select(_db.syncOperations)
+                    ..where(
+                      (row) =>
+                          row.ownerUsername.equals(operation.ownerUsername) &
+                          row.entityLocalId.equals(operation.entityLocalId) &
+                          row.id.equals(operation.id).not() &
+                          row.state.isIn([
+                            SyncOperationState.pending.value,
+                            SyncOperationState.failed.value,
+                            SyncOperationState.conflict.value,
+                          ]),
+                    )
+                    ..orderBy([(row) => OrderingTerm.asc(row.createdAt)])
+                    ..limit(1))
+                  .getSingleOrNull();
+
+          if (newerOperation == null) {
+            await (_db.update(_db.cachedFarmerProducts)
+                  ..where((row) => row.localId.equals(operation.entityLocalId)))
+                .write(
+                  CachedFarmerProductsCompanion(
+                    remoteId: Value(remoteId),
+                    payloadJson: Value(jsonEncode(response)),
+                    imagePath: const Value(null),
+                    syncState: Value(EntitySyncState.synced.value),
+                    updatedAt: Value(attemptAt),
+                    lastSyncedAt: Value(attemptAt),
+                  ),
+                );
+          } else {
+            final nextPayload =
+                jsonDecode(newerOperation.payloadJson) as Map<String, dynamic>;
+            nextPayload['version'] = response['version'];
+            await (_db.update(
+              _db.syncOperations,
+            )..where((row) => row.id.equals(newerOperation.id))).write(
+              SyncOperationsCompanion(
+                remoteId: Value(remoteId),
+                payloadJson: Value(jsonEncode(nextPayload)),
+                state: Value(SyncOperationState.pending.value),
+                lastError: const Value(null),
+              ),
+            );
+            await (_db.update(_db.cachedFarmerProducts)
+                  ..where((row) => row.localId.equals(operation.entityLocalId)))
+                .write(
+                  CachedFarmerProductsCompanion(
+                    remoteId: Value(remoteId),
+                    payloadJson: Value(jsonEncode(nextPayload)),
+                    syncState: Value(EntitySyncState.pending.value),
+                    updatedAt: Value(attemptAt),
+                    lastSyncedAt: Value(attemptAt),
+                  ),
+                );
+          }
         }
         await (_db.update(
           _db.syncOperations,
@@ -395,7 +494,21 @@ class FarmerProductRepository {
           ),
         );
       });
-      await _images.deleteIfManaged(operation.imagePath);
+      final imageStillQueued =
+          await (_db.select(_db.syncOperations)..where(
+                (row) =>
+                    row.entityLocalId.equals(operation.entityLocalId) &
+                    row.imagePath.equalsNullable(operation.imagePath) &
+                    row.state.isIn([
+                      SyncOperationState.pending.value,
+                      SyncOperationState.failed.value,
+                      SyncOperationState.conflict.value,
+                    ]),
+              ))
+              .getSingleOrNull();
+      if (imageStillQueued == null) {
+        await _images.deleteIfManaged(operation.imagePath);
+      }
       return true;
     } catch (error) {
       final message = error.toString();
@@ -474,6 +587,7 @@ class FarmerProductRepository {
               row.state.isIn([
                 SyncOperationState.pending.value,
                 SyncOperationState.failed.value,
+                SyncOperationState.conflict.value,
               ]),
         ))
         .getSingleOrNull();
@@ -491,6 +605,8 @@ class FarmerProductRepository {
         payloadJson: Value(jsonEncode(payload)),
         imagePath: Value(imagePath),
         state: Value(SyncOperationState.pending.value),
+        attempts: const Value(0),
+        lastAttemptAt: const Value(null),
         lastError: const Value(null),
       ),
     );

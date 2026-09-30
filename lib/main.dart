@@ -8,6 +8,8 @@ import 'core/offline/sync_coordinator.dart';
 import 'features/auth/presentation/pages/welcome_page.dart';
 import 'features/auth/presentation/pages/auth_page.dart';
 import 'features/auth/presentation/pages/role_selection_page.dart';
+import 'features/auth/presentation/pages/registration_profile_pages.dart';
+import 'features/organization/presentation/organization_home_page.dart';
 import 'shared/presentation/page/home_page.dart';
 import 'features/catalog/presentation/pages/product_filters_page.dart';
 import 'features/catalog/presentation/pages/product_detail_page.dart';
@@ -51,11 +53,16 @@ class TinkiyAgroApp extends StatelessWidget {
     final session = SessionManager();
     String initialRoute = '/welcome';
     if (session.isLoggedIn) {
-      initialRoute = session.rol == 'REPARTIDOR' ? '/courier_home' : '/home';
+      initialRoute = session.rol == 'REPARTIDOR'
+          ? '/courier_home'
+          : session.rol == 'ORGANIZACION'
+          ? '/organization_home'
+          : '/home';
     }
 
     return MaterialApp(
       navigatorKey: appNavigatorKey,
+      scaffoldMessengerKey: appScaffoldMessengerKey,
       title: 'TinkiyAgro',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
@@ -94,6 +101,17 @@ class TinkiyAgroApp extends StatelessWidget {
         '/welcome': (context) => const WelcomePage(),
         '/auth': (context) => const AuthPage(),
         '/role_selection': (context) => const RoleSelectionPage(),
+        '/seller_type': (context) => const SellerTypePage(),
+        '/organization_register': (context) =>
+            const OrganizationRegistrationPage(),
+        '/producer_location_setup': (context) =>
+            const ProducerLocationSetupPage(),
+        '/consumer_discovery_setup': (context) =>
+            const ConsumerDiscoverySetupPage(),
+        '/driver_register': (context) => const DriverRegistrationPage(),
+        '/consumer_discovery_update': (context) =>
+            const ConsumerDiscoverySetupPage(existingAccount: true),
+        '/organization_home': (context) => const OrganizationHomePage(),
         '/home': (context) => const HomePage(),
         '/filtros': (context) => const FiltrosProductoPage(),
         '/detalle_producto': (context) => const DetalleProductoPage(),

@@ -16,6 +16,7 @@ class _FiltrosProductoPageState extends State<FiltrosProductoPage> {
   double? _calificacionSeleccionada;
   bool _ventaPorKilo = false;
   bool _ventaPorCaja = false;
+  String _modalidad = 'TODOS';
   String? _priceError;
 
   @override
@@ -23,14 +24,19 @@ class _FiltrosProductoPageState extends State<FiltrosProductoPage> {
     super.initState();
     final filtros = _repositorio.filtrosActivos;
     _ctrlMinimo = TextEditingController(
-      text: filtros.precioMinimo != null ? filtros.precioMinimo!.toStringAsFixed(0) : '',
+      text: filtros.precioMinimo != null
+          ? filtros.precioMinimo!.toStringAsFixed(0)
+          : '',
     );
     _ctrlMaximo = TextEditingController(
-      text: filtros.precioMaximo != null ? filtros.precioMaximo!.toStringAsFixed(0) : '',
+      text: filtros.precioMaximo != null
+          ? filtros.precioMaximo!.toStringAsFixed(0)
+          : '',
     );
     _calificacionSeleccionada = filtros.calificacion;
     _ventaPorKilo = filtros.ventaPorKilo;
     _ventaPorCaja = filtros.ventaPorCaja;
+    _modalidad = filtros.modalidad;
   }
 
   @override
@@ -48,6 +54,7 @@ class _FiltrosProductoPageState extends State<FiltrosProductoPage> {
       _calificacionSeleccionada = null;
       _ventaPorKilo = false;
       _ventaPorCaja = false;
+      _modalidad = 'TODOS';
       _priceError = null;
     });
   }
@@ -60,11 +67,15 @@ class _FiltrosProductoPageState extends State<FiltrosProductoPage> {
 
     if ((minText.isNotEmpty && precioMin == null) ||
         (maxText.isNotEmpty && precioMax == null)) {
-      setState(() => _priceError = 'Ingresa solo números o decimales (ej: 5.50)');
+      setState(
+        () => _priceError = 'Ingresa solo números o decimales (ej: 5.50)',
+      );
       return;
     }
     if (precioMin != null && precioMax != null && precioMin > precioMax) {
-      setState(() => _priceError = 'El precio mínimo no puede ser mayor al máximo');
+      setState(
+        () => _priceError = 'El precio mínimo no puede ser mayor al máximo',
+      );
       return;
     }
 
@@ -76,6 +87,7 @@ class _FiltrosProductoPageState extends State<FiltrosProductoPage> {
       calificacion: _calificacionSeleccionada,
       ventaPorKilo: _ventaPorKilo,
       ventaPorCaja: _ventaPorCaja,
+      modalidad: _modalidad,
     );
 
     _repositorio.aplicarFiltros(nuevosFiltros);
@@ -119,6 +131,31 @@ class _FiltrosProductoPageState extends State<FiltrosProductoPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    const Text(
+                      'Modalidad de compra',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    SegmentedButton<String>(
+                      segments: const [
+                        ButtonSegment(value: 'TODOS', label: Text('Todos')),
+                        ButtonSegment(
+                          value: 'MINORISTA',
+                          label: Text('Directa'),
+                        ),
+                        ButtonSegment(
+                          value: 'MAYORISTA',
+                          label: Text('Mayorista'),
+                        ),
+                      ],
+                      selected: {_modalidad},
+                      onSelectionChanged: (v) =>
+                          setState(() => _modalidad = v.first),
+                    ),
+                    const SizedBox(height: 32),
                     // Sección: Rango de precio
                     const Text(
                       'Rango de precio',
@@ -199,14 +236,16 @@ class _FiltrosProductoPageState extends State<FiltrosProductoPage> {
                             icon: Icons.inventory_2_outlined,
                             titulo: 'Venta por kilo',
                             valor: _ventaPorKilo,
-                            onChanged: (val) => setState(() => _ventaPorKilo = val),
+                            onChanged: (val) =>
+                                setState(() => _ventaPorKilo = val),
                           ),
                           const Divider(height: 1, indent: 56, endIndent: 16),
                           _buildOtroItem(
                             icon: Icons.grid_view_outlined,
                             titulo: 'Venta por caja',
                             valor: _ventaPorCaja,
-                            onChanged: (val) => setState(() => _ventaPorCaja = val),
+                            onChanged: (val) =>
+                                setState(() => _ventaPorCaja = val),
                           ),
                         ],
                       ),
@@ -218,7 +257,10 @@ class _FiltrosProductoPageState extends State<FiltrosProductoPage> {
 
             // Botón de acción: Aplicar
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 24.0,
+                vertical: 16.0,
+              ),
               child: SizedBox(
                 width: double.infinity,
                 height: 54,
@@ -267,7 +309,10 @@ class _FiltrosProductoPageState extends State<FiltrosProductoPage> {
         decoration: InputDecoration(
           hintText: hint,
           hintStyle: const TextStyle(color: Colors.grey, fontSize: 15),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 16,
+          ),
           border: InputBorder.none,
         ),
       ),
@@ -287,7 +332,8 @@ class _FiltrosProductoPageState extends State<FiltrosProductoPage> {
           Row(
             children: List.generate(5, (index) {
               final estrellaIndex = index + 1;
-              final seleccionada = _calificacionSeleccionada != null &&
+              final seleccionada =
+                  _calificacionSeleccionada != null &&
                   estrellaIndex <= _calificacionSeleccionada!;
               return GestureDetector(
                 onTap: () {
@@ -304,7 +350,9 @@ class _FiltrosProductoPageState extends State<FiltrosProductoPage> {
                   padding: const EdgeInsets.only(right: 6.0),
                   child: Icon(
                     seleccionada ? Icons.star : Icons.star_border,
-                    color: seleccionada ? const Color(0xFFFFC107) : Colors.grey.shade400,
+                    color: seleccionada
+                        ? const Color(0xFFFFC107)
+                        : Colors.grey.shade400,
                     size: 28,
                   ),
                 ),
@@ -366,11 +414,7 @@ class _FiltrosProductoPageState extends State<FiltrosProductoPage> {
           ),
           child: valor
               ? const Center(
-                  child: Icon(
-                    Icons.check,
-                    size: 14,
-                    color: Color(0xFF5CA399),
-                  ),
+                  child: Icon(Icons.check, size: 14, color: Color(0xFF5CA399)),
                 )
               : null,
         ),

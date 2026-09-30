@@ -8,6 +8,8 @@ import '../../features/farmer/data/farmer_product_repository.dart';
 import '../../features/farmer/data/farmer_order_repository.dart';
 import '../../features/farmer/data/pickup_point_repository.dart';
 import '../session_manager.dart';
+import '../evaluation/evaluation_analytics_service.dart';
+import 'offline_metrics_exporter.dart';
 
 class SyncCoordinator {
   SyncCoordinator._();
@@ -41,6 +43,7 @@ class SyncCoordinator {
   }
 
   Future<void> syncNow({bool force = false}) async {
+    await EvaluationAnalyticsService.instance.syncPending();
     if (SessionManager().rol == 'AGRICULTOR') {
       _lastFarmerPeriodicSync = DateTime.now();
       await FarmerProductRepository.instance.syncPending(
@@ -80,6 +83,11 @@ class SyncCoordinator {
       } catch (_) {
         // Assigned deliveries keep their last downloaded snapshot.
       }
+    }
+    try {
+      await const OfflineMetricsExporter().exportCsv();
+    } catch (_) {
+      // La sincronización no debe fallar si el archivo experimental no puede escribirse.
     }
   }
 }

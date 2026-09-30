@@ -103,10 +103,7 @@ class ApiClient {
     }
   }
 
-  static Future<http.Response> post(
-    String endpoint,
-    Map<String, dynamic> body,
-  ) async {
+  static Future<http.Response> post(String endpoint, Object body) async {
     final url = Uri.parse('${AppConstants.baseUrl}$endpoint');
     debugPrint('[ApiClient] POST $url');
     try {

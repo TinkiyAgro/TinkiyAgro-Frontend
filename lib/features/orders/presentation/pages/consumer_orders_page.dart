@@ -73,8 +73,10 @@ class _ConsumerOrdersPageState extends State<ConsumerOrdersPage> {
           children: [
             const Icon(Icons.error_outline, color: Colors.redAccent, size: 48),
             const SizedBox(height: 12),
-            Text('No se pudieron cargar los pedidos',
-                style: TextStyle(color: Colors.grey.shade600)),
+            Text(
+              'No se pudieron cargar los pedidos',
+              style: TextStyle(color: Colors.grey.shade600),
+            ),
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: _cargar,
@@ -94,11 +96,16 @@ class _ConsumerOrdersPageState extends State<ConsumerOrdersPage> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.inventory_2_outlined,
-                size: 64, color: Colors.grey.shade300),
+            Icon(
+              Icons.inventory_2_outlined,
+              size: 64,
+              color: Colors.grey.shade300,
+            ),
             const SizedBox(height: 12),
-            Text('Aún no tienes pedidos',
-                style: TextStyle(fontSize: 16, color: Colors.grey.shade500)),
+            Text(
+              'Aún no tienes pedidos',
+              style: TextStyle(fontSize: 16, color: Colors.grey.shade500),
+            ),
           ],
         ),
       );
@@ -109,12 +116,13 @@ class _ConsumerOrdersPageState extends State<ConsumerOrdersPage> {
       child: ListView.builder(
         padding: const EdgeInsets.symmetric(horizontal: 16),
         itemCount: _pedidos.length,
-        itemBuilder: (context, index) => _buildOrderCard(_pedidos[index]),
+        itemBuilder: (context, index) =>
+            _buildOrderCard(_pedidos[index], index + 1),
       ),
     );
   }
 
-  Widget _buildOrderCard(PedidoConsumidor pedido) {
+  Widget _buildOrderCard(PedidoConsumidor pedido, int displayNumber) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
@@ -162,7 +170,7 @@ class _ConsumerOrdersPageState extends State<ConsumerOrdersPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Pedido #${pedido.numero}',
+                          'Pedido #$displayNumber',
                           style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
@@ -226,7 +234,9 @@ class _ConsumerOrdersPageState extends State<ConsumerOrdersPage> {
           Icon(
             isProgress ? Icons.access_time : Icons.check_circle_outline,
             size: 14,
-            color: isProgress ? const Color(0xFFF57C00) : const Color(0xFF5CA399),
+            color: isProgress
+                ? const Color(0xFFF57C00)
+                : const Color(0xFF5CA399),
           ),
           const SizedBox(width: 5),
           Text(

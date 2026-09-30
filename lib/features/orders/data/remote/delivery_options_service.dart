@@ -9,9 +9,13 @@ class DeliveryOptionsService {
   /// GET /api/orders/checkout/options
   /// Returns farmers + delivery options for the current cart.
   Future<List<CheckoutFarmerOptions>> obtenerCheckoutOptions() async {
-    debugPrint('[DeliveryOptionsService] checkoutOptions → ${AppConstants.checkoutOptionsEndpoint}');
+    debugPrint(
+      '[DeliveryOptionsService] checkoutOptions → ${AppConstants.checkoutOptionsEndpoint}',
+    );
     final response = await ApiClient.get(AppConstants.checkoutOptionsEndpoint);
-    debugPrint('[DeliveryOptionsService] checkoutOptions ${response.statusCode}: ${response.body}');
+    debugPrint(
+      '[DeliveryOptionsService] checkoutOptions ${response.statusCode}: ${response.body}',
+    );
     if (response.statusCode == 200) {
       return _parseFarmerList(jsonDecode(response.body));
     }
@@ -21,16 +25,24 @@ class DeliveryOptionsService {
   /// GET /api/delivery/checkout/farmers/{farmerUsername}/options
   /// Returns delivery options + embedded pickup points for one farmer.
   Future<DeliveryOptions> obtenerOpciones(String farmerUsername) async {
-    final endpoint = AppConstants.showDeliveryOptionsEndpoint
-        .replaceFirst('{farmerUsername}', farmerUsername);
-    debugPrint('[DeliveryOptionsService] obtenerOpciones($farmerUsername) → $endpoint');
+    final endpoint = AppConstants.showDeliveryOptionsEndpoint.replaceFirst(
+      '{farmerUsername}',
+      farmerUsername,
+    );
+    debugPrint(
+      '[DeliveryOptionsService] obtenerOpciones($farmerUsername) → $endpoint',
+    );
     final response = await ApiClient.get(endpoint);
-    debugPrint('[DeliveryOptionsService] ${response.statusCode}: ${response.body}');
+    debugPrint(
+      '[DeliveryOptionsService] ${response.statusCode}: ${response.body}',
+    );
     if (response.statusCode == 200) {
       final body = jsonDecode(response.body);
       if (body is List) {
         final list = _parseFarmerList(body);
-        return list.isNotEmpty ? list.first.toDeliveryOptions() : const DeliveryOptions(options: []);
+        return list.isNotEmpty
+            ? list.first.toDeliveryOptions()
+            : const DeliveryOptions(options: []);
       }
       return DeliveryOptions.fromJson(body as Map<String, dynamic>);
     }
@@ -39,7 +51,9 @@ class DeliveryOptionsService {
 
   /// POST /api/orders/checkout/payment-options
   /// Returns available payment methods (and optionally totals) per farmer.
-  Future<PaymentSummary> obtenerPaymentOptions(List<CheckoutFarmer> farmers) async {
+  Future<PaymentSummary> obtenerPaymentOptions(
+    List<CheckoutFarmer> farmers,
+  ) async {
     final payload = {
       'farmers': farmers.map((f) {
         final method = f.tipoEntrega == 'Recojo' ? 'PICKUP' : 'DELIVERY';
@@ -53,9 +67,16 @@ class DeliveryOptionsService {
         };
       }).toList(),
     };
-    debugPrint('[DeliveryOptionsService] paymentOptions → ${AppConstants.paymentOptionsEndpoint}');
-    final response = await ApiClient.post(AppConstants.paymentOptionsEndpoint, payload);
-    debugPrint('[DeliveryOptionsService] paymentOptions ${response.statusCode}: ${response.body}');
+    debugPrint(
+      '[DeliveryOptionsService] paymentOptions → ${AppConstants.paymentOptionsEndpoint}',
+    );
+    final response = await ApiClient.post(
+      AppConstants.paymentOptionsEndpoint,
+      payload,
+    );
+    debugPrint(
+      '[DeliveryOptionsService] paymentOptions ${response.statusCode}: ${response.body}',
+    );
     if (response.statusCode == 200) {
       final body = jsonDecode(response.body);
       if (body is Map<String, dynamic>) {
@@ -80,7 +101,9 @@ class DeliveryOptionsService {
       if (list is List) {
         return list
             .whereType<Map>()
-            .map((e) => CheckoutFarmerOptions.fromJson(e.cast<String, dynamic>()))
+            .map(
+              (e) => CheckoutFarmerOptions.fromJson(e.cast<String, dynamic>()),
+            )
             .toList();
       }
       return [CheckoutFarmerOptions.fromJson(body)];
@@ -108,7 +131,8 @@ class CheckoutFarmerOptions {
 
   factory CheckoutFarmerOptions.fromJson(Map<String, dynamic> json) {
     final username = json['farmerUsername']?.toString() ?? '';
-    final name = json['farmerName']?.toString() ??
+    final name =
+        json['farmerName']?.toString() ??
         json['farmerDisplayName']?.toString() ??
         json['displayName']?.toString() ??
         username;
@@ -117,14 +141,21 @@ class CheckoutFarmerOptions {
           json['avatarUrl']?.toString() ??
           '',
     );
-    final subtotal = _d(json['subtotal'] ?? json['productsSubtotal'] ?? json['productsTotal']);
+    final subtotal = _d(
+      json['subtotal'] ?? json['productsSubtotal'] ?? json['productsTotal'],
+    );
 
     // Parse per-farmer payment methods
-    final rawPm = json['paymentMethods'] ?? json['acceptedPaymentMethods'] ?? const [];
+    final rawPm =
+        json['paymentMethods'] ?? json['acceptedPaymentMethods'] ?? const [];
     final pm = <String>[];
     if (rawPm is List) {
       for (final m in rawPm) {
-        final s = (m is Map ? (m['type'] ?? m['method']) : m)?.toString().toUpperCase() ?? '';
+        final s =
+            (m is Map ? (m['type'] ?? m['method']) : m)
+                ?.toString()
+                .toUpperCase() ??
+            '';
         if (s == 'YAPE' || s == 'YAPE_PAY') {
           pm.add('Yape');
         } else if (s == 'CASH' || s == 'EFECTIVO') {
@@ -136,11 +167,20 @@ class CheckoutFarmerOptions {
     }
 
     final opts = <DeliveryOption>[];
+    final pickupPoints = parseCheckoutPickupPoints(json['pickupPoints']);
     final rawOptions = json['options'] ?? json['deliveryOptions'];
     if (rawOptions is List) {
       for (final o in rawOptions) {
         if (o is Map<String, dynamic>) {
-          opts.add(DeliveryOption.fromJsonOption(o));
+          final option = DeliveryOption.fromJsonOption(o);
+          if (option.type == 'PICKUP') {
+            final points = option.pickupPoints.isNotEmpty
+                ? option.pickupPoints
+                : pickupPoints;
+            if (points.isNotEmpty) opts.add(option.withPickupPoints(points));
+          } else if (option.type != 'DISABLED') {
+            opts.add(option);
+          }
         }
       }
     }
@@ -149,8 +189,11 @@ class CheckoutFarmerOptions {
     if (opts.isEmpty) {
       final pk = _d(json['pickupCost'] ?? json['pickup_cost']);
       final dl = _d(json['deliveryCost'] ?? json['delivery_cost']);
-      if (pk > 0 || json.containsKey('pickupCost')) {
-        opts.add(DeliveryOption(type: 'PICKUP', cost: pk));
+      if ((pk > 0 || json.containsKey('pickupCost')) &&
+          pickupPoints.isNotEmpty) {
+        opts.add(
+          DeliveryOption(type: 'PICKUP', cost: pk, pickupPoints: pickupPoints),
+        );
       }
       if (dl > 0 || json.containsKey('deliveryCost')) {
         opts.add(DeliveryOption(type: 'DELIVERY', cost: dl));
@@ -168,10 +211,10 @@ class CheckoutFarmerOptions {
   }
 
   DeliveryOptions toDeliveryOptions() => DeliveryOptions(
-        farmerDisplayName: farmerDisplayName,
-        farmerAvatarUrl: farmerAvatarUrl,
-        options: options,
-      );
+    farmerDisplayName: farmerDisplayName,
+    farmerAvatarUrl: farmerAvatarUrl,
+    options: options,
+  );
 }
 
 double _d(dynamic v) {

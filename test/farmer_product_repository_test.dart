@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:drift/native.dart';
@@ -119,6 +120,96 @@ void main() {
     final cached = (await repository.watchProducts().first).single;
     expect(cached.syncState, EntitySyncState.conflict);
   });
+
+  test('a new edit retries and replaces a previous conflict', () async {
+    remote.products = [_productJson(id: 'remote-1', version: 2)];
+    await repository.refreshFromRemote();
+    await repository.updateProduct('remote-1', {
+      ..._productPayload(),
+      'name': 'Nombre temporal',
+    });
+    remote.updateError = Exception('Error al modificar producto: 409');
+    SessionManager().setSession(rol: 'AGRICULTOR');
+    await repository.syncPending(force: true);
+
+    remote.updateError = null;
+    remote.products = [_productJson(id: 'remote-1', version: 3)];
+    SessionManager().setSession(rol: 'TEST');
+    await repository.updateProduct('remote-1', _productPayload());
+    SessionManager().setSession(rol: 'AGRICULTOR');
+    await repository.syncPending(force: true);
+
+    final cached = (await repository.watchProducts().first).single;
+    expect(cached.product.nombre, 'Papa amarilla');
+    expect(cached.syncState, EntitySyncState.synced);
+    expect(remote.updatedVersions.last, 3);
+    expect(await repository.watchPendingCount().first, 0);
+  });
+
+  test('serializes rapid edits and refreshes the optimistic version', () async {
+    remote.products = [_productJson(id: 'remote-1', version: 4)];
+    await repository.refreshFromRemote();
+    await repository.updateProduct('remote-1', {
+      ..._productPayload(),
+      'name': 'Nombre temporal',
+      'category': 'FRUTAS',
+    });
+    remote.updateGate = Completer<void>();
+    remote.updateStarted = Completer<void>();
+    SessionManager().setSession(rol: 'AGRICULTOR');
+
+    final firstSync = repository.syncPending(force: true);
+    await remote.updateStarted!.future;
+    await repository.updateProduct('remote-1', _productPayload());
+    remote.updateGate!.complete();
+    await firstSync;
+
+    final cached = (await repository.watchProducts().first).single;
+    expect(remote.updatedVersions, [4, 5]);
+    expect(cached.product.nombre, 'Papa amarilla');
+    expect(cached.product.categoria, 'Tubérculos');
+    expect(cached.syncState, EntitySyncState.synced);
+    expect(await repository.watchPendingCount().first, 0);
+  });
+
+  test('deleting a conflicted product removes stale operations', () async {
+    remote.products = [_productJson(id: 'remote-1', version: 2)];
+    await repository.refreshFromRemote();
+    await repository.updateProduct('remote-1', _productPayload());
+    remote.updateError = Exception('Error al modificar producto: 409');
+    SessionManager().setSession(rol: 'AGRICULTOR');
+    await repository.syncPending(force: true);
+
+    await repository.deleteProduct('remote-1');
+    await repository.syncPending(force: true);
+
+    expect(await repository.watchProducts().first, isEmpty);
+    expect(await repository.watchPendingCount().first, 0);
+    expect(remote.deleteCalls, 1);
+  });
+
+  test('refresh removes orphaned product conflicts from the counter', () async {
+    await database
+        .into(database.syncOperations)
+        .insert(
+          SyncOperationsCompanion.insert(
+            id: 'orphan-operation',
+            idempotencyKey: 'orphan-operation',
+            ownerUsername: 'farmer_test',
+            role: 'AGRICULTOR',
+            operationType: SyncOperationType.updateProduct.value,
+            entityType: 'PRODUCT',
+            entityLocalId: 'deleted-product',
+            payloadJson: '{}',
+            createdAt: DateTime.now(),
+            state: SyncOperationState.conflict.value,
+          ),
+        );
+
+    expect(await repository.watchPendingCount().first, 1);
+    await repository.refreshFromRemote();
+    expect(await repository.watchPendingCount().first, 0);
+  });
 }
 
 Map<String, dynamic> _productPayload() => {
@@ -171,6 +262,9 @@ class FakeProductRemote implements FarmerProductRemoteDataSource {
   final List<String> createdNames = [];
   final List<int> updatedVersions = [];
   Object? updateError;
+  Completer<void>? updateStarted;
+  Completer<void>? updateGate;
+  int deleteCalls = 0;
 
   @override
   Future<List<Map<String, dynamic>>> listarProductosRaw() async => products;
@@ -195,7 +289,9 @@ class FakeProductRemote implements FarmerProductRemoteDataSource {
   }
 
   @override
-  Future<void> eliminarProducto(String id) async {}
+  Future<void> eliminarProducto(String id) async {
+    deleteCalls++;
+  }
 
   @override
   Future<Map<String, dynamic>> modificarProductoRaw(
@@ -204,6 +300,10 @@ class FakeProductRemote implements FarmerProductRemoteDataSource {
     File? imageFile,
   }) async {
     if (updateError != null) throw updateError!;
+    updateStarted?.complete();
+    await updateGate?.future;
+    updateStarted = null;
+    updateGate = null;
     final version = datos['version'] as int? ?? 0;
     updatedVersions.add(version);
     return {...datos, 'id': id, 'version': version + 1};

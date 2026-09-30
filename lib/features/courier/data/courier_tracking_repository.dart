@@ -207,6 +207,7 @@ class CourierTrackingRepository {
         'label': sentPayload['label'],
         'latitude': sentPayload['latitude'],
         'longitude': sentPayload['longitude'],
+        'capturedAt': sentPayload['capturedAt'],
       });
       await _db.transaction(() async {
         final currentOperation = await (_db.select(

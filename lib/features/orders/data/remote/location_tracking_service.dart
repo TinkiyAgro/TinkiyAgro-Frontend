@@ -73,6 +73,19 @@ class LocationTrackingService {
     debugPrint('[LocationTracking] detenido');
   }
 
+  /// Retira un pedido ya entregado y detiene el GPS cuando no queda ninguno.
+  void stopForSubOrder(String subOrderId) {
+    _subOrderIds.remove(subOrderId);
+    if (_subOrderIds.isEmpty) {
+      stop();
+    } else {
+      debugPrint(
+        '[LocationTracking] pedido $subOrderId finalizado; '
+        'continúan $_subOrderIds',
+      );
+    }
+  }
+
   Future<void> _sendAll() async {
     if (_subOrderIds.isEmpty) return;
     try {

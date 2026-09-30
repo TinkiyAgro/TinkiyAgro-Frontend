@@ -31,6 +31,7 @@ class _FarmerOrdersPageState extends State<FarmerOrdersPage> {
   int _pendientes = 0;
   DateTime? _ultimaSincronizacion;
   int _filterIndex = 0;
+  final Set<String> _asignandoDespacho = {};
   static const _filters = ['Todo', 'Por preparar', 'En camino', 'Entregado'];
 
   @override
@@ -163,20 +164,38 @@ class _FarmerOrdersPageState extends State<FarmerOrdersPage> {
   }
 
   List<String> _subOrderIds(FarmerOrderGroup group) => group.clientes
-      .map((c) => c.subOrderId)
+      .expand((c) => c.subOrderIds)
       .where((id) => id.isNotEmpty)
       .toList();
 
   Future<void> _asignarYoMismo(FarmerOrderGroup group) async {
     final ids = _subOrderIds(group);
+    if (ids.isEmpty || _asignandoDespacho.contains(group.id)) return;
     debugPrint('[FarmerPage] _asignarYoMismo ids=$ids');
+    final previousType = group.despachoType;
+    final previousName = group.repartidorNombre;
+    final previousUsername = group.repartidorUsername;
+    setState(() {
+      _asignandoDespacho.add(group.id);
+      group.despachoType = 'Yo mismo';
+      group.repartidorNombre = null;
+      group.repartidorUsername = null;
+    });
     try {
       await _service.asignarDespachador(ids, 'FARMER');
       debugPrint('[FarmerPage] _asignarYoMismo OK');
-      if (mounted) setState(() => group.despachoType = 'Yo mismo');
     } catch (e) {
       debugPrint('[FarmerPage] _asignarYoMismo ERROR: $e');
+      if (mounted) {
+        setState(() {
+          group.despachoType = previousType;
+          group.repartidorNombre = previousName;
+          group.repartidorUsername = previousUsername;
+        });
+      }
       _mostrarError('Error al asignar despachador: $e');
+    } finally {
+      if (mounted) setState(() => _asignandoDespacho.remove(group.id));
     }
   }
 
@@ -222,10 +241,7 @@ class _FarmerOrdersPageState extends State<FarmerOrdersPage> {
   }
 
   Future<void> _marcarPreparado(FarmerOrderGroup group) async {
-    final ids = group.clientes
-        .map((c) => c.subOrderId)
-        .where((id) => id.isNotEmpty)
-        .toList();
+    final ids = _subOrderIds(group);
     try {
       await _repository.markPrepared(group.id, ids);
       if (mounted) {
@@ -755,8 +771,11 @@ class _FarmerOrdersPageState extends State<FarmerOrdersPage> {
     IconData icon,
   ) {
     final selected = group.despachoType == type;
+    final assigning = _asignandoDespacho.contains(group.id);
     return GestureDetector(
+      behavior: HitTestBehavior.opaque,
       onTap: () {
+        if (assigning) return;
         if (type == 'Yo mismo') {
           _asignarYoMismo(group);
         } else {
@@ -776,11 +795,17 @@ class _FarmerOrdersPageState extends State<FarmerOrdersPage> {
         ),
         child: Column(
           children: [
-            Icon(
-              icon,
-              color: selected ? const Color(0xFF5CA399) : Colors.black54,
-              size: 22,
-            ),
+            if (assigning && selected)
+              const SizedBox.square(
+                dimension: 22,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            else
+              Icon(
+                icon,
+                color: selected ? const Color(0xFF5CA399) : Colors.black54,
+                size: 22,
+              ),
             const SizedBox(height: 4),
             Text(
               type,
@@ -843,7 +868,10 @@ class _FarmerOrdersPageState extends State<FarmerOrdersPage> {
               if (_sincronizando && !conflict)
                 SizedBox.square(
                   dimension: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: color),
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: color,
+                  ),
                 )
               else
                 Icon(
@@ -873,7 +901,9 @@ class _FarmerOrdersPageState extends State<FarmerOrdersPage> {
               child: TextButton.icon(
                 onPressed: onRetry,
                 icon: const Icon(Icons.sync, size: 17),
-                label: Text(_sincronizando ? 'Sincronizando' : 'Sincronizar ahora'),
+                label: Text(
+                  _sincronizando ? 'Sincronizando' : 'Sincronizar ahora',
+                ),
                 style: TextButton.styleFrom(
                   foregroundColor: color,
                   visualDensity: VisualDensity.compact,

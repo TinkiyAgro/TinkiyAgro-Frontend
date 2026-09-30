@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../data/product_model.dart';
 import '../../data/catalog_repository.dart';
+import 'dart:async';
+import 'package:visibility_detector/visibility_detector.dart';
+import '../../../../core/evaluation/evaluation_analytics_service.dart';
 
 class SeccionProductosPage extends StatelessWidget {
   const SeccionProductosPage({super.key});
@@ -77,10 +80,27 @@ class SeccionProductosPage extends StatelessWidget {
                 orElse: () => producto,
               );
 
-              return _buildTarjetaProducto(
-                context,
-                prodActualizado,
-                repositorio,
+              return VisibilityDetector(
+                key: ValueKey(
+                  'section-${prodActualizado.sourceSection}-${prodActualizado.id}-$index',
+                ),
+                onVisibilityChanged: (info) {
+                  if (info.visibleFraction < 0.5) return;
+                  unawaited(
+                    EvaluationAnalyticsService.instance.impression(
+                      productId: prodActualizado.id,
+                      farmer: prodActualizado.farmerUsername,
+                      section: prodActualizado.sourceSection,
+                      position: prodActualizado.sourcePosition,
+                      requestId: prodActualizado.recommendationRequestId,
+                    ),
+                  );
+                },
+                child: _buildTarjetaProducto(
+                  context,
+                  prodActualizado,
+                  repositorio,
+                ),
               );
             },
           );
@@ -91,7 +111,9 @@ class SeccionProductosPage extends StatelessWidget {
 
   static String? _productStatusLabel(Producto p) {
     if (p.purchasable) return null;
-    return p.availabilityMessage.isNotEmpty ? p.availabilityMessage : 'No disponible';
+    return p.availabilityMessage.isNotEmpty
+        ? p.availabilityMessage
+        : 'No disponible';
   }
 
   static Color _productStatusColor(Producto p) {
@@ -112,8 +134,20 @@ class SeccionProductosPage extends StatelessWidget {
       onTap: unavailable
           ? null
           : () {
-              Navigator.pushNamed(context, '/detalle_producto',
-                  arguments: producto);
+              unawaited(
+                EvaluationAnalyticsService.instance.click(
+                  productId: producto.id,
+                  farmer: producto.farmerUsername,
+                  section: producto.sourceSection,
+                  position: producto.sourcePosition,
+                  requestId: producto.recommendationRequestId,
+                ),
+              );
+              Navigator.pushNamed(
+                context,
+                '/detalle_producto',
+                arguments: producto,
+              );
             },
       child: Container(
         decoration: BoxDecoration(
@@ -150,7 +184,9 @@ class SeccionProductosPage extends StatelessWidget {
                                   shape: BoxShape.circle,
                                   boxShadow: [
                                     BoxShadow(
-                                      color: Colors.black.withValues(alpha: 0.06),
+                                      color: Colors.black.withValues(
+                                        alpha: 0.06,
+                                      ),
                                       blurRadius: 10,
                                       offset: const Offset(0, 4),
                                     ),
@@ -162,7 +198,8 @@ class SeccionProductosPage extends StatelessWidget {
                                     fit: BoxFit.cover,
                                     loadingBuilder:
                                         (context, child, loadingProgress) {
-                                          if (loadingProgress == null) return child;
+                                          if (loadingProgress == null)
+                                            return child;
                                           return const Center(
                                             child: SizedBox(
                                               width: 16,
@@ -236,9 +273,7 @@ class SeccionProductosPage extends StatelessWidget {
               Positioned.fill(
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(20),
-                  child: Container(
-                    color: Colors.black.withValues(alpha: 0.35),
-                  ),
+                  child: Container(color: Colors.black.withValues(alpha: 0.35)),
                 ),
               ),
             if (statusLabel != null)
@@ -246,7 +281,10 @@ class SeccionProductosPage extends StatelessWidget {
                 child: Align(
                   alignment: const Alignment(0, -0.3),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 5,
+                    ),
                     decoration: BoxDecoration(
                       color: _productStatusColor(producto),
                       borderRadius: BorderRadius.circular(20),

@@ -31,6 +31,10 @@ class Producto {
   final bool purchasable;
   final String availabilityMessage;
   final String purchaseStatus;
+  final String farmerUsername;
+  final String sourceSection;
+  final int sourcePosition;
+  final String? recommendationRequestId;
 
   Producto({
     required this.id,
@@ -62,6 +66,10 @@ class Producto {
     this.purchasable = true,
     this.availabilityMessage = '',
     this.purchaseStatus = '',
+    this.farmerUsername = '',
+    this.sourceSection = '',
+    this.sourcePosition = 0,
+    this.recommendationRequestId,
   });
 
   factory Producto.fromJson(Map<String, dynamic> json) {
@@ -213,6 +221,10 @@ class Producto {
       purchasable: json['purchasable'] as bool? ?? true,
       availabilityMessage: json['availabilityMessage']?.toString() ?? '',
       purchaseStatus: json['purchaseStatus']?.toString() ?? '',
+      farmerUsername:
+          json['farmerUsername']?.toString() ??
+          farmerMap?['username']?.toString() ??
+          '',
     );
   }
 
@@ -272,6 +284,10 @@ class Producto {
     bool? purchasable,
     String? availabilityMessage,
     String? purchaseStatus,
+    String? farmerUsername,
+    String? sourceSection,
+    int? sourcePosition,
+    String? recommendationRequestId,
   }) {
     return Producto(
       id: id ?? this.id,
@@ -304,6 +320,11 @@ class Producto {
       purchasable: purchasable ?? this.purchasable,
       availabilityMessage: availabilityMessage ?? this.availabilityMessage,
       purchaseStatus: purchaseStatus ?? this.purchaseStatus,
+      farmerUsername: farmerUsername ?? this.farmerUsername,
+      sourceSection: sourceSection ?? this.sourceSection,
+      sourcePosition: sourcePosition ?? this.sourcePosition,
+      recommendationRequestId:
+          recommendationRequestId ?? this.recommendationRequestId,
     );
   }
 }

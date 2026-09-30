@@ -4,24 +4,7 @@ import 'package:tinkiyagro_app/features/auth/data/remote/auth_service.dart';
 import 'package:tinkiyagro_app/features/auth/data/remote/login_request.dart';
 import 'package:tinkiyagro_app/core/notifications/push_notification_service.dart';
 import 'package:tinkiyagro_app/core/session_manager.dart';
-
-/// Capitalizes the first character of each word typed.
-class _CapitalizeFirstFormatter extends TextInputFormatter {
-  @override
-  TextEditingValue formatEditUpdate(
-    TextEditingValue oldValue,
-    TextEditingValue newValue,
-  ) {
-    final text = newValue.text;
-    if (text.isEmpty) return newValue;
-    final capitalized = text[0].toUpperCase() + text.substring(1);
-    return newValue.copyWith(
-      text: capitalized,
-      selection: newValue.selection,
-      composing: newValue.composing,
-    );
-  }
-}
+import 'package:tinkiyagro_app/features/organization/data/organization_service.dart';
 
 class AuthPage extends StatefulWidget {
   const AuthPage({super.key});
@@ -34,16 +17,9 @@ class _AuthPageState extends State<AuthPage>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final _loginFormKey = GlobalKey<FormState>();
-  final _registerFormKey = GlobalKey<FormState>();
 
   final _loginUserCtrl = TextEditingController();
   final _loginPassCtrl = TextEditingController();
-
-  final _regUserCtrl = TextEditingController();
-  final _regNameCtrl = TextEditingController();
-  final _regLastNameCtrl = TextEditingController();
-  final _regPassCtrl = TextEditingController();
-  final _regPhoneCtrl = TextEditingController();
 
   bool _loginPassVisible = false;
   final _authService = AuthService();
@@ -77,11 +53,6 @@ class _AuthPageState extends State<AuthPage>
     _tabController.dispose();
     _loginUserCtrl.dispose();
     _loginPassCtrl.dispose();
-    _regUserCtrl.dispose();
-    _regNameCtrl.dispose();
-    _regLastNameCtrl.dispose();
-    _regPassCtrl.dispose();
-    _regPhoneCtrl.dispose();
     super.dispose();
   }
 
@@ -367,87 +338,47 @@ class _AuthPageState extends State<AuthPage>
   }
 
   Widget _buildRegisterForm() {
-    return Form(
-      key: _registerFormKey,
-      child: ListView(
-        padding: EdgeInsets.zero,
-        children: [
-          _buildTextField(
-            controller: _regUserCtrl,
-            labelText: 'Usuario',
-            validator: (v) => v == null || v.trim().isEmpty
-                ? 'Define un nombre de usuario'
-                : null,
-          ),
-          const SizedBox(height: 12),
-          _buildTextField(
-            controller: _regNameCtrl,
-            labelText: 'Nombres',
-            inputFormatters: [_CapitalizeFirstFormatter()],
-            validator: (v) =>
-                v == null || v.trim().isEmpty ? 'Ingresa tus nombres' : null,
-          ),
-          const SizedBox(height: 12),
-          _buildTextField(
-            controller: _regLastNameCtrl,
-            labelText: 'Apellidos',
-            inputFormatters: [_CapitalizeFirstFormatter()],
-            validator: (v) =>
-                v == null || v.trim().isEmpty ? 'Ingresa tus apellidos' : null,
-          ),
-          const SizedBox(height: 12),
-          _buildTextField(
-            controller: _regPassCtrl,
-            labelText: 'Contraseña',
-            obscureText: true,
-            validator: (v) =>
-                v == null || v.length < 6 ? 'Usa al menos 6 caracteres' : null,
-          ),
-          const SizedBox(height: 12),
-          _buildTextField(
-            controller: _regPhoneCtrl,
-            labelText: 'Celular',
-            keyboardType: TextInputType.phone,
-            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-            validator: (v) =>
-                v == null || v.trim().isEmpty ? 'Ingresa tu celular' : null,
-          ),
-          const SizedBox(height: 24),
-          SizedBox(
-            width: double.infinity,
-            height: 52,
-            child: ElevatedButton(
-              onPressed: _isLoading ? null : _submitRegisterStep1,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF5CA399),
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(26),
-                ),
-                elevation: 2,
+    return ListView(
+      padding: EdgeInsets.zero,
+      children: [
+        const Icon(
+          Icons.account_circle_outlined,
+          size: 72,
+          color: Color(0xFF5CA399),
+        ),
+        const SizedBox(height: 16),
+        const Text(
+          'Primero elige cómo usarás TinkiyAgro',
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 8),
+        const Text(
+          'Te mostraremos únicamente los datos necesarios para tu tipo de cuenta.',
+          textAlign: TextAlign.center,
+          style: TextStyle(color: Colors.black54),
+        ),
+        const SizedBox(height: 28),
+        SizedBox(
+          width: double.infinity,
+          height: 52,
+          child: ElevatedButton(
+            onPressed: () => Navigator.pushNamed(context, '/role_selection'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF5CA399),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(26),
               ),
-              child: _isLoading
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2.4,
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                      ),
-                    )
-                  : const Text(
-                      'Continuar',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+              elevation: 2,
+            ),
+            child: const Text(
+              'Elegir tipo de cuenta',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
           ),
-          const SizedBox(height: 12),
-          _buildForgotPasswordLink(),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -587,7 +518,21 @@ class _AuthPageState extends State<AuthPage>
         context,
       ).showSnackBar(const SnackBar(content: Text('Inicio de sesión exitoso')));
 
-      final destination = role == 'REPARTIDOR' ? '/courier_home' : '/home';
+      String destination = role == 'REPARTIDOR'
+          ? '/courier_home'
+          : role == 'ORGANIZACION'
+          ? '/organization_home'
+          : '/home';
+      if (role == 'CONSUMIDOR') {
+        try {
+          final preference = await OrganizationService()
+              .getDiscoveryPreferences();
+          if (preference['configured'] != true)
+            destination = '/consumer_discovery_update';
+        } catch (_) {
+          destination = '/consumer_discovery_update';
+        }
+      }
       Navigator.pushNamedAndRemoveUntil(context, destination, (route) => false);
     } catch (e) {
       if (!mounted) return;
@@ -596,22 +541,6 @@ class _AuthPageState extends State<AuthPage>
       );
     } finally {
       if (mounted) setState(() => _isLoading = false);
-    }
-  }
-
-  void _submitRegisterStep1() {
-    if (_registerFormKey.currentState!.validate()) {
-      Navigator.pushNamed(
-        context,
-        '/role_selection',
-        arguments: {
-          'username': _regUserCtrl.text.trim(),
-          'firstName': _regNameCtrl.text.trim(),
-          'lastName': _regLastNameCtrl.text.trim(),
-          'password': _regPassCtrl.text,
-          'phone': _regPhoneCtrl.text.trim(),
-        },
-      );
     }
   }
 }

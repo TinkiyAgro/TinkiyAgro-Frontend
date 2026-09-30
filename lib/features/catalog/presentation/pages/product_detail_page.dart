@@ -4,6 +4,7 @@ import '../../data/remote/catalog_service.dart';
 import '../../../cart/data/cart_manager.dart';
 import '../../../cart/data/remote/cart_service.dart';
 import '../../../favorites/data/favorites_cache.dart';
+import '../../../../core/evaluation/evaluation_analytics_service.dart';
 
 class DetalleProductoPage extends StatefulWidget {
   const DetalleProductoPage({super.key});
@@ -44,7 +45,12 @@ class _DetalleProductoPageState extends State<DetalleProductoPage> {
       final detalle = await _catalogService.obtenerDetalle(_productoBase.id);
       if (!mounted) return;
       setState(() {
-        _productoDetalle = detalle;
+        _productoDetalle = detalle.copiarCon(
+          sourceSection: _productoBase.sourceSection,
+          sourcePosition: _productoBase.sourcePosition,
+          recommendationRequestId: _productoBase.recommendationRequestId,
+          farmerUsername: _productoBase.farmerUsername,
+        );
         if (!detalle.ventaPorKilo && detalle.ventaPorCaja) {
           _formatoVenta = 'Caja';
         } else if (detalle.ventaPorKilo) {
@@ -109,6 +115,14 @@ class _DetalleProductoPageState extends State<DetalleProductoPage> {
       );
       itemLocal.apiId = apiId;
 
+      await EvaluationAnalyticsService.instance.addToCart(
+        productId: _p.id,
+        farmer: _p.farmerUsername,
+        section: _p.sourceSection,
+        position: _p.sourcePosition,
+        requestId: _p.recommendationRequestId,
+      );
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -169,8 +183,14 @@ class _DetalleProductoPageState extends State<DetalleProductoPage> {
             ),
             const SizedBox(height: 14),
             Text(
-              producto.nombreVendedor.isNotEmpty ? producto.nombreVendedor : 'Agricultor',
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black),
+              producto.nombreVendedor.isNotEmpty
+                  ? producto.nombreVendedor
+                  : 'Agricultor',
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Colors.black,
+              ),
             ),
             const SizedBox(height: 6),
             Row(
@@ -180,7 +200,10 @@ class _DetalleProductoPageState extends State<DetalleProductoPage> {
                 const SizedBox(width: 4),
                 Text(
                   producto.calificacionVendedor.toStringAsFixed(1),
-                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ],
             ),
@@ -190,7 +213,11 @@ class _DetalleProductoPageState extends State<DetalleProductoPage> {
                 alignment: Alignment.centerLeft,
                 child: Text(
                   producto.farmerDescription,
-                  style: TextStyle(fontSize: 14, color: Colors.grey.shade700, height: 1.4),
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey.shade700,
+                    height: 1.4,
+                  ),
                 ),
               ),
             ],
@@ -198,9 +225,16 @@ class _DetalleProductoPageState extends State<DetalleProductoPage> {
               const SizedBox(height: 14),
               Row(
                 children: [
-                  const Icon(Icons.phone_outlined, size: 18, color: Color(0xFF5CA399)),
+                  const Icon(
+                    Icons.phone_outlined,
+                    size: 18,
+                    color: Color(0xFF5CA399),
+                  ),
                   const SizedBox(width: 8),
-                  Text(producto.farmerPhone, style: const TextStyle(fontSize: 14)),
+                  Text(
+                    producto.farmerPhone,
+                    style: const TextStyle(fontSize: 14),
+                  ),
                 ],
               ),
             ],
@@ -417,7 +451,8 @@ class _DetalleProductoPageState extends State<DetalleProductoPage> {
                             children: [
                               CircleAvatar(
                                 radius: 24,
-                                backgroundImage: producto.urlAvatarVendedor.isNotEmpty
+                                backgroundImage:
+                                    producto.urlAvatarVendedor.isNotEmpty
                                     ? NetworkImage(producto.urlAvatarVendedor)
                                     : null,
                                 backgroundColor: Colors.grey.shade200,
@@ -443,10 +478,15 @@ class _DetalleProductoPageState extends State<DetalleProductoPage> {
                                     const SizedBox(height: 2),
                                     Row(
                                       children: [
-                                        const Icon(Icons.star, color: Colors.amber, size: 14),
+                                        const Icon(
+                                          Icons.star,
+                                          color: Colors.amber,
+                                          size: 14,
+                                        ),
                                         const SizedBox(width: 4),
                                         Text(
-                                          producto.calificacionVendedor.toStringAsFixed(1),
+                                          producto.calificacionVendedor
+                                              .toStringAsFixed(1),
                                           style: TextStyle(
                                             fontSize: 13,
                                             fontWeight: FontWeight.w600,
@@ -458,7 +498,10 @@ class _DetalleProductoPageState extends State<DetalleProductoPage> {
                                   ],
                                 ),
                               ),
-                              Icon(Icons.chevron_right, color: Colors.grey.shade400),
+                              Icon(
+                                Icons.chevron_right,
+                                color: Colors.grey.shade400,
+                              ),
                             ],
                           ),
                         ),
@@ -505,10 +548,17 @@ class _DetalleProductoPageState extends State<DetalleProductoPage> {
                                   const SizedBox(width: 4),
                                   ...List.generate(5, (index) {
                                     final val = index + 1;
-                                    final llena = val <= producto.calificacion.floor();
-                                    final media = !llena && (producto.calificacion - index >= 0.5);
+                                    final llena =
+                                        val <= producto.calificacion.floor();
+                                    final media =
+                                        !llena &&
+                                        (producto.calificacion - index >= 0.5);
                                     return Icon(
-                                      llena ? Icons.star : (media ? Icons.star_half : Icons.star_border),
+                                      llena
+                                          ? Icons.star
+                                          : (media
+                                                ? Icons.star_half
+                                                : Icons.star_border),
                                       color: Colors.amber,
                                       size: 14,
                                     );

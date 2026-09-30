@@ -2673,6 +2673,18 @@ class $SyncOperationsTable extends SyncOperations
     type: DriftSqlType.dateTime,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _enqueuedAtMeta = const VerificationMeta(
+    'enqueuedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> enqueuedAt = GeneratedColumn<DateTime>(
+    'enqueued_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    clientDefault: DateTime.now,
+  );
   static const VerificationMeta _lastAttemptAtMeta = const VerificationMeta(
     'lastAttemptAt',
   );
@@ -2683,6 +2695,51 @@ class $SyncOperationsTable extends SyncOperations
         aliasedName,
         true,
         type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _syncedAtMeta = const VerificationMeta(
+    'syncedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> syncedAt = GeneratedColumn<DateTime>(
+    'synced_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _failedAtMeta = const VerificationMeta(
+    'failedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> failedAt = GeneratedColumn<DateTime>(
+    'failed_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _networkConditionMeta = const VerificationMeta(
+    'networkCondition',
+  );
+  @override
+  late final GeneratedColumn<String> networkCondition = GeneratedColumn<String>(
+    'network_condition',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    clientDefault: () => PilotSession.networkCondition,
+  );
+  static const VerificationMeta _conflictResolutionMeta =
+      const VerificationMeta('conflictResolution');
+  @override
+  late final GeneratedColumn<String> conflictResolution =
+      GeneratedColumn<String>(
+        'conflict_resolution',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
         requiredDuringInsert: false,
       );
   static const VerificationMeta _attemptsMeta = const VerificationMeta(
@@ -2730,7 +2787,12 @@ class $SyncOperationsTable extends SyncOperations
     payloadJson,
     imagePath,
     createdAt,
+    enqueuedAt,
     lastAttemptAt,
+    syncedAt,
+    failedAt,
+    networkCondition,
+    conflictResolution,
     attempts,
     state,
     lastError,
@@ -2843,12 +2905,48 @@ class $SyncOperationsTable extends SyncOperations
     } else if (isInserting) {
       context.missing(_createdAtMeta);
     }
+    if (data.containsKey('enqueued_at')) {
+      context.handle(
+        _enqueuedAtMeta,
+        enqueuedAt.isAcceptableOrUnknown(data['enqueued_at']!, _enqueuedAtMeta),
+      );
+    }
     if (data.containsKey('last_attempt_at')) {
       context.handle(
         _lastAttemptAtMeta,
         lastAttemptAt.isAcceptableOrUnknown(
           data['last_attempt_at']!,
           _lastAttemptAtMeta,
+        ),
+      );
+    }
+    if (data.containsKey('synced_at')) {
+      context.handle(
+        _syncedAtMeta,
+        syncedAt.isAcceptableOrUnknown(data['synced_at']!, _syncedAtMeta),
+      );
+    }
+    if (data.containsKey('failed_at')) {
+      context.handle(
+        _failedAtMeta,
+        failedAt.isAcceptableOrUnknown(data['failed_at']!, _failedAtMeta),
+      );
+    }
+    if (data.containsKey('network_condition')) {
+      context.handle(
+        _networkConditionMeta,
+        networkCondition.isAcceptableOrUnknown(
+          data['network_condition']!,
+          _networkConditionMeta,
+        ),
+      );
+    }
+    if (data.containsKey('conflict_resolution')) {
+      context.handle(
+        _conflictResolutionMeta,
+        conflictResolution.isAcceptableOrUnknown(
+          data['conflict_resolution']!,
+          _conflictResolutionMeta,
         ),
       );
     }
@@ -2925,9 +3023,29 @@ class $SyncOperationsTable extends SyncOperations
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
       )!,
+      enqueuedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}enqueued_at'],
+      ),
       lastAttemptAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}last_attempt_at'],
+      ),
+      syncedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}synced_at'],
+      ),
+      failedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}failed_at'],
+      ),
+      networkCondition: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}network_condition'],
+      ),
+      conflictResolution: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}conflict_resolution'],
       ),
       attempts: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
@@ -2962,7 +3080,12 @@ class SyncOperation extends DataClass implements Insertable<SyncOperation> {
   final String payloadJson;
   final String? imagePath;
   final DateTime createdAt;
+  final DateTime? enqueuedAt;
   final DateTime? lastAttemptAt;
+  final DateTime? syncedAt;
+  final DateTime? failedAt;
+  final String? networkCondition;
+  final String? conflictResolution;
   final int attempts;
   final String state;
   final String? lastError;
@@ -2978,7 +3101,12 @@ class SyncOperation extends DataClass implements Insertable<SyncOperation> {
     required this.payloadJson,
     this.imagePath,
     required this.createdAt,
+    this.enqueuedAt,
     this.lastAttemptAt,
+    this.syncedAt,
+    this.failedAt,
+    this.networkCondition,
+    this.conflictResolution,
     required this.attempts,
     required this.state,
     this.lastError,
@@ -3001,8 +3129,23 @@ class SyncOperation extends DataClass implements Insertable<SyncOperation> {
       map['image_path'] = Variable<String>(imagePath);
     }
     map['created_at'] = Variable<DateTime>(createdAt);
+    if (!nullToAbsent || enqueuedAt != null) {
+      map['enqueued_at'] = Variable<DateTime>(enqueuedAt);
+    }
     if (!nullToAbsent || lastAttemptAt != null) {
       map['last_attempt_at'] = Variable<DateTime>(lastAttemptAt);
+    }
+    if (!nullToAbsent || syncedAt != null) {
+      map['synced_at'] = Variable<DateTime>(syncedAt);
+    }
+    if (!nullToAbsent || failedAt != null) {
+      map['failed_at'] = Variable<DateTime>(failedAt);
+    }
+    if (!nullToAbsent || networkCondition != null) {
+      map['network_condition'] = Variable<String>(networkCondition);
+    }
+    if (!nullToAbsent || conflictResolution != null) {
+      map['conflict_resolution'] = Variable<String>(conflictResolution);
     }
     map['attempts'] = Variable<int>(attempts);
     map['state'] = Variable<String>(state);
@@ -3029,9 +3172,24 @@ class SyncOperation extends DataClass implements Insertable<SyncOperation> {
           ? const Value.absent()
           : Value(imagePath),
       createdAt: Value(createdAt),
+      enqueuedAt: enqueuedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(enqueuedAt),
       lastAttemptAt: lastAttemptAt == null && nullToAbsent
           ? const Value.absent()
           : Value(lastAttemptAt),
+      syncedAt: syncedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(syncedAt),
+      failedAt: failedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(failedAt),
+      networkCondition: networkCondition == null && nullToAbsent
+          ? const Value.absent()
+          : Value(networkCondition),
+      conflictResolution: conflictResolution == null && nullToAbsent
+          ? const Value.absent()
+          : Value(conflictResolution),
       attempts: Value(attempts),
       state: Value(state),
       lastError: lastError == null && nullToAbsent
@@ -3057,7 +3215,14 @@ class SyncOperation extends DataClass implements Insertable<SyncOperation> {
       payloadJson: serializer.fromJson<String>(json['payloadJson']),
       imagePath: serializer.fromJson<String?>(json['imagePath']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      enqueuedAt: serializer.fromJson<DateTime?>(json['enqueuedAt']),
       lastAttemptAt: serializer.fromJson<DateTime?>(json['lastAttemptAt']),
+      syncedAt: serializer.fromJson<DateTime?>(json['syncedAt']),
+      failedAt: serializer.fromJson<DateTime?>(json['failedAt']),
+      networkCondition: serializer.fromJson<String?>(json['networkCondition']),
+      conflictResolution: serializer.fromJson<String?>(
+        json['conflictResolution'],
+      ),
       attempts: serializer.fromJson<int>(json['attempts']),
       state: serializer.fromJson<String>(json['state']),
       lastError: serializer.fromJson<String?>(json['lastError']),
@@ -3078,7 +3243,12 @@ class SyncOperation extends DataClass implements Insertable<SyncOperation> {
       'payloadJson': serializer.toJson<String>(payloadJson),
       'imagePath': serializer.toJson<String?>(imagePath),
       'createdAt': serializer.toJson<DateTime>(createdAt),
+      'enqueuedAt': serializer.toJson<DateTime?>(enqueuedAt),
       'lastAttemptAt': serializer.toJson<DateTime?>(lastAttemptAt),
+      'syncedAt': serializer.toJson<DateTime?>(syncedAt),
+      'failedAt': serializer.toJson<DateTime?>(failedAt),
+      'networkCondition': serializer.toJson<String?>(networkCondition),
+      'conflictResolution': serializer.toJson<String?>(conflictResolution),
       'attempts': serializer.toJson<int>(attempts),
       'state': serializer.toJson<String>(state),
       'lastError': serializer.toJson<String?>(lastError),
@@ -3097,7 +3267,12 @@ class SyncOperation extends DataClass implements Insertable<SyncOperation> {
     String? payloadJson,
     Value<String?> imagePath = const Value.absent(),
     DateTime? createdAt,
+    Value<DateTime?> enqueuedAt = const Value.absent(),
     Value<DateTime?> lastAttemptAt = const Value.absent(),
+    Value<DateTime?> syncedAt = const Value.absent(),
+    Value<DateTime?> failedAt = const Value.absent(),
+    Value<String?> networkCondition = const Value.absent(),
+    Value<String?> conflictResolution = const Value.absent(),
     int? attempts,
     String? state,
     Value<String?> lastError = const Value.absent(),
@@ -3113,9 +3288,18 @@ class SyncOperation extends DataClass implements Insertable<SyncOperation> {
     payloadJson: payloadJson ?? this.payloadJson,
     imagePath: imagePath.present ? imagePath.value : this.imagePath,
     createdAt: createdAt ?? this.createdAt,
+    enqueuedAt: enqueuedAt.present ? enqueuedAt.value : this.enqueuedAt,
     lastAttemptAt: lastAttemptAt.present
         ? lastAttemptAt.value
         : this.lastAttemptAt,
+    syncedAt: syncedAt.present ? syncedAt.value : this.syncedAt,
+    failedAt: failedAt.present ? failedAt.value : this.failedAt,
+    networkCondition: networkCondition.present
+        ? networkCondition.value
+        : this.networkCondition,
+    conflictResolution: conflictResolution.present
+        ? conflictResolution.value
+        : this.conflictResolution,
     attempts: attempts ?? this.attempts,
     state: state ?? this.state,
     lastError: lastError.present ? lastError.value : this.lastError,
@@ -3145,9 +3329,20 @@ class SyncOperation extends DataClass implements Insertable<SyncOperation> {
           : this.payloadJson,
       imagePath: data.imagePath.present ? data.imagePath.value : this.imagePath,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      enqueuedAt: data.enqueuedAt.present
+          ? data.enqueuedAt.value
+          : this.enqueuedAt,
       lastAttemptAt: data.lastAttemptAt.present
           ? data.lastAttemptAt.value
           : this.lastAttemptAt,
+      syncedAt: data.syncedAt.present ? data.syncedAt.value : this.syncedAt,
+      failedAt: data.failedAt.present ? data.failedAt.value : this.failedAt,
+      networkCondition: data.networkCondition.present
+          ? data.networkCondition.value
+          : this.networkCondition,
+      conflictResolution: data.conflictResolution.present
+          ? data.conflictResolution.value
+          : this.conflictResolution,
       attempts: data.attempts.present ? data.attempts.value : this.attempts,
       state: data.state.present ? data.state.value : this.state,
       lastError: data.lastError.present ? data.lastError.value : this.lastError,
@@ -3168,7 +3363,12 @@ class SyncOperation extends DataClass implements Insertable<SyncOperation> {
           ..write('payloadJson: $payloadJson, ')
           ..write('imagePath: $imagePath, ')
           ..write('createdAt: $createdAt, ')
+          ..write('enqueuedAt: $enqueuedAt, ')
           ..write('lastAttemptAt: $lastAttemptAt, ')
+          ..write('syncedAt: $syncedAt, ')
+          ..write('failedAt: $failedAt, ')
+          ..write('networkCondition: $networkCondition, ')
+          ..write('conflictResolution: $conflictResolution, ')
           ..write('attempts: $attempts, ')
           ..write('state: $state, ')
           ..write('lastError: $lastError')
@@ -3189,7 +3389,12 @@ class SyncOperation extends DataClass implements Insertable<SyncOperation> {
     payloadJson,
     imagePath,
     createdAt,
+    enqueuedAt,
     lastAttemptAt,
+    syncedAt,
+    failedAt,
+    networkCondition,
+    conflictResolution,
     attempts,
     state,
     lastError,
@@ -3209,7 +3414,12 @@ class SyncOperation extends DataClass implements Insertable<SyncOperation> {
           other.payloadJson == this.payloadJson &&
           other.imagePath == this.imagePath &&
           other.createdAt == this.createdAt &&
+          other.enqueuedAt == this.enqueuedAt &&
           other.lastAttemptAt == this.lastAttemptAt &&
+          other.syncedAt == this.syncedAt &&
+          other.failedAt == this.failedAt &&
+          other.networkCondition == this.networkCondition &&
+          other.conflictResolution == this.conflictResolution &&
           other.attempts == this.attempts &&
           other.state == this.state &&
           other.lastError == this.lastError);
@@ -3227,7 +3437,12 @@ class SyncOperationsCompanion extends UpdateCompanion<SyncOperation> {
   final Value<String> payloadJson;
   final Value<String?> imagePath;
   final Value<DateTime> createdAt;
+  final Value<DateTime?> enqueuedAt;
   final Value<DateTime?> lastAttemptAt;
+  final Value<DateTime?> syncedAt;
+  final Value<DateTime?> failedAt;
+  final Value<String?> networkCondition;
+  final Value<String?> conflictResolution;
   final Value<int> attempts;
   final Value<String> state;
   final Value<String?> lastError;
@@ -3244,7 +3459,12 @@ class SyncOperationsCompanion extends UpdateCompanion<SyncOperation> {
     this.payloadJson = const Value.absent(),
     this.imagePath = const Value.absent(),
     this.createdAt = const Value.absent(),
+    this.enqueuedAt = const Value.absent(),
     this.lastAttemptAt = const Value.absent(),
+    this.syncedAt = const Value.absent(),
+    this.failedAt = const Value.absent(),
+    this.networkCondition = const Value.absent(),
+    this.conflictResolution = const Value.absent(),
     this.attempts = const Value.absent(),
     this.state = const Value.absent(),
     this.lastError = const Value.absent(),
@@ -3262,7 +3482,12 @@ class SyncOperationsCompanion extends UpdateCompanion<SyncOperation> {
     required String payloadJson,
     this.imagePath = const Value.absent(),
     required DateTime createdAt,
+    this.enqueuedAt = const Value.absent(),
     this.lastAttemptAt = const Value.absent(),
+    this.syncedAt = const Value.absent(),
+    this.failedAt = const Value.absent(),
+    this.networkCondition = const Value.absent(),
+    this.conflictResolution = const Value.absent(),
     this.attempts = const Value.absent(),
     required String state,
     this.lastError = const Value.absent(),
@@ -3289,7 +3514,12 @@ class SyncOperationsCompanion extends UpdateCompanion<SyncOperation> {
     Expression<String>? payloadJson,
     Expression<String>? imagePath,
     Expression<DateTime>? createdAt,
+    Expression<DateTime>? enqueuedAt,
     Expression<DateTime>? lastAttemptAt,
+    Expression<DateTime>? syncedAt,
+    Expression<DateTime>? failedAt,
+    Expression<String>? networkCondition,
+    Expression<String>? conflictResolution,
     Expression<int>? attempts,
     Expression<String>? state,
     Expression<String>? lastError,
@@ -3307,7 +3537,12 @@ class SyncOperationsCompanion extends UpdateCompanion<SyncOperation> {
       if (payloadJson != null) 'payload_json': payloadJson,
       if (imagePath != null) 'image_path': imagePath,
       if (createdAt != null) 'created_at': createdAt,
+      if (enqueuedAt != null) 'enqueued_at': enqueuedAt,
       if (lastAttemptAt != null) 'last_attempt_at': lastAttemptAt,
+      if (syncedAt != null) 'synced_at': syncedAt,
+      if (failedAt != null) 'failed_at': failedAt,
+      if (networkCondition != null) 'network_condition': networkCondition,
+      if (conflictResolution != null) 'conflict_resolution': conflictResolution,
       if (attempts != null) 'attempts': attempts,
       if (state != null) 'state': state,
       if (lastError != null) 'last_error': lastError,
@@ -3327,7 +3562,12 @@ class SyncOperationsCompanion extends UpdateCompanion<SyncOperation> {
     Value<String>? payloadJson,
     Value<String?>? imagePath,
     Value<DateTime>? createdAt,
+    Value<DateTime?>? enqueuedAt,
     Value<DateTime?>? lastAttemptAt,
+    Value<DateTime?>? syncedAt,
+    Value<DateTime?>? failedAt,
+    Value<String?>? networkCondition,
+    Value<String?>? conflictResolution,
     Value<int>? attempts,
     Value<String>? state,
     Value<String?>? lastError,
@@ -3345,7 +3585,12 @@ class SyncOperationsCompanion extends UpdateCompanion<SyncOperation> {
       payloadJson: payloadJson ?? this.payloadJson,
       imagePath: imagePath ?? this.imagePath,
       createdAt: createdAt ?? this.createdAt,
+      enqueuedAt: enqueuedAt ?? this.enqueuedAt,
       lastAttemptAt: lastAttemptAt ?? this.lastAttemptAt,
+      syncedAt: syncedAt ?? this.syncedAt,
+      failedAt: failedAt ?? this.failedAt,
+      networkCondition: networkCondition ?? this.networkCondition,
+      conflictResolution: conflictResolution ?? this.conflictResolution,
       attempts: attempts ?? this.attempts,
       state: state ?? this.state,
       lastError: lastError ?? this.lastError,
@@ -3389,8 +3634,23 @@ class SyncOperationsCompanion extends UpdateCompanion<SyncOperation> {
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
+    if (enqueuedAt.present) {
+      map['enqueued_at'] = Variable<DateTime>(enqueuedAt.value);
+    }
     if (lastAttemptAt.present) {
       map['last_attempt_at'] = Variable<DateTime>(lastAttemptAt.value);
+    }
+    if (syncedAt.present) {
+      map['synced_at'] = Variable<DateTime>(syncedAt.value);
+    }
+    if (failedAt.present) {
+      map['failed_at'] = Variable<DateTime>(failedAt.value);
+    }
+    if (networkCondition.present) {
+      map['network_condition'] = Variable<String>(networkCondition.value);
+    }
+    if (conflictResolution.present) {
+      map['conflict_resolution'] = Variable<String>(conflictResolution.value);
     }
     if (attempts.present) {
       map['attempts'] = Variable<int>(attempts.value);
@@ -3421,7 +3681,12 @@ class SyncOperationsCompanion extends UpdateCompanion<SyncOperation> {
           ..write('payloadJson: $payloadJson, ')
           ..write('imagePath: $imagePath, ')
           ..write('createdAt: $createdAt, ')
+          ..write('enqueuedAt: $enqueuedAt, ')
           ..write('lastAttemptAt: $lastAttemptAt, ')
+          ..write('syncedAt: $syncedAt, ')
+          ..write('failedAt: $failedAt, ')
+          ..write('networkCondition: $networkCondition, ')
+          ..write('conflictResolution: $conflictResolution, ')
           ..write('attempts: $attempts, ')
           ..write('state: $state, ')
           ..write('lastError: $lastError, ')
@@ -3640,6 +3905,915 @@ class SyncMetadataCompanion extends UpdateCompanion<SyncMetadataData> {
   }
 }
 
+class $PendingEvaluationEventsTable extends PendingEvaluationEvents
+    with TableInfo<$PendingEvaluationEventsTable, PendingEvaluationEvent> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $PendingEvaluationEventsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _eventTypeMeta = const VerificationMeta(
+    'eventType',
+  );
+  @override
+  late final GeneratedColumn<String> eventType = GeneratedColumn<String>(
+    'event_type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _productIdMeta = const VerificationMeta(
+    'productId',
+  );
+  @override
+  late final GeneratedColumn<String> productId = GeneratedColumn<String>(
+    'product_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _farmerUsernameMeta = const VerificationMeta(
+    'farmerUsername',
+  );
+  @override
+  late final GeneratedColumn<String> farmerUsername = GeneratedColumn<String>(
+    'farmer_username',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _sourceSectionMeta = const VerificationMeta(
+    'sourceSection',
+  );
+  @override
+  late final GeneratedColumn<String> sourceSection = GeneratedColumn<String>(
+    'source_section',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _listPositionMeta = const VerificationMeta(
+    'listPosition',
+  );
+  @override
+  late final GeneratedColumn<int> listPosition = GeneratedColumn<int>(
+    'list_position',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _recommendationRequestIdMeta =
+      const VerificationMeta('recommendationRequestId');
+  @override
+  late final GeneratedColumn<String> recommendationRequestId =
+      GeneratedColumn<String>(
+        'recommendation_request_id',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _participantIdMeta = const VerificationMeta(
+    'participantId',
+  );
+  @override
+  late final GeneratedColumn<String> participantId = GeneratedColumn<String>(
+    'participant_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _pilotSessionIdMeta = const VerificationMeta(
+    'pilotSessionId',
+  );
+  @override
+  late final GeneratedColumn<String> pilotSessionId = GeneratedColumn<String>(
+    'pilot_session_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _networkConditionMeta = const VerificationMeta(
+    'networkCondition',
+  );
+  @override
+  late final GeneratedColumn<String> networkCondition = GeneratedColumn<String>(
+    'network_condition',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _enqueuedAtMeta = const VerificationMeta(
+    'enqueuedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> enqueuedAt = GeneratedColumn<DateTime>(
+    'enqueued_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _syncedAtMeta = const VerificationMeta(
+    'syncedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> syncedAt = GeneratedColumn<DateTime>(
+    'synced_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _stateMeta = const VerificationMeta('state');
+  @override
+  late final GeneratedColumn<String> state = GeneratedColumn<String>(
+    'state',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('PENDING'),
+  );
+  static const VerificationMeta _lastErrorMeta = const VerificationMeta(
+    'lastError',
+  );
+  @override
+  late final GeneratedColumn<String> lastError = GeneratedColumn<String>(
+    'last_error',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    eventType,
+    productId,
+    farmerUsername,
+    sourceSection,
+    listPosition,
+    recommendationRequestId,
+    participantId,
+    pilotSessionId,
+    networkCondition,
+    createdAt,
+    enqueuedAt,
+    syncedAt,
+    state,
+    lastError,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'pending_evaluation_events';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<PendingEvaluationEvent> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('event_type')) {
+      context.handle(
+        _eventTypeMeta,
+        eventType.isAcceptableOrUnknown(data['event_type']!, _eventTypeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_eventTypeMeta);
+    }
+    if (data.containsKey('product_id')) {
+      context.handle(
+        _productIdMeta,
+        productId.isAcceptableOrUnknown(data['product_id']!, _productIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_productIdMeta);
+    }
+    if (data.containsKey('farmer_username')) {
+      context.handle(
+        _farmerUsernameMeta,
+        farmerUsername.isAcceptableOrUnknown(
+          data['farmer_username']!,
+          _farmerUsernameMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_farmerUsernameMeta);
+    }
+    if (data.containsKey('source_section')) {
+      context.handle(
+        _sourceSectionMeta,
+        sourceSection.isAcceptableOrUnknown(
+          data['source_section']!,
+          _sourceSectionMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_sourceSectionMeta);
+    }
+    if (data.containsKey('list_position')) {
+      context.handle(
+        _listPositionMeta,
+        listPosition.isAcceptableOrUnknown(
+          data['list_position']!,
+          _listPositionMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_listPositionMeta);
+    }
+    if (data.containsKey('recommendation_request_id')) {
+      context.handle(
+        _recommendationRequestIdMeta,
+        recommendationRequestId.isAcceptableOrUnknown(
+          data['recommendation_request_id']!,
+          _recommendationRequestIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('participant_id')) {
+      context.handle(
+        _participantIdMeta,
+        participantId.isAcceptableOrUnknown(
+          data['participant_id']!,
+          _participantIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('pilot_session_id')) {
+      context.handle(
+        _pilotSessionIdMeta,
+        pilotSessionId.isAcceptableOrUnknown(
+          data['pilot_session_id']!,
+          _pilotSessionIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('network_condition')) {
+      context.handle(
+        _networkConditionMeta,
+        networkCondition.isAcceptableOrUnknown(
+          data['network_condition']!,
+          _networkConditionMeta,
+        ),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('enqueued_at')) {
+      context.handle(
+        _enqueuedAtMeta,
+        enqueuedAt.isAcceptableOrUnknown(data['enqueued_at']!, _enqueuedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_enqueuedAtMeta);
+    }
+    if (data.containsKey('synced_at')) {
+      context.handle(
+        _syncedAtMeta,
+        syncedAt.isAcceptableOrUnknown(data['synced_at']!, _syncedAtMeta),
+      );
+    }
+    if (data.containsKey('state')) {
+      context.handle(
+        _stateMeta,
+        state.isAcceptableOrUnknown(data['state']!, _stateMeta),
+      );
+    }
+    if (data.containsKey('last_error')) {
+      context.handle(
+        _lastErrorMeta,
+        lastError.isAcceptableOrUnknown(data['last_error']!, _lastErrorMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  PendingEvaluationEvent map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return PendingEvaluationEvent(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      eventType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}event_type'],
+      )!,
+      productId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}product_id'],
+      )!,
+      farmerUsername: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}farmer_username'],
+      )!,
+      sourceSection: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source_section'],
+      )!,
+      listPosition: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}list_position'],
+      )!,
+      recommendationRequestId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}recommendation_request_id'],
+      ),
+      participantId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}participant_id'],
+      ),
+      pilotSessionId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}pilot_session_id'],
+      ),
+      networkCondition: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}network_condition'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      enqueuedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}enqueued_at'],
+      )!,
+      syncedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}synced_at'],
+      ),
+      state: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}state'],
+      )!,
+      lastError: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}last_error'],
+      ),
+    );
+  }
+
+  @override
+  $PendingEvaluationEventsTable createAlias(String alias) {
+    return $PendingEvaluationEventsTable(attachedDatabase, alias);
+  }
+}
+
+class PendingEvaluationEvent extends DataClass
+    implements Insertable<PendingEvaluationEvent> {
+  final String id;
+  final String eventType;
+  final String productId;
+  final String farmerUsername;
+  final String sourceSection;
+  final int listPosition;
+  final String? recommendationRequestId;
+  final String? participantId;
+  final String? pilotSessionId;
+  final String? networkCondition;
+  final DateTime createdAt;
+  final DateTime enqueuedAt;
+  final DateTime? syncedAt;
+  final String state;
+  final String? lastError;
+  const PendingEvaluationEvent({
+    required this.id,
+    required this.eventType,
+    required this.productId,
+    required this.farmerUsername,
+    required this.sourceSection,
+    required this.listPosition,
+    this.recommendationRequestId,
+    this.participantId,
+    this.pilotSessionId,
+    this.networkCondition,
+    required this.createdAt,
+    required this.enqueuedAt,
+    this.syncedAt,
+    required this.state,
+    this.lastError,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['event_type'] = Variable<String>(eventType);
+    map['product_id'] = Variable<String>(productId);
+    map['farmer_username'] = Variable<String>(farmerUsername);
+    map['source_section'] = Variable<String>(sourceSection);
+    map['list_position'] = Variable<int>(listPosition);
+    if (!nullToAbsent || recommendationRequestId != null) {
+      map['recommendation_request_id'] = Variable<String>(
+        recommendationRequestId,
+      );
+    }
+    if (!nullToAbsent || participantId != null) {
+      map['participant_id'] = Variable<String>(participantId);
+    }
+    if (!nullToAbsent || pilotSessionId != null) {
+      map['pilot_session_id'] = Variable<String>(pilotSessionId);
+    }
+    if (!nullToAbsent || networkCondition != null) {
+      map['network_condition'] = Variable<String>(networkCondition);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['enqueued_at'] = Variable<DateTime>(enqueuedAt);
+    if (!nullToAbsent || syncedAt != null) {
+      map['synced_at'] = Variable<DateTime>(syncedAt);
+    }
+    map['state'] = Variable<String>(state);
+    if (!nullToAbsent || lastError != null) {
+      map['last_error'] = Variable<String>(lastError);
+    }
+    return map;
+  }
+
+  PendingEvaluationEventsCompanion toCompanion(bool nullToAbsent) {
+    return PendingEvaluationEventsCompanion(
+      id: Value(id),
+      eventType: Value(eventType),
+      productId: Value(productId),
+      farmerUsername: Value(farmerUsername),
+      sourceSection: Value(sourceSection),
+      listPosition: Value(listPosition),
+      recommendationRequestId: recommendationRequestId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(recommendationRequestId),
+      participantId: participantId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(participantId),
+      pilotSessionId: pilotSessionId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(pilotSessionId),
+      networkCondition: networkCondition == null && nullToAbsent
+          ? const Value.absent()
+          : Value(networkCondition),
+      createdAt: Value(createdAt),
+      enqueuedAt: Value(enqueuedAt),
+      syncedAt: syncedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(syncedAt),
+      state: Value(state),
+      lastError: lastError == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastError),
+    );
+  }
+
+  factory PendingEvaluationEvent.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return PendingEvaluationEvent(
+      id: serializer.fromJson<String>(json['id']),
+      eventType: serializer.fromJson<String>(json['eventType']),
+      productId: serializer.fromJson<String>(json['productId']),
+      farmerUsername: serializer.fromJson<String>(json['farmerUsername']),
+      sourceSection: serializer.fromJson<String>(json['sourceSection']),
+      listPosition: serializer.fromJson<int>(json['listPosition']),
+      recommendationRequestId: serializer.fromJson<String?>(
+        json['recommendationRequestId'],
+      ),
+      participantId: serializer.fromJson<String?>(json['participantId']),
+      pilotSessionId: serializer.fromJson<String?>(json['pilotSessionId']),
+      networkCondition: serializer.fromJson<String?>(json['networkCondition']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      enqueuedAt: serializer.fromJson<DateTime>(json['enqueuedAt']),
+      syncedAt: serializer.fromJson<DateTime?>(json['syncedAt']),
+      state: serializer.fromJson<String>(json['state']),
+      lastError: serializer.fromJson<String?>(json['lastError']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'eventType': serializer.toJson<String>(eventType),
+      'productId': serializer.toJson<String>(productId),
+      'farmerUsername': serializer.toJson<String>(farmerUsername),
+      'sourceSection': serializer.toJson<String>(sourceSection),
+      'listPosition': serializer.toJson<int>(listPosition),
+      'recommendationRequestId': serializer.toJson<String?>(
+        recommendationRequestId,
+      ),
+      'participantId': serializer.toJson<String?>(participantId),
+      'pilotSessionId': serializer.toJson<String?>(pilotSessionId),
+      'networkCondition': serializer.toJson<String?>(networkCondition),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'enqueuedAt': serializer.toJson<DateTime>(enqueuedAt),
+      'syncedAt': serializer.toJson<DateTime?>(syncedAt),
+      'state': serializer.toJson<String>(state),
+      'lastError': serializer.toJson<String?>(lastError),
+    };
+  }
+
+  PendingEvaluationEvent copyWith({
+    String? id,
+    String? eventType,
+    String? productId,
+    String? farmerUsername,
+    String? sourceSection,
+    int? listPosition,
+    Value<String?> recommendationRequestId = const Value.absent(),
+    Value<String?> participantId = const Value.absent(),
+    Value<String?> pilotSessionId = const Value.absent(),
+    Value<String?> networkCondition = const Value.absent(),
+    DateTime? createdAt,
+    DateTime? enqueuedAt,
+    Value<DateTime?> syncedAt = const Value.absent(),
+    String? state,
+    Value<String?> lastError = const Value.absent(),
+  }) => PendingEvaluationEvent(
+    id: id ?? this.id,
+    eventType: eventType ?? this.eventType,
+    productId: productId ?? this.productId,
+    farmerUsername: farmerUsername ?? this.farmerUsername,
+    sourceSection: sourceSection ?? this.sourceSection,
+    listPosition: listPosition ?? this.listPosition,
+    recommendationRequestId: recommendationRequestId.present
+        ? recommendationRequestId.value
+        : this.recommendationRequestId,
+    participantId: participantId.present
+        ? participantId.value
+        : this.participantId,
+    pilotSessionId: pilotSessionId.present
+        ? pilotSessionId.value
+        : this.pilotSessionId,
+    networkCondition: networkCondition.present
+        ? networkCondition.value
+        : this.networkCondition,
+    createdAt: createdAt ?? this.createdAt,
+    enqueuedAt: enqueuedAt ?? this.enqueuedAt,
+    syncedAt: syncedAt.present ? syncedAt.value : this.syncedAt,
+    state: state ?? this.state,
+    lastError: lastError.present ? lastError.value : this.lastError,
+  );
+  PendingEvaluationEvent copyWithCompanion(
+    PendingEvaluationEventsCompanion data,
+  ) {
+    return PendingEvaluationEvent(
+      id: data.id.present ? data.id.value : this.id,
+      eventType: data.eventType.present ? data.eventType.value : this.eventType,
+      productId: data.productId.present ? data.productId.value : this.productId,
+      farmerUsername: data.farmerUsername.present
+          ? data.farmerUsername.value
+          : this.farmerUsername,
+      sourceSection: data.sourceSection.present
+          ? data.sourceSection.value
+          : this.sourceSection,
+      listPosition: data.listPosition.present
+          ? data.listPosition.value
+          : this.listPosition,
+      recommendationRequestId: data.recommendationRequestId.present
+          ? data.recommendationRequestId.value
+          : this.recommendationRequestId,
+      participantId: data.participantId.present
+          ? data.participantId.value
+          : this.participantId,
+      pilotSessionId: data.pilotSessionId.present
+          ? data.pilotSessionId.value
+          : this.pilotSessionId,
+      networkCondition: data.networkCondition.present
+          ? data.networkCondition.value
+          : this.networkCondition,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      enqueuedAt: data.enqueuedAt.present
+          ? data.enqueuedAt.value
+          : this.enqueuedAt,
+      syncedAt: data.syncedAt.present ? data.syncedAt.value : this.syncedAt,
+      state: data.state.present ? data.state.value : this.state,
+      lastError: data.lastError.present ? data.lastError.value : this.lastError,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PendingEvaluationEvent(')
+          ..write('id: $id, ')
+          ..write('eventType: $eventType, ')
+          ..write('productId: $productId, ')
+          ..write('farmerUsername: $farmerUsername, ')
+          ..write('sourceSection: $sourceSection, ')
+          ..write('listPosition: $listPosition, ')
+          ..write('recommendationRequestId: $recommendationRequestId, ')
+          ..write('participantId: $participantId, ')
+          ..write('pilotSessionId: $pilotSessionId, ')
+          ..write('networkCondition: $networkCondition, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('enqueuedAt: $enqueuedAt, ')
+          ..write('syncedAt: $syncedAt, ')
+          ..write('state: $state, ')
+          ..write('lastError: $lastError')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    eventType,
+    productId,
+    farmerUsername,
+    sourceSection,
+    listPosition,
+    recommendationRequestId,
+    participantId,
+    pilotSessionId,
+    networkCondition,
+    createdAt,
+    enqueuedAt,
+    syncedAt,
+    state,
+    lastError,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is PendingEvaluationEvent &&
+          other.id == this.id &&
+          other.eventType == this.eventType &&
+          other.productId == this.productId &&
+          other.farmerUsername == this.farmerUsername &&
+          other.sourceSection == this.sourceSection &&
+          other.listPosition == this.listPosition &&
+          other.recommendationRequestId == this.recommendationRequestId &&
+          other.participantId == this.participantId &&
+          other.pilotSessionId == this.pilotSessionId &&
+          other.networkCondition == this.networkCondition &&
+          other.createdAt == this.createdAt &&
+          other.enqueuedAt == this.enqueuedAt &&
+          other.syncedAt == this.syncedAt &&
+          other.state == this.state &&
+          other.lastError == this.lastError);
+}
+
+class PendingEvaluationEventsCompanion
+    extends UpdateCompanion<PendingEvaluationEvent> {
+  final Value<String> id;
+  final Value<String> eventType;
+  final Value<String> productId;
+  final Value<String> farmerUsername;
+  final Value<String> sourceSection;
+  final Value<int> listPosition;
+  final Value<String?> recommendationRequestId;
+  final Value<String?> participantId;
+  final Value<String?> pilotSessionId;
+  final Value<String?> networkCondition;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> enqueuedAt;
+  final Value<DateTime?> syncedAt;
+  final Value<String> state;
+  final Value<String?> lastError;
+  final Value<int> rowid;
+  const PendingEvaluationEventsCompanion({
+    this.id = const Value.absent(),
+    this.eventType = const Value.absent(),
+    this.productId = const Value.absent(),
+    this.farmerUsername = const Value.absent(),
+    this.sourceSection = const Value.absent(),
+    this.listPosition = const Value.absent(),
+    this.recommendationRequestId = const Value.absent(),
+    this.participantId = const Value.absent(),
+    this.pilotSessionId = const Value.absent(),
+    this.networkCondition = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.enqueuedAt = const Value.absent(),
+    this.syncedAt = const Value.absent(),
+    this.state = const Value.absent(),
+    this.lastError = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  PendingEvaluationEventsCompanion.insert({
+    required String id,
+    required String eventType,
+    required String productId,
+    required String farmerUsername,
+    required String sourceSection,
+    required int listPosition,
+    this.recommendationRequestId = const Value.absent(),
+    this.participantId = const Value.absent(),
+    this.pilotSessionId = const Value.absent(),
+    this.networkCondition = const Value.absent(),
+    required DateTime createdAt,
+    required DateTime enqueuedAt,
+    this.syncedAt = const Value.absent(),
+    this.state = const Value.absent(),
+    this.lastError = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       eventType = Value(eventType),
+       productId = Value(productId),
+       farmerUsername = Value(farmerUsername),
+       sourceSection = Value(sourceSection),
+       listPosition = Value(listPosition),
+       createdAt = Value(createdAt),
+       enqueuedAt = Value(enqueuedAt);
+  static Insertable<PendingEvaluationEvent> custom({
+    Expression<String>? id,
+    Expression<String>? eventType,
+    Expression<String>? productId,
+    Expression<String>? farmerUsername,
+    Expression<String>? sourceSection,
+    Expression<int>? listPosition,
+    Expression<String>? recommendationRequestId,
+    Expression<String>? participantId,
+    Expression<String>? pilotSessionId,
+    Expression<String>? networkCondition,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? enqueuedAt,
+    Expression<DateTime>? syncedAt,
+    Expression<String>? state,
+    Expression<String>? lastError,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (eventType != null) 'event_type': eventType,
+      if (productId != null) 'product_id': productId,
+      if (farmerUsername != null) 'farmer_username': farmerUsername,
+      if (sourceSection != null) 'source_section': sourceSection,
+      if (listPosition != null) 'list_position': listPosition,
+      if (recommendationRequestId != null)
+        'recommendation_request_id': recommendationRequestId,
+      if (participantId != null) 'participant_id': participantId,
+      if (pilotSessionId != null) 'pilot_session_id': pilotSessionId,
+      if (networkCondition != null) 'network_condition': networkCondition,
+      if (createdAt != null) 'created_at': createdAt,
+      if (enqueuedAt != null) 'enqueued_at': enqueuedAt,
+      if (syncedAt != null) 'synced_at': syncedAt,
+      if (state != null) 'state': state,
+      if (lastError != null) 'last_error': lastError,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  PendingEvaluationEventsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? eventType,
+    Value<String>? productId,
+    Value<String>? farmerUsername,
+    Value<String>? sourceSection,
+    Value<int>? listPosition,
+    Value<String?>? recommendationRequestId,
+    Value<String?>? participantId,
+    Value<String?>? pilotSessionId,
+    Value<String?>? networkCondition,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? enqueuedAt,
+    Value<DateTime?>? syncedAt,
+    Value<String>? state,
+    Value<String?>? lastError,
+    Value<int>? rowid,
+  }) {
+    return PendingEvaluationEventsCompanion(
+      id: id ?? this.id,
+      eventType: eventType ?? this.eventType,
+      productId: productId ?? this.productId,
+      farmerUsername: farmerUsername ?? this.farmerUsername,
+      sourceSection: sourceSection ?? this.sourceSection,
+      listPosition: listPosition ?? this.listPosition,
+      recommendationRequestId:
+          recommendationRequestId ?? this.recommendationRequestId,
+      participantId: participantId ?? this.participantId,
+      pilotSessionId: pilotSessionId ?? this.pilotSessionId,
+      networkCondition: networkCondition ?? this.networkCondition,
+      createdAt: createdAt ?? this.createdAt,
+      enqueuedAt: enqueuedAt ?? this.enqueuedAt,
+      syncedAt: syncedAt ?? this.syncedAt,
+      state: state ?? this.state,
+      lastError: lastError ?? this.lastError,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (eventType.present) {
+      map['event_type'] = Variable<String>(eventType.value);
+    }
+    if (productId.present) {
+      map['product_id'] = Variable<String>(productId.value);
+    }
+    if (farmerUsername.present) {
+      map['farmer_username'] = Variable<String>(farmerUsername.value);
+    }
+    if (sourceSection.present) {
+      map['source_section'] = Variable<String>(sourceSection.value);
+    }
+    if (listPosition.present) {
+      map['list_position'] = Variable<int>(listPosition.value);
+    }
+    if (recommendationRequestId.present) {
+      map['recommendation_request_id'] = Variable<String>(
+        recommendationRequestId.value,
+      );
+    }
+    if (participantId.present) {
+      map['participant_id'] = Variable<String>(participantId.value);
+    }
+    if (pilotSessionId.present) {
+      map['pilot_session_id'] = Variable<String>(pilotSessionId.value);
+    }
+    if (networkCondition.present) {
+      map['network_condition'] = Variable<String>(networkCondition.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (enqueuedAt.present) {
+      map['enqueued_at'] = Variable<DateTime>(enqueuedAt.value);
+    }
+    if (syncedAt.present) {
+      map['synced_at'] = Variable<DateTime>(syncedAt.value);
+    }
+    if (state.present) {
+      map['state'] = Variable<String>(state.value);
+    }
+    if (lastError.present) {
+      map['last_error'] = Variable<String>(lastError.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PendingEvaluationEventsCompanion(')
+          ..write('id: $id, ')
+          ..write('eventType: $eventType, ')
+          ..write('productId: $productId, ')
+          ..write('farmerUsername: $farmerUsername, ')
+          ..write('sourceSection: $sourceSection, ')
+          ..write('listPosition: $listPosition, ')
+          ..write('recommendationRequestId: $recommendationRequestId, ')
+          ..write('participantId: $participantId, ')
+          ..write('pilotSessionId: $pilotSessionId, ')
+          ..write('networkCondition: $networkCondition, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('enqueuedAt: $enqueuedAt, ')
+          ..write('syncedAt: $syncedAt, ')
+          ..write('state: $state, ')
+          ..write('lastError: $lastError, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -3655,6 +4829,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $CourierTrackingUpdatesTable(this);
   late final $SyncOperationsTable syncOperations = $SyncOperationsTable(this);
   late final $SyncMetadataTable syncMetadata = $SyncMetadataTable(this);
+  late final $PendingEvaluationEventsTable pendingEvaluationEvents =
+      $PendingEvaluationEventsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -3667,6 +4843,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     courierTrackingUpdates,
     syncOperations,
     syncMetadata,
+    pendingEvaluationEvents,
   ];
 }
 
@@ -5027,7 +6204,12 @@ typedef $$SyncOperationsTableCreateCompanionBuilder =
       required String payloadJson,
       Value<String?> imagePath,
       required DateTime createdAt,
+      Value<DateTime?> enqueuedAt,
       Value<DateTime?> lastAttemptAt,
+      Value<DateTime?> syncedAt,
+      Value<DateTime?> failedAt,
+      Value<String?> networkCondition,
+      Value<String?> conflictResolution,
       Value<int> attempts,
       required String state,
       Value<String?> lastError,
@@ -5046,7 +6228,12 @@ typedef $$SyncOperationsTableUpdateCompanionBuilder =
       Value<String> payloadJson,
       Value<String?> imagePath,
       Value<DateTime> createdAt,
+      Value<DateTime?> enqueuedAt,
       Value<DateTime?> lastAttemptAt,
+      Value<DateTime?> syncedAt,
+      Value<DateTime?> failedAt,
+      Value<String?> networkCondition,
+      Value<String?> conflictResolution,
       Value<int> attempts,
       Value<String> state,
       Value<String?> lastError,
@@ -5117,8 +6304,33 @@ class $$SyncOperationsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<DateTime> get enqueuedAt => $composableBuilder(
+    column: $table.enqueuedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<DateTime> get lastAttemptAt => $composableBuilder(
     column: $table.lastAttemptAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get syncedAt => $composableBuilder(
+    column: $table.syncedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get failedAt => $composableBuilder(
+    column: $table.failedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get networkCondition => $composableBuilder(
+    column: $table.networkCondition,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get conflictResolution => $composableBuilder(
+    column: $table.conflictResolution,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -5202,8 +6414,33 @@ class $$SyncOperationsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<DateTime> get enqueuedAt => $composableBuilder(
+    column: $table.enqueuedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get lastAttemptAt => $composableBuilder(
     column: $table.lastAttemptAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get syncedAt => $composableBuilder(
+    column: $table.syncedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get failedAt => $composableBuilder(
+    column: $table.failedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get networkCondition => $composableBuilder(
+    column: $table.networkCondition,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get conflictResolution => $composableBuilder(
+    column: $table.conflictResolution,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -5277,8 +6514,29 @@ class $$SyncOperationsTableAnnotationComposer
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
 
+  GeneratedColumn<DateTime> get enqueuedAt => $composableBuilder(
+    column: $table.enqueuedAt,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<DateTime> get lastAttemptAt => $composableBuilder(
     column: $table.lastAttemptAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get syncedAt =>
+      $composableBuilder(column: $table.syncedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get failedAt =>
+      $composableBuilder(column: $table.failedAt, builder: (column) => column);
+
+  GeneratedColumn<String> get networkCondition => $composableBuilder(
+    column: $table.networkCondition,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get conflictResolution => $composableBuilder(
+    column: $table.conflictResolution,
     builder: (column) => column,
   );
 
@@ -5336,7 +6594,12 @@ class $$SyncOperationsTableTableManager
                 Value<String> payloadJson = const Value.absent(),
                 Value<String?> imagePath = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime?> enqueuedAt = const Value.absent(),
                 Value<DateTime?> lastAttemptAt = const Value.absent(),
+                Value<DateTime?> syncedAt = const Value.absent(),
+                Value<DateTime?> failedAt = const Value.absent(),
+                Value<String?> networkCondition = const Value.absent(),
+                Value<String?> conflictResolution = const Value.absent(),
                 Value<int> attempts = const Value.absent(),
                 Value<String> state = const Value.absent(),
                 Value<String?> lastError = const Value.absent(),
@@ -5353,7 +6616,12 @@ class $$SyncOperationsTableTableManager
                 payloadJson: payloadJson,
                 imagePath: imagePath,
                 createdAt: createdAt,
+                enqueuedAt: enqueuedAt,
                 lastAttemptAt: lastAttemptAt,
+                syncedAt: syncedAt,
+                failedAt: failedAt,
+                networkCondition: networkCondition,
+                conflictResolution: conflictResolution,
                 attempts: attempts,
                 state: state,
                 lastError: lastError,
@@ -5372,7 +6640,12 @@ class $$SyncOperationsTableTableManager
                 required String payloadJson,
                 Value<String?> imagePath = const Value.absent(),
                 required DateTime createdAt,
+                Value<DateTime?> enqueuedAt = const Value.absent(),
                 Value<DateTime?> lastAttemptAt = const Value.absent(),
+                Value<DateTime?> syncedAt = const Value.absent(),
+                Value<DateTime?> failedAt = const Value.absent(),
+                Value<String?> networkCondition = const Value.absent(),
+                Value<String?> conflictResolution = const Value.absent(),
                 Value<int> attempts = const Value.absent(),
                 required String state,
                 Value<String?> lastError = const Value.absent(),
@@ -5389,7 +6662,12 @@ class $$SyncOperationsTableTableManager
                 payloadJson: payloadJson,
                 imagePath: imagePath,
                 createdAt: createdAt,
+                enqueuedAt: enqueuedAt,
                 lastAttemptAt: lastAttemptAt,
+                syncedAt: syncedAt,
+                failedAt: failedAt,
+                networkCondition: networkCondition,
+                conflictResolution: conflictResolution,
                 attempts: attempts,
                 state: state,
                 lastError: lastError,
@@ -5559,6 +6837,431 @@ typedef $$SyncMetadataTableProcessedTableManager =
       SyncMetadataData,
       PrefetchHooks Function()
     >;
+typedef $$PendingEvaluationEventsTableCreateCompanionBuilder =
+    PendingEvaluationEventsCompanion Function({
+      required String id,
+      required String eventType,
+      required String productId,
+      required String farmerUsername,
+      required String sourceSection,
+      required int listPosition,
+      Value<String?> recommendationRequestId,
+      Value<String?> participantId,
+      Value<String?> pilotSessionId,
+      Value<String?> networkCondition,
+      required DateTime createdAt,
+      required DateTime enqueuedAt,
+      Value<DateTime?> syncedAt,
+      Value<String> state,
+      Value<String?> lastError,
+      Value<int> rowid,
+    });
+typedef $$PendingEvaluationEventsTableUpdateCompanionBuilder =
+    PendingEvaluationEventsCompanion Function({
+      Value<String> id,
+      Value<String> eventType,
+      Value<String> productId,
+      Value<String> farmerUsername,
+      Value<String> sourceSection,
+      Value<int> listPosition,
+      Value<String?> recommendationRequestId,
+      Value<String?> participantId,
+      Value<String?> pilotSessionId,
+      Value<String?> networkCondition,
+      Value<DateTime> createdAt,
+      Value<DateTime> enqueuedAt,
+      Value<DateTime?> syncedAt,
+      Value<String> state,
+      Value<String?> lastError,
+      Value<int> rowid,
+    });
+
+class $$PendingEvaluationEventsTableFilterComposer
+    extends Composer<_$AppDatabase, $PendingEvaluationEventsTable> {
+  $$PendingEvaluationEventsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get eventType => $composableBuilder(
+    column: $table.eventType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get productId => $composableBuilder(
+    column: $table.productId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get farmerUsername => $composableBuilder(
+    column: $table.farmerUsername,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get sourceSection => $composableBuilder(
+    column: $table.sourceSection,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get listPosition => $composableBuilder(
+    column: $table.listPosition,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get recommendationRequestId => $composableBuilder(
+    column: $table.recommendationRequestId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get participantId => $composableBuilder(
+    column: $table.participantId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get pilotSessionId => $composableBuilder(
+    column: $table.pilotSessionId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get networkCondition => $composableBuilder(
+    column: $table.networkCondition,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get enqueuedAt => $composableBuilder(
+    column: $table.enqueuedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get syncedAt => $composableBuilder(
+    column: $table.syncedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get state => $composableBuilder(
+    column: $table.state,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get lastError => $composableBuilder(
+    column: $table.lastError,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$PendingEvaluationEventsTableOrderingComposer
+    extends Composer<_$AppDatabase, $PendingEvaluationEventsTable> {
+  $$PendingEvaluationEventsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get eventType => $composableBuilder(
+    column: $table.eventType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get productId => $composableBuilder(
+    column: $table.productId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get farmerUsername => $composableBuilder(
+    column: $table.farmerUsername,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get sourceSection => $composableBuilder(
+    column: $table.sourceSection,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get listPosition => $composableBuilder(
+    column: $table.listPosition,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get recommendationRequestId => $composableBuilder(
+    column: $table.recommendationRequestId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get participantId => $composableBuilder(
+    column: $table.participantId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get pilotSessionId => $composableBuilder(
+    column: $table.pilotSessionId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get networkCondition => $composableBuilder(
+    column: $table.networkCondition,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get enqueuedAt => $composableBuilder(
+    column: $table.enqueuedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get syncedAt => $composableBuilder(
+    column: $table.syncedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get state => $composableBuilder(
+    column: $table.state,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get lastError => $composableBuilder(
+    column: $table.lastError,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$PendingEvaluationEventsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $PendingEvaluationEventsTable> {
+  $$PendingEvaluationEventsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get eventType =>
+      $composableBuilder(column: $table.eventType, builder: (column) => column);
+
+  GeneratedColumn<String> get productId =>
+      $composableBuilder(column: $table.productId, builder: (column) => column);
+
+  GeneratedColumn<String> get farmerUsername => $composableBuilder(
+    column: $table.farmerUsername,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get sourceSection => $composableBuilder(
+    column: $table.sourceSection,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get listPosition => $composableBuilder(
+    column: $table.listPosition,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get recommendationRequestId => $composableBuilder(
+    column: $table.recommendationRequestId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get participantId => $composableBuilder(
+    column: $table.participantId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get pilotSessionId => $composableBuilder(
+    column: $table.pilotSessionId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get networkCondition => $composableBuilder(
+    column: $table.networkCondition,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get enqueuedAt => $composableBuilder(
+    column: $table.enqueuedAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get syncedAt =>
+      $composableBuilder(column: $table.syncedAt, builder: (column) => column);
+
+  GeneratedColumn<String> get state =>
+      $composableBuilder(column: $table.state, builder: (column) => column);
+
+  GeneratedColumn<String> get lastError =>
+      $composableBuilder(column: $table.lastError, builder: (column) => column);
+}
+
+class $$PendingEvaluationEventsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $PendingEvaluationEventsTable,
+          PendingEvaluationEvent,
+          $$PendingEvaluationEventsTableFilterComposer,
+          $$PendingEvaluationEventsTableOrderingComposer,
+          $$PendingEvaluationEventsTableAnnotationComposer,
+          $$PendingEvaluationEventsTableCreateCompanionBuilder,
+          $$PendingEvaluationEventsTableUpdateCompanionBuilder,
+          (
+            PendingEvaluationEvent,
+            BaseReferences<
+              _$AppDatabase,
+              $PendingEvaluationEventsTable,
+              PendingEvaluationEvent
+            >,
+          ),
+          PendingEvaluationEvent,
+          PrefetchHooks Function()
+        > {
+  $$PendingEvaluationEventsTableTableManager(
+    _$AppDatabase db,
+    $PendingEvaluationEventsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$PendingEvaluationEventsTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$PendingEvaluationEventsTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$PendingEvaluationEventsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> eventType = const Value.absent(),
+                Value<String> productId = const Value.absent(),
+                Value<String> farmerUsername = const Value.absent(),
+                Value<String> sourceSection = const Value.absent(),
+                Value<int> listPosition = const Value.absent(),
+                Value<String?> recommendationRequestId = const Value.absent(),
+                Value<String?> participantId = const Value.absent(),
+                Value<String?> pilotSessionId = const Value.absent(),
+                Value<String?> networkCondition = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> enqueuedAt = const Value.absent(),
+                Value<DateTime?> syncedAt = const Value.absent(),
+                Value<String> state = const Value.absent(),
+                Value<String?> lastError = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => PendingEvaluationEventsCompanion(
+                id: id,
+                eventType: eventType,
+                productId: productId,
+                farmerUsername: farmerUsername,
+                sourceSection: sourceSection,
+                listPosition: listPosition,
+                recommendationRequestId: recommendationRequestId,
+                participantId: participantId,
+                pilotSessionId: pilotSessionId,
+                networkCondition: networkCondition,
+                createdAt: createdAt,
+                enqueuedAt: enqueuedAt,
+                syncedAt: syncedAt,
+                state: state,
+                lastError: lastError,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String eventType,
+                required String productId,
+                required String farmerUsername,
+                required String sourceSection,
+                required int listPosition,
+                Value<String?> recommendationRequestId = const Value.absent(),
+                Value<String?> participantId = const Value.absent(),
+                Value<String?> pilotSessionId = const Value.absent(),
+                Value<String?> networkCondition = const Value.absent(),
+                required DateTime createdAt,
+                required DateTime enqueuedAt,
+                Value<DateTime?> syncedAt = const Value.absent(),
+                Value<String> state = const Value.absent(),
+                Value<String?> lastError = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => PendingEvaluationEventsCompanion.insert(
+                id: id,
+                eventType: eventType,
+                productId: productId,
+                farmerUsername: farmerUsername,
+                sourceSection: sourceSection,
+                listPosition: listPosition,
+                recommendationRequestId: recommendationRequestId,
+                participantId: participantId,
+                pilotSessionId: pilotSessionId,
+                networkCondition: networkCondition,
+                createdAt: createdAt,
+                enqueuedAt: enqueuedAt,
+                syncedAt: syncedAt,
+                state: state,
+                lastError: lastError,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$PendingEvaluationEventsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $PendingEvaluationEventsTable,
+      PendingEvaluationEvent,
+      $$PendingEvaluationEventsTableFilterComposer,
+      $$PendingEvaluationEventsTableOrderingComposer,
+      $$PendingEvaluationEventsTableAnnotationComposer,
+      $$PendingEvaluationEventsTableCreateCompanionBuilder,
+      $$PendingEvaluationEventsTableUpdateCompanionBuilder,
+      (
+        PendingEvaluationEvent,
+        BaseReferences<
+          _$AppDatabase,
+          $PendingEvaluationEventsTable,
+          PendingEvaluationEvent
+        >,
+      ),
+      PendingEvaluationEvent,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -5587,4 +7290,9 @@ class $AppDatabaseManager {
       $$SyncOperationsTableTableManager(_db, _db.syncOperations);
   $$SyncMetadataTableTableManager get syncMetadata =>
       $$SyncMetadataTableTableManager(_db, _db.syncMetadata);
+  $$PendingEvaluationEventsTableTableManager get pendingEvaluationEvents =>
+      $$PendingEvaluationEventsTableTableManager(
+        _db,
+        _db.pendingEvaluationEvents,
+      );
 }

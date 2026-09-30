@@ -6,6 +6,7 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
 import 'database_key_store.dart';
+import '../evaluation/pilot_session.dart';
 
 part 'app_database.g.dart';
 
@@ -36,7 +37,14 @@ class SyncOperations extends Table {
   TextColumn get payloadJson => text()();
   TextColumn get imagePath => text().nullable()();
   DateTimeColumn get createdAt => dateTime()();
+  DateTimeColumn get enqueuedAt =>
+      dateTime().nullable().clientDefault(DateTime.now)();
   DateTimeColumn get lastAttemptAt => dateTime().nullable()();
+  DateTimeColumn get syncedAt => dateTime().nullable()();
+  DateTimeColumn get failedAt => dateTime().nullable()();
+  TextColumn get networkCondition =>
+      text().nullable().clientDefault(() => PilotSession.networkCondition)();
+  TextColumn get conflictResolution => text().nullable()();
   IntColumn get attempts => integer().withDefault(const Constant(0))();
   TextColumn get state => text()();
   TextColumn get lastError => text().nullable()();
@@ -105,6 +113,27 @@ class SyncMetadata extends Table {
   Set<Column<Object>> get primaryKey => {key};
 }
 
+class PendingEvaluationEvents extends Table {
+  TextColumn get id => text()();
+  TextColumn get eventType => text()();
+  TextColumn get productId => text()();
+  TextColumn get farmerUsername => text()();
+  TextColumn get sourceSection => text()();
+  IntColumn get listPosition => integer()();
+  TextColumn get recommendationRequestId => text().nullable()();
+  TextColumn get participantId => text().nullable()();
+  TextColumn get pilotSessionId => text().nullable()();
+  TextColumn get networkCondition => text().nullable()();
+  DateTimeColumn get createdAt => dateTime()();
+  DateTimeColumn get enqueuedAt => dateTime()();
+  DateTimeColumn get syncedAt => dateTime().nullable()();
+  TextColumn get state => text().withDefault(const Constant('PENDING'))();
+  TextColumn get lastError => text().nullable()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
 @DriftDatabase(
   tables: [
     CachedFarmerProducts,
@@ -114,6 +143,7 @@ class SyncMetadata extends Table {
     CourierTrackingUpdates,
     SyncOperations,
     SyncMetadata,
+    PendingEvaluationEvents,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -124,11 +154,14 @@ class AppDatabase extends _$AppDatabase {
   static final AppDatabase instance = AppDatabase._();
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
-    onCreate: (migrator) => migrator.createAll(),
+    onCreate: (migrator) async {
+      await migrator.createAll();
+      await _createSyncAuditTriggers();
+    },
     onUpgrade: (migrator, from, to) async {
       if (from < 2) {
         await migrator.createTable(cachedPickupPoints);
@@ -142,8 +175,53 @@ class AppDatabase extends _$AppDatabase {
       if (from < 5) {
         await migrator.createTable(courierTrackingUpdates);
       }
+      if (from < 6) {
+        await migrator.createTable(pendingEvaluationEvents);
+      }
+      if (from < 7) {
+        await migrator.addColumn(syncOperations, syncOperations.enqueuedAt);
+        await migrator.addColumn(syncOperations, syncOperations.syncedAt);
+        await migrator.addColumn(syncOperations, syncOperations.failedAt);
+        await migrator.addColumn(
+          syncOperations,
+          syncOperations.networkCondition,
+        );
+        await migrator.addColumn(
+          syncOperations,
+          syncOperations.conflictResolution,
+        );
+        await customStatement(
+          "UPDATE sync_operations SET enqueued_at = created_at WHERE enqueued_at IS NULL",
+        );
+        await _createSyncAuditTriggers();
+      }
     },
   );
+
+  Future<void> _createSyncAuditTriggers() async {
+    await customStatement(
+      'DROP TRIGGER IF EXISTS sync_operations_result_audit',
+    );
+    await customStatement('''
+      CREATE TRIGGER IF NOT EXISTS sync_operations_enqueue_audit
+      AFTER INSERT ON sync_operations
+      WHEN NEW.enqueued_at IS NULL
+      BEGIN
+        UPDATE sync_operations SET enqueued_at = NEW.created_at WHERE id = NEW.id;
+      END
+    ''');
+    await customStatement('''
+      CREATE TRIGGER IF NOT EXISTS sync_operations_result_audit
+      AFTER UPDATE OF state ON sync_operations
+      BEGIN
+        UPDATE sync_operations SET
+          synced_at = CASE WHEN NEW.state = 'synced' THEN CAST(strftime('%s', 'now') AS INTEGER) ELSE synced_at END,
+          failed_at = CASE WHEN NEW.state IN ('failed', 'conflict') THEN CAST(strftime('%s', 'now') AS INTEGER) ELSE failed_at END,
+          conflict_resolution = CASE WHEN NEW.state = 'conflict' THEN 'REQUIRES_REVIEW' ELSE conflict_resolution END
+        WHERE id = NEW.id;
+      END
+    ''');
+  }
 }
 
 LazyDatabase _openConnection() {

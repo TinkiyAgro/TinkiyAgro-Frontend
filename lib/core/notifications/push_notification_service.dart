@@ -2,9 +2,10 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
+import '../app_navigator.dart';
 import '../api_client.dart';
 import '../constants/app_constants.dart';
 import '../session_manager.dart';
@@ -19,6 +20,7 @@ class PushNotificationService {
       FlutterLocalNotificationsPlugin();
 
   StreamSubscription<String>? _tokenRefreshSubscription;
+  Timer? _bannerTimer;
   bool _initialized = false;
   String? _lastRegisteredToken;
 
@@ -113,6 +115,8 @@ class PushNotificationService {
     final body = notification?.body ?? message.data['body']?.toString();
     if (title == null && body == null) return;
 
+    if (_showInAppBanner(title ?? 'TinkiyAgro', body ?? '')) return;
+
     await _localNotifications.show(
       id: message.hashCode,
       title: title ?? 'TinkiyAgro',
@@ -127,5 +131,65 @@ class PushNotificationService {
         ),
       ),
     );
+  }
+
+  bool _showInAppBanner(String title, String body) {
+    final messenger = appScaffoldMessengerKey.currentState;
+    if (messenger == null) return false;
+
+    _bannerTimer?.cancel();
+    messenger.hideCurrentMaterialBanner();
+    messenger.showMaterialBanner(
+      MaterialBanner(
+        backgroundColor: Colors.white,
+        elevation: 6,
+        leading: Container(
+          width: 40,
+          height: 40,
+          decoration: const BoxDecoration(
+            color: Color(0xFF5CA399),
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(
+            Icons.notifications_none,
+            color: Colors.white,
+            size: 21,
+          ),
+        ),
+        content: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+              ),
+            ),
+            if (body.isNotEmpty) ...[
+              const SizedBox(height: 3),
+              Text(
+                body,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 13, color: Colors.black54),
+              ),
+            ],
+          ],
+        ),
+        actions: [
+          IconButton(
+            tooltip: 'Cerrar',
+            onPressed: messenger.hideCurrentMaterialBanner,
+            icon: const Icon(Icons.close),
+          ),
+        ],
+      ),
+    );
+    _bannerTimer = Timer(const Duration(seconds: 5), () {
+      appScaffoldMessengerKey.currentState?.hideCurrentMaterialBanner();
+    });
+    return true;
   }
 }

@@ -172,7 +172,9 @@ class _AddProductPageState extends State<AddProductPage> {
         );
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('"$name" actualizado localmente.')),
+            SnackBar(
+              content: Text('"$name" actualizado. Sincronizando cambios...'),
+            ),
           );
         }
       }

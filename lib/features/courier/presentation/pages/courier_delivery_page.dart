@@ -73,6 +73,7 @@ class _CourierDeliveryPageState extends State<CourierDeliveryPage> {
     try {
       await _service.confirmDelivery(customer.subOrderId);
       if (!mounted) return;
+      _tracking.stopForSubOrder(customer.subOrderId);
       setState(() => _confirmed.add(customer.subOrderId));
 
       final allConfirmed = _group.customers.every(

@@ -1,7 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:tinkiyagro_app/features/auth/data/remote/auth_service.dart';
-import 'package:tinkiyagro_app/features/auth/data/remote/register_request.dart';
-import 'package:tinkiyagro_app/core/session_manager.dart';
 
 class RoleSelectionPage extends StatefulWidget {
   const RoleSelectionPage({super.key});
@@ -11,20 +8,13 @@ class RoleSelectionPage extends StatefulWidget {
 }
 
 class _RoleSelectionPageState extends State<RoleSelectionPage> {
-  String? _selectedRole = '';
-  final _authService = AuthService();
-  bool _isLoading = false;
+  String? _selectedRole;
 
   @override
   Widget build(BuildContext context) {
     final args =
         ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>? ??
         {};
-    final username = args['username']?.toString() ?? 'Usuario';
-    final firstName = args['firstName']?.toString() ?? '';
-    final lastName = args['lastName']?.toString() ?? '';
-    final password = args['password']?.toString() ?? '';
-    final phone = args['phone']?.toString() ?? '';
 
     return Scaffold(
       body: Stack(
@@ -119,8 +109,8 @@ class _RoleSelectionPageState extends State<RoleSelectionPage> {
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
                       _buildRoleCard(
-                        roleId: 'AGRICULTOR',
-                        title: 'Agricultor',
+                        roleId: 'VENDEDOR',
+                        title: 'Agricultor /\norganización',
                         iconData: Icons.agriculture_rounded,
                       ),
                       _buildRoleCard(
@@ -142,15 +132,9 @@ class _RoleSelectionPageState extends State<RoleSelectionPage> {
                     width: double.infinity,
                     height: 56,
                     child: ElevatedButton(
-                      onPressed: _selectedRole == null || _isLoading
+                      onPressed: _selectedRole == null
                           ? null
-                          : () => _finishRegistration(
-                              username,
-                              firstName,
-                              lastName,
-                              password,
-                              phone,
-                            ),
+                          : () => _continueRegistration(args),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF5CA399),
                         disabledBackgroundColor: Colors.grey.withOpacity(0.3),
@@ -158,25 +142,14 @@ class _RoleSelectionPageState extends State<RoleSelectionPage> {
                         elevation: 4,
                         shape: const StadiumBorder(),
                       ),
-                      child: _isLoading
-                          ? const SizedBox(
-                              width: 22,
-                              height: 22,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2.4,
-                                valueColor: AlwaysStoppedAnimation<Color>(
-                                  Colors.white,
-                                ),
-                              ),
-                            )
-                          : const Text(
-                              'Finalizar',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: 0.5,
-                              ),
-                            ),
+                      child: const Text(
+                        'Continuar',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
                     ),
                   ),
 
@@ -210,7 +183,7 @@ class _RoleSelectionPageState extends State<RoleSelectionPage> {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
           width: 100,
-          height: 155,
+          height: 160,
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(24.0),
@@ -239,7 +212,7 @@ class _RoleSelectionPageState extends State<RoleSelectionPage> {
             children: [
               AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: isSelected
                       ? const Color(0xFF5CA399).withOpacity(0.1)
@@ -248,17 +221,26 @@ class _RoleSelectionPageState extends State<RoleSelectionPage> {
                 ),
                 child: Icon(
                   iconData,
-                  size: 52,
+                  size: 42,
                   color: isSelected ? const Color(0xFF5CA399) : Colors.black87,
                 ),
               ),
-              const SizedBox(height: 16),
-              Text(
-                title,
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: isSelected ? const Color(0xFF5CA399) : Colors.black87,
+              const SizedBox(height: 10),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 5),
+                child: Text(
+                  title,
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 14,
+                    height: 1.1,
+                    fontWeight: FontWeight.bold,
+                    color: isSelected
+                        ? const Color(0xFF5CA399)
+                        : Colors.black87,
+                  ),
                 ),
               ),
             ],
@@ -268,111 +250,19 @@ class _RoleSelectionPageState extends State<RoleSelectionPage> {
     );
   }
 
-  Future<void> _finishRegistration(
-    String username,
-    String firstName,
-    String lastName,
-    String password,
-    String phone,
-  ) async {
-    final roleName = _selectedRole ?? 'CONSUMIDOR';
-
-    setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      await _authService.registrarUsuario(
-        RegistroRequest(
-          nombre: firstName,
-          apellido: lastName,
-          usuario: username,
-          contrasenia: password,
-          rol: roleName.toUpperCase(),
-          celular: phone.isNotEmpty ? phone : null,
-        ),
-      );
-
-      SessionManager().setSession(
-        rol: roleName,
-        username: username,
-        nombre: firstName.isNotEmpty ? firstName : username,
-      );
-
-      if (!mounted) {
-        return;
-      }
-
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(24),
-          ),
-          title: const Column(
-            children: [
-              Icon(
-                Icons.check_circle_outline_rounded,
-                color: Color(0xFF5CA399),
-                size: 64,
-              ),
-              SizedBox(height: 12),
-              Text(
-                '¡Registro Completado!',
-                style: TextStyle(fontWeight: FontWeight.bold),
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
-          content: Text(
-            'Hola ${firstName.isNotEmpty ? firstName : username}, tu cuenta ha sido creada exitosamente con el perfil de ${_selectedRole == 'AGRICULTOR' ? 'Agricultor' : _selectedRole == 'REPARTIDOR' ? 'Repartidor' : 'Cliente'}.\n\nYa puedes conectar en TinkiyAgro.',
-            textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 15, height: 1.4),
-          ),
-          actions: [
-            Center(
-              child: SizedBox(
-                width: 160,
-                height: 44,
-                child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.pop(context);
-                    final dest = roleName == 'REPARTIDOR' ? '/courier_home' : '/home';
-                    Navigator.of(context).pushNamedAndRemoveUntil(dest, (route) => false);
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF5CA399),
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(22),
-                    ),
-                  ),
-                  child: const Text(
-                    'Comenzar',
-                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 8),
-          ],
-        ),
-      );
-    } catch (e) {
-      if (!mounted) {
-        return;
-      }
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
-      );
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
+  void _continueRegistration(Map<String, dynamic> args) {
+    if (_selectedRole == 'VENDEDOR') {
+      Navigator.pushNamed(context, '/seller_type', arguments: args);
+      return;
     }
+    if (_selectedRole == 'CONSUMIDOR') {
+      Navigator.pushNamed(
+        context,
+        '/consumer_discovery_setup',
+        arguments: args,
+      );
+      return;
+    }
+    Navigator.pushNamed(context, '/driver_register', arguments: args);
   }
 }

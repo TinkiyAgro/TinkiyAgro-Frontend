@@ -44,6 +44,7 @@ dependencies:
   path_provider: ^2.1.5
   sqlite3: ^3.3.2
   uuid: ^4.5.1
+  visibility_detector: ^0.4.0+2
 
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
@@ -66,6 +67,13 @@ dev_dependencies:
   flutter_lints: ^5.0.0
   build_runner: ^2.4.15
   drift_dev: ^2.34.1+1
+  flutter_launcher_icons: ^0.14.4
+
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: assets/images/app_icon.jpg
+  min_sdk_android: 23
 
 hooks:
   user_defines:

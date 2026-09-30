@@ -164,6 +164,13 @@ class _ConsumerProfilePageState extends State<ConsumerProfilePage> {
           ),
           _buildMenuItem(
             context,
+            icon: Icons.radar,
+            label: 'Radio de descubrimiento',
+            onTap: () =>
+                Navigator.pushNamed(context, '/consumer_discovery_update'),
+          ),
+          _buildMenuItem(
+            context,
             icon: Icons.receipt_long_outlined,
             label: 'Transacciones',
             onTap: () => Navigator.push(

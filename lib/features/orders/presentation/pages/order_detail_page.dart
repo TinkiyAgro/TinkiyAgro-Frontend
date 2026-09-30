@@ -18,6 +18,7 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
   bool _cargando = true;
   String? _error;
   final Map<String, TrackingInfo?> _courierTracking = {};
+  final Set<String> _acknowledgedTrackingUpdates = <String>{};
 
   Timer? _pollTimer;
   Timer? _courierPollTimer;
@@ -46,6 +47,9 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
       final pedido = await _service.detallePedido(id);
       if (mounted) {
         setState(() => _pedido = pedido);
+        _scheduleTrackingReflections(
+          pedido.subPedidos.map((sub) => sub.tracking),
+        );
         await _fetchCourierTracking(pedido);
         _iniciarPolling(pedido);
         _debugEstado();
@@ -59,10 +63,14 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
 
   Future<void> _fetchCourierTracking(PedidoConsumidor pedido) async {
     for (final sub in pedido.subPedidos) {
-      if (!sub.isCourierDelivery) continue;
+      if (!sub.isCourierDelivery || sub.estadoTexto == 'Entregado') {
+        _courierTracking.remove(sub.id);
+        continue;
+      }
       final t = await _service.fetchTracking(sub.id, isCourier: true);
       if (mounted && t != null) {
         setState(() => _courierTracking[sub.id] = t);
+        _scheduleTrackingReflections([t]);
       }
     }
   }
@@ -70,7 +78,9 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
   void _debugEstado() {
     if (_pedido == null) return;
     for (final sub in _pedido!.subPedidos) {
-      debugPrint('[DEBUG] id=${sub.id} estado="${sub.estadoTexto}" tracking="${sub.tracking?.label}" steps=${sub.timeline.length}');
+      debugPrint(
+        '[DEBUG] id=${sub.id} estado="${sub.estadoTexto}" tracking="${sub.tracking?.label}" steps=${sub.timeline.length}',
+      );
     }
   }
 
@@ -78,7 +88,9 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
   /// solo cuando hay subpedidos en tránsito (tracking activo del agricultor/courier).
   void _iniciarPolling(PedidoConsumidor pedido) {
     final hayEnCamino = pedido.subPedidos.any(
-      (s) => s.estadoTexto == 'En camino' || s.estadoTexto == 'Repartidor en camino',
+      (s) =>
+          s.estadoTexto == 'En camino' ||
+          s.estadoTexto == 'Repartidor en camino',
     );
     if (!hayEnCamino || _pedidoId == null) return;
 
@@ -87,7 +99,23 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
       if (!mounted) return;
       try {
         final fresh = await _service.detallePedido(_pedidoId!);
-        if (mounted) setState(() => _pedido = fresh);
+        if (!mounted) return;
+        setState(() => _pedido = fresh);
+        _scheduleTrackingReflections(
+          fresh.subPedidos.map((sub) => sub.tracking),
+        );
+        final sigueEnCamino = fresh.subPedidos.any(
+          (sub) =>
+              sub.estadoTexto == 'En camino' ||
+              sub.estadoTexto == 'Repartidor en camino',
+        );
+        if (!sigueEnCamino) {
+          _pollTimer?.cancel();
+          _pollTimer = null;
+          _courierPollTimer?.cancel();
+          _courierPollTimer = null;
+          _courierTracking.clear();
+        }
       } catch (_) {
         // Fallo silencioso: se sigue mostrando el último dato conocido
       }
@@ -102,6 +130,27 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
         if (current != null) await _fetchCourierTracking(current);
       });
     }
+  }
+
+  void _scheduleTrackingReflections(Iterable<TrackingInfo?> updates) {
+    final pending = updates
+        .whereType<TrackingInfo>()
+        .where((tracking) => tracking.positionUpdateId?.isNotEmpty == true)
+        .toList();
+    if (pending.isEmpty) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final reflectedAt = DateTime.now().toUtc();
+      for (final tracking in pending) {
+        final id = tracking.positionUpdateId!;
+        if (!_acknowledgedTrackingUpdates.add(id)) continue;
+        unawaited(
+          _service
+              .acknowledgeTrackingReflection(id, reflectedAt)
+              .catchError((_) => _acknowledgedTrackingUpdates.remove(id)),
+        );
+      }
+    });
   }
 
   @override
@@ -142,8 +191,10 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
           children: [
             const Icon(Icons.error_outline, color: Colors.redAccent, size: 48),
             const SizedBox(height: 12),
-            Text('No se pudo cargar el pedido',
-                style: TextStyle(color: Colors.grey.shade600)),
+            Text(
+              'No se pudo cargar el pedido',
+              style: TextStyle(color: Colors.grey.shade600),
+            ),
           ],
         ),
       );
@@ -221,10 +272,15 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
                         color: Colors.black,
                       ),
                     ),
-                    ...sub.itemsText.map((item) => Text(
-                      item,
-                      style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-                    )),
+                    ...sub.itemsText.map(
+                      (item) => Text(
+                        item,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -238,7 +294,9 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
               entry.value,
               entry.key,
               sub.timeline.length,
-              liveTracking: _courierTracking[sub.id] ?? sub.tracking,
+              liveTracking: sub.estadoTexto == 'Entregado'
+                  ? null
+                  : _courierTracking[sub.id] ?? sub.tracking,
             ),
           ),
         ],
@@ -276,12 +334,15 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
         : Colors.grey.shade300;
 
     // Mostrar tracking en cualquier paso activo que tenga datos reales de ubicación
-    final hasLive = event.active && liveTracking != null && liveTracking.label.isNotEmpty;
+    final hasLive =
+        event.active && liveTracking != null && liveTracking.label.isNotEmpty;
 
-    final effectiveLocationText =
-        hasLive ? liveTracking.label : event.locationText;
-    final effectiveLocationSubtext =
-        hasLive ? liveTracking.subtextActualizado : event.locationSubtext;
+    final effectiveLocationText = hasLive
+        ? liveTracking.label
+        : event.locationText;
+    final effectiveLocationSubtext = hasLive
+        ? liveTracking.subtextActualizado
+        : event.locationSubtext;
 
     return IntrinsicHeight(
       child: Row(
@@ -344,8 +405,8 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
                           color: event.active
                               ? const Color(0xFF5CA399)
                               : event.completed
-                                  ? Colors.grey.shade600
-                                  : Colors.grey.shade400,
+                              ? Colors.grey.shade600
+                              : Colors.grey.shade400,
                         ),
                       ),
                     ],
@@ -355,7 +416,9 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
                     const SizedBox(height: 6),
                     Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 7),
+                        horizontal: 10,
+                        vertical: 7,
+                      ),
                       decoration: BoxDecoration(
                         color: const Color(0xFFE3F2FD),
                         borderRadius: BorderRadius.circular(8),
@@ -365,8 +428,11 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
                         children: [
                           Row(
                             children: [
-                              const Icon(Icons.location_on_outlined,
-                                  size: 14, color: Color(0xFF1565C0)),
+                              const Icon(
+                                Icons.location_on_outlined,
+                                size: 14,
+                                color: Color(0xFF1565C0),
+                              ),
                               const SizedBox(width: 4),
                               Expanded(
                                 child: Text(
@@ -384,8 +450,11 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
                             const SizedBox(height: 2),
                             Row(
                               children: [
-                                const Icon(Icons.access_time,
-                                    size: 11, color: Colors.grey),
+                                const Icon(
+                                  Icons.access_time,
+                                  size: 11,
+                                  color: Colors.grey,
+                                ),
                                 const SizedBox(width: 3),
                                 Text(
                                   effectiveLocationSubtext,

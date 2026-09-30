@@ -24,7 +24,10 @@ class _CheckoutEnvioPageState extends State<CheckoutEnvioPage> {
   }
 
   Future<void> _cargarTodo() async {
-    setState(() { _cargando = true; _errorMsg = null; });
+    setState(() {
+      _cargando = true;
+      _errorMsg = null;
+    });
     try {
       // Primary source: checkout options endpoint returns all farmers + options
       final farmerOptions = await _service.obtenerCheckoutOptions();
@@ -46,16 +49,19 @@ class _CheckoutEnvioPageState extends State<CheckoutEnvioPage> {
 
     _farmers = farmerOptions.map((fo) {
       // Try to match cart items by username; fall back to all items if no match
-      final items = grouped[fo.farmerUsername] ??
+      final items =
+          grouped[fo.farmerUsername] ??
           grouped.values.expand((x) => x).toList();
 
       final checkoutItems = items
-          .map((ci) => CheckoutItemData(
-                productName: ci.producto.nombre,
-                cantidad: ci.cantidad.toDouble(),
-                unidad: ci.formatoVenta == 'Caja' ? 'Caja' : 'Kg',
-                precioUnitario: ci.precioUnitario,
-              ))
+          .map(
+            (ci) => CheckoutItemData(
+              productName: ci.producto.nombre,
+              cantidad: ci.cantidad.toDouble(),
+              unidad: ci.formatoVenta == 'Caja' ? 'Caja' : 'Kg',
+              precioUnitario: ci.precioUnitario,
+            ),
+          )
           .toList();
 
       final farmer = CheckoutFarmer(
@@ -85,12 +91,14 @@ class _CheckoutEnvioPageState extends State<CheckoutEnvioPage> {
         farmerUsername: e.key,
         farmerAvatarUrl: items.first.producto.urlAvatarVendedor,
         items: items
-            .map((ci) => CheckoutItemData(
-                  productName: ci.producto.nombre,
-                  cantidad: ci.cantidad.toDouble(),
-                  unidad: ci.formatoVenta == 'Caja' ? 'Caja' : 'Kg',
-                  precioUnitario: ci.precioUnitario,
-                ))
+            .map(
+              (ci) => CheckoutItemData(
+                productName: ci.producto.nombre,
+                cantidad: ci.cantidad.toDouble(),
+                unidad: ci.formatoVenta == 'Caja' ? 'Caja' : 'Kg',
+                precioUnitario: ci.precioUnitario,
+              ),
+            )
             .toList(),
         productsTotal: items.fold(0.0, (s, i) => s + i.total),
       );
@@ -105,7 +113,8 @@ class _CheckoutEnvioPageState extends State<CheckoutEnvioPage> {
     if (farmer.farmerUsername.isEmpty) return;
     try {
       final opts = await _service.obtenerOpciones(farmer.farmerUsername);
-      if (opts.farmerDisplayName != null && opts.farmerDisplayName!.isNotEmpty) {
+      if (opts.farmerDisplayName != null &&
+          opts.farmerDisplayName!.isNotEmpty) {
         farmer.farmerName = opts.farmerDisplayName!;
       }
       if (opts.farmerAvatarUrl != null && opts.farmerAvatarUrl!.isNotEmpty) {
@@ -117,8 +126,7 @@ class _CheckoutEnvioPageState extends State<CheckoutEnvioPage> {
   }
 
   bool get _todosSeleccionados =>
-      _farmers.isNotEmpty &&
-      _farmers.every((f) => f.selectedOptionIndex >= 0);
+      _farmers.isNotEmpty && _farmers.every((f) => f.selectedOptionIndex >= 0);
 
   @override
   Widget build(BuildContext context) {
@@ -134,7 +142,10 @@ class _CheckoutEnvioPageState extends State<CheckoutEnvioPage> {
         title: const Text(
           'Método de envío',
           style: TextStyle(
-              color: Colors.black, fontSize: 18, fontWeight: FontWeight.bold),
+            color: Colors.black,
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+          ),
         ),
         centerTitle: true,
       ),
@@ -161,16 +172,21 @@ class _CheckoutEnvioPageState extends State<CheckoutEnvioPage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(_errorMsg!,
-                style: TextStyle(color: Colors.grey.shade600),
-                textAlign: TextAlign.center),
+            Text(
+              _errorMsg!,
+              style: TextStyle(color: Colors.grey.shade600),
+              textAlign: TextAlign.center,
+            ),
             const SizedBox(height: 12),
             ElevatedButton(
               onPressed: _cargarTodo,
               style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF5CA399)),
-              child: const Text('Reintentar',
-                  style: TextStyle(color: Colors.white)),
+                backgroundColor: const Color(0xFF5CA399),
+              ),
+              child: const Text(
+                'Reintentar',
+                style: TextStyle(color: Colors.white),
+              ),
             ),
           ],
         ),
@@ -181,11 +197,16 @@ class _CheckoutEnvioPageState extends State<CheckoutEnvioPage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.shopping_cart_outlined,
-                size: 56, color: Colors.grey.shade300),
+            Icon(
+              Icons.shopping_cart_outlined,
+              size: 56,
+              color: Colors.grey.shade300,
+            ),
             const SizedBox(height: 12),
-            Text('No hay productos en el carrito.',
-                style: TextStyle(fontSize: 14, color: Colors.grey.shade500)),
+            Text(
+              'No hay productos en el carrito.',
+              style: TextStyle(fontSize: 14, color: Colors.grey.shade500),
+            ),
           ],
         ),
       );
@@ -228,23 +249,27 @@ class _CheckoutEnvioPageState extends State<CheckoutEnvioPage> {
           child: Center(
             child: isDone
                 ? const Icon(Icons.check, color: Colors.white, size: 16)
-                : Text('$step',
+                : Text(
+                    '$step',
                     style: TextStyle(
                       color: isActive ? Colors.white : Colors.grey.shade600,
                       fontWeight: FontWeight.bold,
                       fontSize: 14,
-                    )),
+                    ),
+                  ),
           ),
         ),
         const SizedBox(height: 4),
-        Text(label,
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.bold,
-              color: isDone || isActive
-                  ? const Color(0xFF5CA399)
-                  : Colors.grey.shade500,
-            )),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.bold,
+            color: isDone || isActive
+                ? const Color(0xFF5CA399)
+                : Colors.grey.shade500,
+          ),
+        ),
       ],
     );
   }
@@ -282,9 +307,10 @@ class _CheckoutEnvioPageState extends State<CheckoutEnvioPage> {
           const Text(
             'Elige como recibir',
             style: TextStyle(
-                fontSize: 13,
-                color: Colors.black54,
-                fontWeight: FontWeight.w500),
+              fontSize: 13,
+              color: Colors.black54,
+              fontWeight: FontWeight.w500,
+            ),
           ),
           const SizedBox(height: 8),
           _buildOptionsRow(farmer),
@@ -294,19 +320,42 @@ class _CheckoutEnvioPageState extends State<CheckoutEnvioPage> {
   }
 
   Widget _buildOptionsRow(CheckoutFarmer farmer) {
-    final options = farmer.availableOptions.isNotEmpty
-        ? farmer.availableOptions
-        : [
-            const DeliveryOption(type: 'PICKUP', cost: 0),
-            const DeliveryOption(type: 'DELIVERY', cost: 0),
-          ];
+    final options = farmer.availableOptions;
+
+    if (options.isEmpty) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.orange.shade50,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: Colors.orange.shade200),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.info_outline, color: Colors.orange.shade700, size: 18),
+            const SizedBox(width: 8),
+            const Expanded(
+              child: Text(
+                'Este agricultor no tiene métodos de entrega activos.',
+                style: TextStyle(fontSize: 12),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
 
     return Row(
       children: [
         for (int i = 0; i < options.length; i++) ...[
           if (i > 0) const SizedBox(width: 10),
           Expanded(
-            child: _buildOptionCard(farmer: farmer, option: options[i], index: i),
+            child: _buildOptionCard(
+              farmer: farmer,
+              option: options[i],
+              index: i,
+            ),
           ),
         ],
       ],
@@ -336,7 +385,9 @@ class _CheckoutEnvioPageState extends State<CheckoutEnvioPage> {
                     ? farmer.farmerName
                     : farmer.farmerUsername,
                 style: const TextStyle(
-                    fontSize: 15, fontWeight: FontWeight.bold),
+                  fontSize: 15,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               Text(
                 farmer.itemsSummary,
@@ -413,10 +464,10 @@ class _CheckoutEnvioPageState extends State<CheckoutEnvioPage> {
         child: ElevatedButton(
           onPressed: !_cargando && _todosSeleccionados
               ? () => Navigator.pushNamed(
-                    context,
-                    '/checkout_direccion',
-                    arguments: _farmers,
-                  )
+                  context,
+                  '/checkout_direccion',
+                  arguments: _farmers,
+                )
               : null,
           style: ElevatedButton.styleFrom(
             backgroundColor: const Color(0xFF5CA399),

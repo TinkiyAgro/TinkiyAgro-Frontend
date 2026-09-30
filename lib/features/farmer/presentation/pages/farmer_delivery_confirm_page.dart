@@ -11,8 +11,7 @@ class FarmerDeliveryConfirmPage extends StatefulWidget {
       _FarmerDeliveryConfirmPageState();
 }
 
-class _FarmerDeliveryConfirmPageState
-    extends State<FarmerDeliveryConfirmPage> {
+class _FarmerDeliveryConfirmPageState extends State<FarmerDeliveryConfirmPage> {
   final _service = FarmerOrderService();
   final _tracking = LocationTrackingService();
 
@@ -32,8 +31,10 @@ class _FarmerDeliveryConfirmPageState
   String _buildFullAddress() {
     final parts = <String>[
       if (_group.direccion.isNotEmpty) _group.direccion,
-      if (_group.district != null && _group.district!.isNotEmpty) _group.district!,
-      if (_group.reference != null && _group.reference!.isNotEmpty) _group.reference!,
+      if (_group.district != null && _group.district!.isNotEmpty)
+        _group.district!,
+      if (_group.reference != null && _group.reference!.isNotEmpty)
+        _group.reference!,
     ];
     return parts.join(', ');
   }
@@ -65,14 +66,26 @@ class _FarmerDeliveryConfirmPageState
   // ── Self-delivery confirm ─────────────────────────────────────────────────
 
   Future<void> _confirmar(FarmerCustomerOrder customer) async {
-    setState(() => _confirmando[customer.subOrderId] = true);
+    final ids = customer.subOrderIds;
+    if (ids.isEmpty) return;
+    setState(() {
+      for (final id in ids) {
+        _confirmando[id] = true;
+      }
+    });
     try {
-      await _service.confirmarEntrega(customer.subOrderId);
+      for (final id in ids) {
+        await _service.confirmarEntrega(id);
+      }
       if (!mounted) return;
-      setState(() => _confirmados.add(customer.subOrderId));
+      for (final id in ids) {
+        _tracking.stopForSubOrder(id);
+      }
+      setState(() => _confirmados.addAll(ids));
 
-      final todosConfirmados =
-          _group.clientes.every((c) => _confirmados.contains(c.subOrderId));
+      final todosConfirmados = _group.clientes.every(
+        (c) => c.subOrderIds.every(_confirmados.contains),
+      );
       if (todosConfirmados) {
         _group.state = OrderGroupState.entregado;
         _tracking.stop(); // todas entregadas → detener tracking
@@ -87,13 +100,20 @@ class _FarmerDeliveryConfirmPageState
           content: Text(e.toString()),
           actions: [
             TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('OK')),
+              onPressed: () => Navigator.pop(context),
+              child: const Text('OK'),
+            ),
           ],
         ),
       );
     } finally {
-      if (mounted) setState(() => _confirmando[customer.subOrderId] = false);
+      if (mounted) {
+        setState(() {
+          for (final id in ids) {
+            _confirmando[id] = false;
+          }
+        });
+      }
     }
   }
 
@@ -113,7 +133,10 @@ class _FarmerDeliveryConfirmPageState
         title: Text(
           _isDeliveryType ? 'Delivery' : 'Volver',
           style: const TextStyle(
-              color: Colors.black, fontSize: 18, fontWeight: FontWeight.bold),
+            color: Colors.black,
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+          ),
         ),
       ),
       body: SingleChildScrollView(
@@ -126,21 +149,27 @@ class _FarmerDeliveryConfirmPageState
               const Text(
                 'Delivery',
                 style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black),
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
+                ),
               ),
               const SizedBox(height: 4),
               Row(
                 children: [
-                  const Icon(Icons.location_on_outlined,
-                      size: 14, color: Colors.grey),
+                  const Icon(
+                    Icons.location_on_outlined,
+                    size: 14,
+                    color: Colors.grey,
+                  ),
                   const SizedBox(width: 4),
                   Expanded(
                     child: Text(
                       _buildFullAddress(),
-                      style:
-                          TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey.shade600,
+                      ),
                     ),
                   ),
                 ],
@@ -149,22 +178,28 @@ class _FarmerDeliveryConfirmPageState
               Text(
                 _group.nombrePunto,
                 style: const TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black),
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
+                ),
               ),
               if (_group.direccion.isNotEmpty) ...[
                 const SizedBox(height: 4),
                 Row(
                   children: [
-                    const Icon(Icons.location_on_outlined,
-                        size: 14, color: Colors.grey),
+                    const Icon(
+                      Icons.location_on_outlined,
+                      size: 14,
+                      color: Colors.grey,
+                    ),
                     const SizedBox(width: 4),
                     Expanded(
                       child: Text(
                         _group.direccion,
                         style: TextStyle(
-                            fontSize: 12, color: Colors.grey.shade600),
+                          fontSize: 12,
+                          color: Colors.grey.shade600,
+                        ),
                       ),
                     ),
                   ],
@@ -174,12 +209,14 @@ class _FarmerDeliveryConfirmPageState
             const SizedBox(height: 16),
 
             // ── Customer cards ───────────────────────────────────────────
-            ..._group.clientes.map((c) => Padding(
-                  padding: const EdgeInsets.only(bottom: 16),
-                  child: _isCourierDelivery
-                      ? _buildCourierStatusCard(c)
-                      : _buildSelfDeliveryCard(c),
-                )),
+            ..._group.clientes.map(
+              (c) => Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: _isCourierDelivery
+                    ? _buildCourierStatusCard(c)
+                    : _buildSelfDeliveryCard(c),
+              ),
+            ),
           ],
         ),
       ),
@@ -218,9 +255,10 @@ class _FarmerDeliveryConfirmPageState
                     ? Text(
                         customer.clienteInicial,
                         style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 15,
-                            color: Color(0xFF1E3A32)),
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                          color: Color(0xFF1E3A32),
+                        ),
                       )
                     : null,
               ),
@@ -229,7 +267,9 @@ class _FarmerDeliveryConfirmPageState
                 child: Text(
                   customer.clienteNombre,
                   style: const TextStyle(
-                      fontWeight: FontWeight.bold, fontSize: 16),
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
                 ),
               ),
               _buildTypeBadge(customer.tipoEntrega),
@@ -243,10 +283,14 @@ class _FarmerDeliveryConfirmPageState
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('${item.productName} × ${item.cantidad}',
-                      style: const TextStyle(fontSize: 13)),
-                  Text('S/. ${item.precio.toStringAsFixed(2)}',
-                      style: const TextStyle(fontSize: 13)),
+                  Text(
+                    '${item.productName} × ${item.cantidad}',
+                    style: const TextStyle(fontSize: 13),
+                  ),
+                  Text(
+                    'S/. ${item.precio.toStringAsFixed(2)}',
+                    style: const TextStyle(fontSize: 13),
+                  ),
                 ],
               ),
             ),
@@ -257,12 +301,14 @@ class _FarmerDeliveryConfirmPageState
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('Envío',
-                      style: TextStyle(
-                          fontSize: 13, color: Colors.grey.shade600)),
-                  Text('S/. ${customer.deliveryCost.toStringAsFixed(2)}',
-                      style: TextStyle(
-                          fontSize: 13, color: Colors.grey.shade600)),
+                  Text(
+                    'Envío',
+                    style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+                  ),
+                  Text(
+                    'S/. ${customer.deliveryCost.toStringAsFixed(2)}',
+                    style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+                  ),
                 ],
               ),
             ),
@@ -270,11 +316,17 @@ class _FarmerDeliveryConfirmPageState
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Total a cobrar',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-              Text('S/. ${customer.total.toStringAsFixed(2)}',
-                  style: const TextStyle(
-                      fontWeight: FontWeight.bold, fontSize: 14)),
+              const Text(
+                'Total a cobrar',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+              ),
+              Text(
+                'S/. ${customer.total.toStringAsFixed(2)}',
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 14),
@@ -282,8 +334,7 @@ class _FarmerDeliveryConfirmPageState
           // Status badge
           Container(
             width: double.infinity,
-            padding:
-                const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
             decoration: BoxDecoration(
               color: isEntregado
                   ? const Color(0xFFE8F5E9)
@@ -329,10 +380,13 @@ class _FarmerDeliveryConfirmPageState
 
   Widget _buildSelfDeliveryCard(FarmerCustomerOrder customer) {
     final isYape = customer.metodoPago == 'Yape';
-    final isBusy = _confirmando[customer.subOrderId] == true;
-    final yaConfirmado = _confirmados.contains(customer.subOrderId);
+    final isBusy = customer.subOrderIds.any((id) => _confirmando[id] == true);
+    final yaConfirmado = customer.subOrderIds.every(_confirmados.contains);
     final canConfirm =
-        customer.entregaConfirmada && customer.pagoConfirmado && !isBusy && !yaConfirmado;
+        customer.entregaConfirmada &&
+        customer.pagoConfirmado &&
+        !isBusy &&
+        !yaConfirmado;
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -362,9 +416,10 @@ class _FarmerDeliveryConfirmPageState
                     ? Text(
                         customer.clienteInicial,
                         style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 15,
-                            color: Color(0xFF1E3A32)),
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                          color: Color(0xFF1E3A32),
+                        ),
                       )
                     : null,
               ),
@@ -373,7 +428,9 @@ class _FarmerDeliveryConfirmPageState
                 child: Text(
                   customer.clienteNombre,
                   style: const TextStyle(
-                      fontWeight: FontWeight.bold, fontSize: 16),
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
                 ),
               ),
               _buildTypeBadge(customer.tipoEntrega),
@@ -387,10 +444,14 @@ class _FarmerDeliveryConfirmPageState
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('${item.productName} × ${item.cantidad}',
-                      style: const TextStyle(fontSize: 13)),
-                  Text('S/. ${item.precio.toStringAsFixed(2)}',
-                      style: const TextStyle(fontSize: 13)),
+                  Text(
+                    '${item.productName} × ${item.cantidad}',
+                    style: const TextStyle(fontSize: 13),
+                  ),
+                  Text(
+                    'S/. ${item.precio.toStringAsFixed(2)}',
+                    style: const TextStyle(fontSize: 13),
+                  ),
                 ],
               ),
             ),
@@ -401,12 +462,14 @@ class _FarmerDeliveryConfirmPageState
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('Envío',
-                      style: TextStyle(
-                          fontSize: 13, color: Colors.grey.shade600)),
-                  Text('S/. ${customer.deliveryCost.toStringAsFixed(2)}',
-                      style: TextStyle(
-                          fontSize: 13, color: Colors.grey.shade600)),
+                  Text(
+                    'Envío',
+                    style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+                  ),
+                  Text(
+                    'S/. ${customer.deliveryCost.toStringAsFixed(2)}',
+                    style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+                  ),
                 ],
               ),
             ),
@@ -414,22 +477,29 @@ class _FarmerDeliveryConfirmPageState
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Total a cobrar',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-              Text('S/. ${customer.total.toStringAsFixed(2)}',
-                  style: const TextStyle(
-                      fontWeight: FontWeight.bold, fontSize: 14)),
+              const Text(
+                'Total a cobrar',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+              ),
+              Text(
+                'S/. ${customer.total.toStringAsFixed(2)}',
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                ),
+              ),
             ],
           ),
 
           const SizedBox(height: 14),
-          const Text('Confirmar entrega',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+          const Text(
+            'Confirmar entrega',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+          ),
           const SizedBox(height: 8),
 
           Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             decoration: BoxDecoration(
               color: const Color(0xFF5CA399),
               borderRadius: BorderRadius.circular(10),
@@ -437,35 +507,48 @@ class _FarmerDeliveryConfirmPageState
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('Monto a cobrar:',
-                        style: TextStyle(color: Colors.white70, fontSize: 11)),
-                    Text(
-                      'S/. ${customer.total.toStringAsFixed(2)}',
-                      style: const TextStyle(
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Monto a cobrar:',
+                        style: TextStyle(color: Colors.white70, fontSize: 11),
+                      ),
+                      Text(
+                        'S/. ${customer.total.toStringAsFixed(2)}',
+                        style: const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
-                          fontSize: 18),
-                    ),
-                  ],
+                          fontSize: 18,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    const Text('Método:',
-                        style: TextStyle(color: Colors.white70, fontSize: 11)),
-                    Text(
-                      isYape
-                          ? 'Yape - ${customer.yapeNumero ?? ''}'
-                          : 'Efectivo',
-                      style: const TextStyle(
+                const SizedBox(width: 12),
+                Flexible(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      const Text(
+                        'Método:',
+                        style: TextStyle(color: Colors.white70, fontSize: 11),
+                      ),
+                      Text(
+                        isYape
+                            ? 'Yape: ${customer.yapeNumero ?? 'No configurado'}'
+                            : 'Efectivo',
+                        style: const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
-                          fontSize: 14),
-                    ),
-                  ],
+                          fontSize: 14,
+                        ),
+                        textAlign: TextAlign.right,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -505,10 +588,17 @@ class _FarmerDeliveryConfirmPageState
                       width: 20,
                       height: 20,
                       child: CircularProgressIndicator(
-                          color: Colors.white, strokeWidth: 2))
-                  : const Text('Confirmar entrega',
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
+                    )
+                  : const Text(
+                      'Confirmar entrega',
                       style: TextStyle(
-                          fontSize: 15, fontWeight: FontWeight.bold)),
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
             ),
           ),
         ],
@@ -521,9 +611,7 @@ class _FarmerDeliveryConfirmPageState
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: isDelivery
-            ? const Color(0xFFE8D5F5)
-            : const Color(0xFFD5E8F5),
+        color: isDelivery ? const Color(0xFFE8D5F5) : const Color(0xFFD5E8F5),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(
@@ -531,16 +619,17 @@ class _FarmerDeliveryConfirmPageState
         style: TextStyle(
           fontSize: 11,
           fontWeight: FontWeight.bold,
-          color: isDelivery
-              ? const Color(0xFF7B2D8B)
-              : const Color(0xFF1976D2),
+          color: isDelivery ? const Color(0xFF7B2D8B) : const Color(0xFF1976D2),
         ),
       ),
     );
   }
 
   Widget _buildToggleRow(
-      String label, bool value, ValueChanged<bool>? onChanged) {
+    String label,
+    bool value,
+    ValueChanged<bool>? onChanged,
+  ) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
@@ -551,8 +640,10 @@ class _FarmerDeliveryConfirmPageState
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label,
-              style: const TextStyle(fontSize: 13, color: Colors.black87)),
+          Text(
+            label,
+            style: const TextStyle(fontSize: 13, color: Colors.black87),
+          ),
           Switch(
             value: value,
             onChanged: onChanged,

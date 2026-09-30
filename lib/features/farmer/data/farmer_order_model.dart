@@ -1,14 +1,13 @@
 import 'dart:ui';
-import 'package:flutter/foundation.dart';
 import 'package:tinkiyagro_app/features/catalog/data/product_model.dart';
 
 // ── State machine for an order group ─────────────────────────────────────────
 
 enum OrderGroupState {
-  porPreparar,           // CONFIRMED → "Por preparar"
+  porPreparar, // CONFIRMED → "Por preparar"
   seleccionandoDespacho, // PREPARED  → dispatch options visible
-  despachado,            // DISPATCHED / OUT_FOR_DELIVERY → "En camino"
-  entregado,             // DELIVERED → "Entregado"
+  despachado, // DISPATCHED / OUT_FOR_DELIVERY → "En camino"
+  entregado, // DELIVERED → "Entregado"
 }
 
 // ── Models ────────────────────────────────────────────────────────────────────
@@ -27,6 +26,8 @@ class FarmerOrderItem {
 
 class FarmerCustomerOrder {
   final String subOrderId;
+  final List<String> subOrderIds;
+  final String customerUsername;
   final String clienteInicial;
   final Color clienteColor;
   final String clienteNombre;
@@ -43,6 +44,8 @@ class FarmerCustomerOrder {
 
   FarmerCustomerOrder({
     this.subOrderId = '',
+    List<String>? subOrderIds,
+    this.customerUsername = '',
     required this.clienteInicial,
     required this.clienteColor,
     required this.clienteNombre,
@@ -56,50 +59,82 @@ class FarmerCustomerOrder {
     this.yapeNumero,
     this.entregaConfirmada = false,
     this.pagoConfirmado = false,
-  });
+  }) : subOrderIds =
+           subOrderIds ?? (subOrderId.isEmpty ? const [] : [subOrderId]);
 
-  factory FarmerCustomerOrder.fromJson(Map<String, dynamic> json, {int index = 1}) {
-    debugPrint('[FarmerCustomerOrder.fromJson] keys=${json.keys.toList()} json=$json');
-    final rawItems = (json['items'] ?? json['products'] ?? json['orderItems'] ?? []) as List;
+  factory FarmerCustomerOrder.fromJson(
+    Map<String, dynamic> json, {
+    int index = 1,
+  }) {
+    final rawItems =
+        (json['items'] ?? json['products'] ?? json['orderItems'] ?? []) as List;
     final items = rawItems.whereType<Map>().map((i) {
-      debugPrint('[FarmerOrderItem.fromJson] item=$i');
       return FarmerOrderItem(
-        productName: i['productName']?.toString() ?? i['name']?.toString() ?? i['product']?.toString() ?? '',
+        productName:
+            i['productName']?.toString() ??
+            i['name']?.toString() ??
+            i['product']?.toString() ??
+            '',
         cantidad: _buildCantidad(i),
-        precio: _parseDouble(i['unitPrice'] ?? i['price'] ?? i['precio'] ?? i['total']),
+        precio: _parseDouble(
+          i['unitPrice'] ?? i['price'] ?? i['precio'] ?? i['total'],
+        ),
       );
     }).toList();
 
     // Try all possible consumer name fields the backend might send
-    String name = json['customerName']?.toString()
-        ?? json['customerUsername']?.toString()
-        ?? json['consumerName']?.toString()
-        ?? json['clientName']?.toString()
-        ?? json['buyerName']?.toString()
-        ?? json['fullName']?.toString()
-        ?? json['consumerUsername']?.toString()
-        ?? json['username']?.toString()
-        ?? '';
-    debugPrint('[FarmerCustomerOrder.fromJson] resolved name="$name"');
-    final rawDelivery = (json['deliveryType'] ?? json['deliveryMethod'] ?? '').toString().toUpperCase();
-    final tipo = (rawDelivery == 'PICKUP' || rawDelivery == 'RECOJO') ? 'Recojo' : 'Delivery';
+    String name =
+        json['customerName']?.toString() ??
+        json['customerUsername']?.toString() ??
+        json['consumerName']?.toString() ??
+        json['clientName']?.toString() ??
+        json['buyerName']?.toString() ??
+        json['fullName']?.toString() ??
+        json['consumerUsername']?.toString() ??
+        json['username']?.toString() ??
+        '';
+    final username =
+        json['customerUsername']?.toString() ??
+        json['consumerUsername']?.toString() ??
+        json['username']?.toString() ??
+        '';
+    final rawDelivery = (json['deliveryType'] ?? json['deliveryMethod'] ?? '')
+        .toString()
+        .toUpperCase();
+    final tipo = (rawDelivery == 'PICKUP' || rawDelivery == 'RECOJO')
+        ? 'Recojo'
+        : 'Delivery';
     final rawPayment = (json['paymentMethod'] ?? '').toString().toUpperCase();
     final metodo = rawPayment == 'YAPE' ? 'Yape' : 'Efectivo';
 
     final displayName = name.isNotEmpty ? name : 'Pedido #$index';
-    final subOrderId = json['subOrderId']?.toString() ?? json['id']?.toString() ?? '';
+    final subOrderId =
+        json['subOrderId']?.toString() ?? json['id']?.toString() ?? '';
     return FarmerCustomerOrder(
       subOrderId: subOrderId,
+      customerUsername: username,
       clienteInicial: name.isNotEmpty ? name[0].toUpperCase() : '#',
       clienteColor: const Color(0xFFB2DFDB),
       clienteNombre: displayName,
-      customerProfileImageUrl: resolveMediaUrl(json['customerProfileImageUrl']?.toString() ?? ''),
+      customerProfileImageUrl: resolveMediaUrl(
+        json['customerProfileImageUrl']?.toString() ?? '',
+      ),
       items: items,
-      productsSubtotal: _parseDouble(json['productsTotal'] ?? json['subtotal'] ?? json['productsSubtotal']),
-      deliveryCost: _parseDouble(json['deliveryCost'] ?? json['shippingCost'] ?? json['shipping']),
-      total: _parseDouble(json['total'] ?? json['amount'] ?? json['totalAmount']),
+      productsSubtotal: _parseDouble(
+        json['productsTotal'] ?? json['subtotal'] ?? json['productsSubtotal'],
+      ),
+      deliveryCost: _parseDouble(
+        json['deliveryCost'] ?? json['shippingCost'] ?? json['shipping'],
+      ),
+      total: _parseDouble(
+        json['total'] ?? json['amount'] ?? json['totalAmount'],
+      ),
       tipoEntrega: tipo,
       metodoPago: metodo,
+      yapeNumero:
+          json['yapePhoneNumber']?.toString() ??
+          json['yapeNumero']?.toString() ??
+          json['yapeNumber']?.toString(),
     );
   }
 }
@@ -165,7 +200,10 @@ class FarmerOrderGroup {
       final cantidad = unit.isNotEmpty
           ? '${qty % 1 == 0 ? qty.toInt() : qty} $unit'
           : '${qty % 1 == 0 ? qty.toInt() : qty}';
-      return ProductoAPreparar(nombre: p['productName']?.toString() ?? '', cantidad: cantidad);
+      return ProductoAPreparar(
+        nombre: p['productName']?.toString() ?? '',
+        cantidad: cantidad,
+      );
     }).toList();
 
     // Build lookup of subOrders by id (has financial data: deliveryCost, deliveryMethod, etc.)
@@ -180,10 +218,12 @@ class FarmerOrderGroup {
     final rawCustomerOrders = (json['customerOrders'] ?? []) as List;
 
     // If customerOrders exist, merge; otherwise fall back to raw subOrders directly
-    final List rawOrders = rawCustomerOrders.isNotEmpty ? rawCustomerOrders : rawSubOrders;
+    final List rawOrders = rawCustomerOrders.isNotEmpty
+        ? rawCustomerOrders
+        : rawSubOrders;
 
     int orderIndex = 0;
-    final clientes = rawOrders.whereType<Map>().map((e) {
+    final clientesSinAgrupar = rawOrders.whereType<Map>().map((e) {
       orderIndex++;
       final subOrderId = (e['subOrderId'] ?? e['id'] ?? '').toString();
       final subOrder = subOrdersById[subOrderId] ?? {};
@@ -195,34 +235,51 @@ class FarmerOrderGroup {
       };
       return FarmerCustomerOrder.fromJson(merged, index: orderIndex);
     }).toList();
+    final clientes = _mergeCustomerOrders(clientesSinAgrupar);
 
     // Pickup time from pickupFrom / pickupTo (format "HH:mm:ss")
-    final fromTime = json['pickupFrom']?.toString() ?? json['deliveryFrom']?.toString() ?? json['timeFrom']?.toString() ?? '';
-    final toTime = json['pickupTo']?.toString() ?? json['deliveryTo']?.toString() ?? json['timeTo']?.toString() ?? '';
-    final deliveryDateRaw = json['deliveryDate']?.toString() ?? json['scheduledDate']?.toString() ?? '';
+    final fromTime =
+        json['pickupFrom']?.toString() ??
+        json['deliveryFrom']?.toString() ??
+        json['timeFrom']?.toString() ??
+        '';
+    final toTime =
+        json['pickupTo']?.toString() ??
+        json['deliveryTo']?.toString() ??
+        json['timeTo']?.toString() ??
+        '';
+    final deliveryDateRaw =
+        json['deliveryDate']?.toString() ??
+        json['scheduledDate']?.toString() ??
+        '';
 
     // Destination address (supports both destination map and flat fields)
     final destination = json['destination'];
-    final address = (destination is Map ? destination['address']?.toString() : null)
-        ?? json['pickupPointAddress']?.toString()
-        ?? json['destinationAddress']?.toString()
-        ?? json['address']?.toString()
-        ?? '';
+    final address =
+        (destination is Map ? destination['address']?.toString() : null) ??
+        json['pickupPointAddress']?.toString() ??
+        json['destinationAddress']?.toString() ??
+        json['address']?.toString() ??
+        '';
     final district = destination is Map
-        ? (destination['district']?.toString() ?? destination['distrito']?.toString())
+        ? (destination['district']?.toString() ??
+              destination['distrito']?.toString())
         : (json['district']?.toString() ?? json['distrito']?.toString());
     final reference = destination is Map
-        ? (destination['reference']?.toString() ?? destination['referencia']?.toString())
+        ? (destination['reference']?.toString() ??
+              destination['referencia']?.toString())
         : (json['reference']?.toString() ?? json['referencia']?.toString());
 
     // Determine delivery method from group level or first subOrder
-    final rawMethod = (json['deliveryMethod']
-            ?? (rawSubOrders.isNotEmpty
-                ? (rawSubOrders.first as Map?)?.cast<String, dynamic>()['deliveryMethod']
-                : null)
-            ?? '')
-        .toString()
-        .toUpperCase();
+    final rawMethod =
+        (json['deliveryMethod'] ??
+                (rawSubOrders.isNotEmpty
+                    ? (rawSubOrders.first as Map?)
+                          ?.cast<String, dynamic>()['deliveryMethod']
+                    : null) ??
+                '')
+            .toString()
+            .toUpperCase();
     final deliveryMethod = rawMethod == 'DELIVERY' ? 'DELIVERY' : 'PICKUP';
 
     // Dispatcher info: the backend returns it nested inside each subOrder as
@@ -236,25 +293,26 @@ class FarmerOrderGroup {
         ? dispatcherObj.cast<String, dynamic>()
         : <String, dynamic>{};
 
-    final dispatcherType = [
-      dispatcherMap['dispatcherType'],
-      json['dispatcherType'],
-    ].map((v) => (v?.toString() ?? '').trim().toUpperCase())
-        .firstWhere((s) => s.isNotEmpty, orElse: () => '');
+    final dispatcherType =
+        [dispatcherMap['dispatcherType'], json['dispatcherType']]
+            .map((v) => (v?.toString() ?? '').trim().toUpperCase())
+            .firstWhere((s) => s.isNotEmpty, orElse: () => '');
 
-    final courierUsername = (dispatcherType == 'COURIER'
+    final courierUsername =
+        (dispatcherType == 'COURIER'
             ? dispatcherMap['username']?.toString()
-            : null)
-        ?? json['courierUsername']?.toString()
-        ?? json['dispatcherUsername']?.toString()
-        ?? json['assignedCourier']?.toString();
+            : null) ??
+        json['courierUsername']?.toString() ??
+        json['dispatcherUsername']?.toString() ??
+        json['assignedCourier']?.toString();
 
-    final courierName = (dispatcherType == 'COURIER'
+    final courierName =
+        (dispatcherType == 'COURIER'
             ? dispatcherMap['name']?.toString()
-            : null)
-        ?? json['courierName']?.toString()
-        ?? json['courierFullName']?.toString()
-        ?? json['dispatcherName']?.toString();
+            : null) ??
+        json['courierName']?.toString() ??
+        json['courierFullName']?.toString() ??
+        json['dispatcherName']?.toString();
 
     // 'Yo mismo' / 'Repartidor' only set when API confirms a dispatcher; otherwise ''.
     final String despachoType;
@@ -268,7 +326,11 @@ class FarmerOrderGroup {
 
     return FarmerOrderGroup(
       id: json['groupKey']?.toString() ?? json['id']?.toString() ?? '',
-      nombrePunto: json['pickupPointName']?.toString() ?? json['name']?.toString() ?? json['groupName']?.toString() ?? 'Punto de entrega',
+      nombrePunto:
+          json['pickupPointName']?.toString() ??
+          json['name']?.toString() ??
+          json['groupName']?.toString() ??
+          'Punto de entrega',
       direccion: address,
       district: district?.isEmpty == true ? null : district,
       reference: reference?.isEmpty == true ? null : reference,
@@ -286,17 +348,67 @@ class FarmerOrderGroup {
   }
 }
 
+List<FarmerCustomerOrder> _mergeCustomerOrders(
+  List<FarmerCustomerOrder> orders,
+) {
+  final grouped = <String, List<FarmerCustomerOrder>>{};
+  for (final order in orders) {
+    final key = order.customerUsername.isNotEmpty
+        ? order.customerUsername
+        : order.clienteNombre.toLowerCase();
+    grouped.putIfAbsent(key, () => []).add(order);
+  }
+
+  return grouped.values.map((items) {
+    if (items.length == 1) return items.first;
+    final first = items.first;
+    return FarmerCustomerOrder(
+      subOrderId: first.subOrderId,
+      subOrderIds: items.expand((item) => item.subOrderIds).toList(),
+      customerUsername: first.customerUsername,
+      clienteInicial: first.clienteInicial,
+      clienteColor: first.clienteColor,
+      clienteNombre: first.clienteNombre,
+      customerProfileImageUrl: first.customerProfileImageUrl,
+      items: items.expand((item) => item.items).toList(),
+      productsSubtotal: items.fold(
+        0.0,
+        (sum, item) => sum + item.productsSubtotal,
+      ),
+      deliveryCost: items.fold(0.0, (sum, item) => sum + item.deliveryCost),
+      total: items.fold(0.0, (sum, item) => sum + item.total),
+      tipoEntrega: first.tipoEntrega,
+      metodoPago: first.metodoPago,
+      yapeNumero: first.yapeNumero,
+      entregaConfirmada: items.every((item) => item.entregaConfirmada),
+      pagoConfirmado: items.every((item) => item.pagoConfirmado),
+    );
+  }).toList();
+}
+
 // ── Top-level helpers for fromJson parsers ────────────────────────────────────
 
 String _saleFormatToUnit(String format) {
   switch (format.toUpperCase()) {
-    case 'KILO': return 'kg';
-    case 'GRAM': case 'GRAMO': return 'g';
-    case 'UNIT': case 'UNIDAD': return 'ud';
-    case 'CAJA': case 'BOX': return 'caja';
-    case 'BOLSA': case 'BAG': return 'bolsa';
-    case 'LITRO': case 'LITER': return 'L';
-    default: return format.toLowerCase();
+    case 'KILO':
+      return 'kg';
+    case 'GRAM':
+    case 'GRAMO':
+      return 'g';
+    case 'UNIT':
+    case 'UNIDAD':
+      return 'ud';
+    case 'CAJA':
+    case 'BOX':
+      return 'caja';
+    case 'BOLSA':
+    case 'BAG':
+      return 'bolsa';
+    case 'LITRO':
+    case 'LITER':
+      return 'L';
+    default:
+      return format.toLowerCase();
   }
 }
 
@@ -304,7 +416,9 @@ String _buildCantidad(Map item) {
   final qty = (item['quantity'] ?? item['cantidad'] ?? '').toString().trim();
   final rawUnit = (item['unit'] ?? item['unidad'] ?? '').toString().trim();
   final rawFormat = (item['saleFormat'] ?? '').toString().trim();
-  final unit = rawUnit.isNotEmpty ? rawUnit : (rawFormat.isNotEmpty ? _saleFormatToUnit(rawFormat) : '');
+  final unit = rawUnit.isNotEmpty
+      ? rawUnit
+      : (rawFormat.isNotEmpty ? _saleFormatToUnit(rawFormat) : '');
   if (qty.isEmpty) return unit;
   if (unit.isEmpty) return qty;
   return '$qty $unit';
@@ -312,10 +426,15 @@ String _buildCantidad(Map item) {
 
 OrderGroupState _groupStateFromStatus(String status) {
   switch (status) {
-    case 'PREPARED': return OrderGroupState.seleccionandoDespacho;
-    case 'DISPATCHED': case 'OUT_FOR_DELIVERY': return OrderGroupState.despachado;
-    case 'DELIVERED': return OrderGroupState.entregado;
-    default: return OrderGroupState.porPreparar;
+    case 'PREPARED':
+      return OrderGroupState.seleccionandoDespacho;
+    case 'DISPATCHED':
+    case 'OUT_FOR_DELIVERY':
+      return OrderGroupState.despachado;
+    case 'DELIVERED':
+      return OrderGroupState.entregado;
+    default:
+      return OrderGroupState.porPreparar;
   }
 }
 
@@ -342,6 +461,7 @@ String _formatTimeRange(String from, String to) {
     final p = t.split(':');
     return p.length >= 2 ? '${p[0]}:${p[1]}' : t;
   }
+
   if (from.isEmpty && to.isEmpty) return '';
   if (from.isEmpty) return short(to);
   if (to.isEmpty) return short(from);
@@ -375,7 +495,13 @@ class EntregaPunto {
 
   static const List<String> labelDias = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
   static const List<String> nombresDias = [
-    'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo',
+    'Lunes',
+    'Martes',
+    'Miércoles',
+    'Jueves',
+    'Viernes',
+    'Sábado',
+    'Domingo',
   ];
 
   String get diasTexto {
@@ -394,20 +520,30 @@ List<FarmerOrderGroup> buildMockFarmerOrders() {
     FarmerOrderGroup(
       id: 'og1',
       nombrePunto: 'Barrio San Juan',
-      direccion: 'Av. Javier Prado Este 2388 (y 2392), frente al Museo de la Nación y el Banco de la Nación',
+      direccion:
+          'Av. Javier Prado Este 2388 (y 2392), frente al Museo de la Nación y el Banco de la Nación',
       diaEntrega: 'Martes 25',
       horaEntrega: '9pm a 11pm',
       isExpanded: true,
       productosAPreparar: const [
         ProductoAPreparar(nombre: 'Naranja para jugo', cantidad: '6 kg'),
-        ProductoAPreparar(nombre: 'Papa Blanca Yungay', cantidad: '1 caja · 8 kg'),
+        ProductoAPreparar(
+          nombre: 'Papa Blanca Yungay',
+          cantidad: '1 caja · 8 kg',
+        ),
       ],
       clientes: [
         FarmerCustomerOrder(
           clienteInicial: 'M',
           clienteColor: const Color(0xFFB2DFDB),
           clienteNombre: 'Maria Quispe',
-          items: const [FarmerOrderItem(productName: 'Naranja para jugo', cantidad: '3kg', precio: 11.40)],
+          items: const [
+            FarmerOrderItem(
+              productName: 'Naranja para jugo',
+              cantidad: '3kg',
+              precio: 11.40,
+            ),
+          ],
           total: 11.40,
           tipoEntrega: 'Recojo',
           metodoPago: 'Efectivo',
@@ -416,7 +552,13 @@ List<FarmerOrderGroup> buildMockFarmerOrders() {
           clienteInicial: 'J',
           clienteColor: const Color(0xFFDCEDC8),
           clienteNombre: 'Juan Ramos',
-          items: const [FarmerOrderItem(productName: 'Papa Blanca Yungay', cantidad: '1 caja', precio: 20.00)],
+          items: const [
+            FarmerOrderItem(
+              productName: 'Papa Blanca Yungay',
+              cantidad: '1 caja',
+              precio: 20.00,
+            ),
+          ],
           total: 20.00,
           tipoEntrega: 'Recojo',
           metodoPago: 'Yape',
@@ -427,8 +569,16 @@ List<FarmerOrderGroup> buildMockFarmerOrders() {
           clienteColor: const Color(0xFFB2DFDB),
           clienteNombre: 'Marcon Roman',
           items: const [
-            FarmerOrderItem(productName: 'Naranja', cantidad: '3 kg', precio: 11.40),
-            FarmerOrderItem(productName: 'Papa', cantidad: '8kg', precio: 28.00),
+            FarmerOrderItem(
+              productName: 'Naranja',
+              cantidad: '3 kg',
+              precio: 11.40,
+            ),
+            FarmerOrderItem(
+              productName: 'Papa',
+              cantidad: '8kg',
+              precio: 28.00,
+            ),
           ],
           total: 39.40,
           tipoEntrega: 'Recojo',
@@ -446,7 +596,8 @@ List<EntregaPunto> buildMockEntregas() {
     EntregaPunto(
       id: 'e1',
       nombre: 'Barrio San Juan',
-      direccion: 'Av. Javier Prado Este 2388 (y 2392), frente al Museo de la Nación y el Banco de la Nación',
+      direccion:
+          'Av. Javier Prado Este 2388 (y 2392), frente al Museo de la Nación y el Banco de la Nación',
       diasActivos: [false, true, false, false, false, false, false],
       horaDesde: '10:00',
       horaHasta: '12:00',
@@ -457,7 +608,8 @@ List<EntregaPunto> buildMockEntregas() {
     EntregaPunto(
       id: 'e2',
       nombre: 'Barrio San Juan',
-      direccion: 'Av. Javier Prado Este 2388 (y 2392), frente al Museo de la Nación y el Banco de la Nación',
+      direccion:
+          'Av. Javier Prado Este 2388 (y 2392), frente al Museo de la Nación y el Banco de la Nación',
       diasActivos: [false, false, false, false, true, false, false],
       horaDesde: '10:00',
       horaHasta: '12:00',
@@ -484,19 +636,26 @@ class RepartidorInfo {
   });
 
   factory RepartidorInfo.fromJson(Map<String, dynamic> json) {
-    final name = json['fullName']?.toString()
-        ?? json['name']?.toString()
-        ?? json['courierName']?.toString()
-        ?? json['username']?.toString()
-        ?? '';
-    final username = json['username']?.toString()
-        ?? json['courierUsername']?.toString()
-        ?? '';
+    final name =
+        json['fullName']?.toString() ??
+        json['name']?.toString() ??
+        json['courierName']?.toString() ??
+        json['username']?.toString() ??
+        '';
+    final username =
+        json['username']?.toString() ??
+        json['courierUsername']?.toString() ??
+        '';
     return RepartidorInfo(
       nombre: name,
       username: username,
-      telefono: json['phoneNumber']?.toString() ?? json['phone']?.toString() ?? json['telefono']?.toString(),
-      profileImageUrl: resolveMediaUrl(json['profileImageUrl']?.toString() ?? ''),
+      telefono:
+          json['phoneNumber']?.toString() ??
+          json['phone']?.toString() ??
+          json['telefono']?.toString(),
+      profileImageUrl: resolveMediaUrl(
+        json['profileImageUrl']?.toString() ?? '',
+      ),
     );
   }
 }

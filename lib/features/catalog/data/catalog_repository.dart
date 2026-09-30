@@ -8,6 +8,7 @@ class FiltrosCriterio {
   bool envioGratis;
   bool ventaPorKilo;
   bool ventaPorCaja;
+  String modalidad;
 
   FiltrosCriterio({
     this.precioMinimo,
@@ -16,6 +17,7 @@ class FiltrosCriterio {
     this.envioGratis = false,
     this.ventaPorKilo = false,
     this.ventaPorCaja = false,
+    this.modalidad = 'TODOS',
   });
 
   void limpiar() {
@@ -25,6 +27,7 @@ class FiltrosCriterio {
     envioGratis = false;
     ventaPorKilo = false;
     ventaPorCaja = false;
+    modalidad = 'TODOS';
   }
 
   FiltrosCriterio clonar() {
@@ -35,6 +38,7 @@ class FiltrosCriterio {
       envioGratis: envioGratis,
       ventaPorKilo: ventaPorKilo,
       ventaPorCaja: ventaPorCaja,
+      modalidad: modalidad,
     );
   }
 }
@@ -367,6 +371,7 @@ class CatalogoRepositorio extends ChangeNotifier {
     filtrosActivos.envioGratis = nuevosFiltros.envioGratis;
     filtrosActivos.ventaPorKilo = nuevosFiltros.ventaPorKilo;
     filtrosActivos.ventaPorCaja = nuevosFiltros.ventaPorCaja;
+    filtrosActivos.modalidad = nuevosFiltros.modalidad;
     notifyListeners();
   }
 
