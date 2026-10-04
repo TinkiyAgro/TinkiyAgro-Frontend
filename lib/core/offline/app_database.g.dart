@@ -4814,6 +4814,568 @@ class PendingEvaluationEventsCompanion
   }
 }
 
+class $PilotEventsTable extends PilotEvents
+    with TableInfo<$PilotEventsTable, PilotEvent> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $PilotEventsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _ownerMeta = const VerificationMeta('owner');
+  @override
+  late final GeneratedColumn<String> owner = GeneratedColumn<String>(
+    'owner',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _payloadMeta = const VerificationMeta(
+    'payload',
+  );
+  @override
+  late final GeneratedColumn<String> payload = GeneratedColumn<String>(
+    'payload',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _dedupKeyMeta = const VerificationMeta(
+    'dedupKey',
+  );
+  @override
+  late final GeneratedColumn<String> dedupKey = GeneratedColumn<String>(
+    'dedup_key',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways('UNIQUE'),
+  );
+  static const VerificationMeta _stateMeta = const VerificationMeta('state');
+  @override
+  late final GeneratedColumn<String> state = GeneratedColumn<String>(
+    'state',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('PENDING'),
+  );
+  static const VerificationMeta _attemptsMeta = const VerificationMeta(
+    'attempts',
+  );
+  @override
+  late final GeneratedColumn<int> attempts = GeneratedColumn<int>(
+    'attempts',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _nextAttemptAtMeta = const VerificationMeta(
+    'nextAttemptAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> nextAttemptAt =
+      GeneratedColumn<DateTime>(
+        'next_attempt_at',
+        aliasedName,
+        false,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: true,
+      );
+  static const VerificationMeta _syncedAtMeta = const VerificationMeta(
+    'syncedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> syncedAt = GeneratedColumn<DateTime>(
+    'synced_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _lastErrorMeta = const VerificationMeta(
+    'lastError',
+  );
+  @override
+  late final GeneratedColumn<String> lastError = GeneratedColumn<String>(
+    'last_error',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    owner,
+    payload,
+    dedupKey,
+    state,
+    attempts,
+    nextAttemptAt,
+    syncedAt,
+    lastError,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'pilot_events';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<PilotEvent> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('owner')) {
+      context.handle(
+        _ownerMeta,
+        owner.isAcceptableOrUnknown(data['owner']!, _ownerMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_ownerMeta);
+    }
+    if (data.containsKey('payload')) {
+      context.handle(
+        _payloadMeta,
+        payload.isAcceptableOrUnknown(data['payload']!, _payloadMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_payloadMeta);
+    }
+    if (data.containsKey('dedup_key')) {
+      context.handle(
+        _dedupKeyMeta,
+        dedupKey.isAcceptableOrUnknown(data['dedup_key']!, _dedupKeyMeta),
+      );
+    }
+    if (data.containsKey('state')) {
+      context.handle(
+        _stateMeta,
+        state.isAcceptableOrUnknown(data['state']!, _stateMeta),
+      );
+    }
+    if (data.containsKey('attempts')) {
+      context.handle(
+        _attemptsMeta,
+        attempts.isAcceptableOrUnknown(data['attempts']!, _attemptsMeta),
+      );
+    }
+    if (data.containsKey('next_attempt_at')) {
+      context.handle(
+        _nextAttemptAtMeta,
+        nextAttemptAt.isAcceptableOrUnknown(
+          data['next_attempt_at']!,
+          _nextAttemptAtMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_nextAttemptAtMeta);
+    }
+    if (data.containsKey('synced_at')) {
+      context.handle(
+        _syncedAtMeta,
+        syncedAt.isAcceptableOrUnknown(data['synced_at']!, _syncedAtMeta),
+      );
+    }
+    if (data.containsKey('last_error')) {
+      context.handle(
+        _lastErrorMeta,
+        lastError.isAcceptableOrUnknown(data['last_error']!, _lastErrorMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  PilotEvent map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return PilotEvent(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      owner: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}owner'],
+      )!,
+      payload: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}payload'],
+      )!,
+      dedupKey: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}dedup_key'],
+      ),
+      state: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}state'],
+      )!,
+      attempts: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}attempts'],
+      )!,
+      nextAttemptAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}next_attempt_at'],
+      )!,
+      syncedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}synced_at'],
+      ),
+      lastError: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}last_error'],
+      ),
+    );
+  }
+
+  @override
+  $PilotEventsTable createAlias(String alias) {
+    return $PilotEventsTable(attachedDatabase, alias);
+  }
+}
+
+class PilotEvent extends DataClass implements Insertable<PilotEvent> {
+  final String id;
+  final String owner;
+  final String payload;
+  final String? dedupKey;
+  final String state;
+  final int attempts;
+  final DateTime nextAttemptAt;
+  final DateTime? syncedAt;
+  final String? lastError;
+  const PilotEvent({
+    required this.id,
+    required this.owner,
+    required this.payload,
+    this.dedupKey,
+    required this.state,
+    required this.attempts,
+    required this.nextAttemptAt,
+    this.syncedAt,
+    this.lastError,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['owner'] = Variable<String>(owner);
+    map['payload'] = Variable<String>(payload);
+    if (!nullToAbsent || dedupKey != null) {
+      map['dedup_key'] = Variable<String>(dedupKey);
+    }
+    map['state'] = Variable<String>(state);
+    map['attempts'] = Variable<int>(attempts);
+    map['next_attempt_at'] = Variable<DateTime>(nextAttemptAt);
+    if (!nullToAbsent || syncedAt != null) {
+      map['synced_at'] = Variable<DateTime>(syncedAt);
+    }
+    if (!nullToAbsent || lastError != null) {
+      map['last_error'] = Variable<String>(lastError);
+    }
+    return map;
+  }
+
+  PilotEventsCompanion toCompanion(bool nullToAbsent) {
+    return PilotEventsCompanion(
+      id: Value(id),
+      owner: Value(owner),
+      payload: Value(payload),
+      dedupKey: dedupKey == null && nullToAbsent
+          ? const Value.absent()
+          : Value(dedupKey),
+      state: Value(state),
+      attempts: Value(attempts),
+      nextAttemptAt: Value(nextAttemptAt),
+      syncedAt: syncedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(syncedAt),
+      lastError: lastError == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastError),
+    );
+  }
+
+  factory PilotEvent.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return PilotEvent(
+      id: serializer.fromJson<String>(json['id']),
+      owner: serializer.fromJson<String>(json['owner']),
+      payload: serializer.fromJson<String>(json['payload']),
+      dedupKey: serializer.fromJson<String?>(json['dedupKey']),
+      state: serializer.fromJson<String>(json['state']),
+      attempts: serializer.fromJson<int>(json['attempts']),
+      nextAttemptAt: serializer.fromJson<DateTime>(json['nextAttemptAt']),
+      syncedAt: serializer.fromJson<DateTime?>(json['syncedAt']),
+      lastError: serializer.fromJson<String?>(json['lastError']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'owner': serializer.toJson<String>(owner),
+      'payload': serializer.toJson<String>(payload),
+      'dedupKey': serializer.toJson<String?>(dedupKey),
+      'state': serializer.toJson<String>(state),
+      'attempts': serializer.toJson<int>(attempts),
+      'nextAttemptAt': serializer.toJson<DateTime>(nextAttemptAt),
+      'syncedAt': serializer.toJson<DateTime?>(syncedAt),
+      'lastError': serializer.toJson<String?>(lastError),
+    };
+  }
+
+  PilotEvent copyWith({
+    String? id,
+    String? owner,
+    String? payload,
+    Value<String?> dedupKey = const Value.absent(),
+    String? state,
+    int? attempts,
+    DateTime? nextAttemptAt,
+    Value<DateTime?> syncedAt = const Value.absent(),
+    Value<String?> lastError = const Value.absent(),
+  }) => PilotEvent(
+    id: id ?? this.id,
+    owner: owner ?? this.owner,
+    payload: payload ?? this.payload,
+    dedupKey: dedupKey.present ? dedupKey.value : this.dedupKey,
+    state: state ?? this.state,
+    attempts: attempts ?? this.attempts,
+    nextAttemptAt: nextAttemptAt ?? this.nextAttemptAt,
+    syncedAt: syncedAt.present ? syncedAt.value : this.syncedAt,
+    lastError: lastError.present ? lastError.value : this.lastError,
+  );
+  PilotEvent copyWithCompanion(PilotEventsCompanion data) {
+    return PilotEvent(
+      id: data.id.present ? data.id.value : this.id,
+      owner: data.owner.present ? data.owner.value : this.owner,
+      payload: data.payload.present ? data.payload.value : this.payload,
+      dedupKey: data.dedupKey.present ? data.dedupKey.value : this.dedupKey,
+      state: data.state.present ? data.state.value : this.state,
+      attempts: data.attempts.present ? data.attempts.value : this.attempts,
+      nextAttemptAt: data.nextAttemptAt.present
+          ? data.nextAttemptAt.value
+          : this.nextAttemptAt,
+      syncedAt: data.syncedAt.present ? data.syncedAt.value : this.syncedAt,
+      lastError: data.lastError.present ? data.lastError.value : this.lastError,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PilotEvent(')
+          ..write('id: $id, ')
+          ..write('owner: $owner, ')
+          ..write('payload: $payload, ')
+          ..write('dedupKey: $dedupKey, ')
+          ..write('state: $state, ')
+          ..write('attempts: $attempts, ')
+          ..write('nextAttemptAt: $nextAttemptAt, ')
+          ..write('syncedAt: $syncedAt, ')
+          ..write('lastError: $lastError')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    owner,
+    payload,
+    dedupKey,
+    state,
+    attempts,
+    nextAttemptAt,
+    syncedAt,
+    lastError,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is PilotEvent &&
+          other.id == this.id &&
+          other.owner == this.owner &&
+          other.payload == this.payload &&
+          other.dedupKey == this.dedupKey &&
+          other.state == this.state &&
+          other.attempts == this.attempts &&
+          other.nextAttemptAt == this.nextAttemptAt &&
+          other.syncedAt == this.syncedAt &&
+          other.lastError == this.lastError);
+}
+
+class PilotEventsCompanion extends UpdateCompanion<PilotEvent> {
+  final Value<String> id;
+  final Value<String> owner;
+  final Value<String> payload;
+  final Value<String?> dedupKey;
+  final Value<String> state;
+  final Value<int> attempts;
+  final Value<DateTime> nextAttemptAt;
+  final Value<DateTime?> syncedAt;
+  final Value<String?> lastError;
+  final Value<int> rowid;
+  const PilotEventsCompanion({
+    this.id = const Value.absent(),
+    this.owner = const Value.absent(),
+    this.payload = const Value.absent(),
+    this.dedupKey = const Value.absent(),
+    this.state = const Value.absent(),
+    this.attempts = const Value.absent(),
+    this.nextAttemptAt = const Value.absent(),
+    this.syncedAt = const Value.absent(),
+    this.lastError = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  PilotEventsCompanion.insert({
+    required String id,
+    required String owner,
+    required String payload,
+    this.dedupKey = const Value.absent(),
+    this.state = const Value.absent(),
+    this.attempts = const Value.absent(),
+    required DateTime nextAttemptAt,
+    this.syncedAt = const Value.absent(),
+    this.lastError = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       owner = Value(owner),
+       payload = Value(payload),
+       nextAttemptAt = Value(nextAttemptAt);
+  static Insertable<PilotEvent> custom({
+    Expression<String>? id,
+    Expression<String>? owner,
+    Expression<String>? payload,
+    Expression<String>? dedupKey,
+    Expression<String>? state,
+    Expression<int>? attempts,
+    Expression<DateTime>? nextAttemptAt,
+    Expression<DateTime>? syncedAt,
+    Expression<String>? lastError,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (owner != null) 'owner': owner,
+      if (payload != null) 'payload': payload,
+      if (dedupKey != null) 'dedup_key': dedupKey,
+      if (state != null) 'state': state,
+      if (attempts != null) 'attempts': attempts,
+      if (nextAttemptAt != null) 'next_attempt_at': nextAttemptAt,
+      if (syncedAt != null) 'synced_at': syncedAt,
+      if (lastError != null) 'last_error': lastError,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  PilotEventsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? owner,
+    Value<String>? payload,
+    Value<String?>? dedupKey,
+    Value<String>? state,
+    Value<int>? attempts,
+    Value<DateTime>? nextAttemptAt,
+    Value<DateTime?>? syncedAt,
+    Value<String?>? lastError,
+    Value<int>? rowid,
+  }) {
+    return PilotEventsCompanion(
+      id: id ?? this.id,
+      owner: owner ?? this.owner,
+      payload: payload ?? this.payload,
+      dedupKey: dedupKey ?? this.dedupKey,
+      state: state ?? this.state,
+      attempts: attempts ?? this.attempts,
+      nextAttemptAt: nextAttemptAt ?? this.nextAttemptAt,
+      syncedAt: syncedAt ?? this.syncedAt,
+      lastError: lastError ?? this.lastError,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (owner.present) {
+      map['owner'] = Variable<String>(owner.value);
+    }
+    if (payload.present) {
+      map['payload'] = Variable<String>(payload.value);
+    }
+    if (dedupKey.present) {
+      map['dedup_key'] = Variable<String>(dedupKey.value);
+    }
+    if (state.present) {
+      map['state'] = Variable<String>(state.value);
+    }
+    if (attempts.present) {
+      map['attempts'] = Variable<int>(attempts.value);
+    }
+    if (nextAttemptAt.present) {
+      map['next_attempt_at'] = Variable<DateTime>(nextAttemptAt.value);
+    }
+    if (syncedAt.present) {
+      map['synced_at'] = Variable<DateTime>(syncedAt.value);
+    }
+    if (lastError.present) {
+      map['last_error'] = Variable<String>(lastError.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PilotEventsCompanion(')
+          ..write('id: $id, ')
+          ..write('owner: $owner, ')
+          ..write('payload: $payload, ')
+          ..write('dedupKey: $dedupKey, ')
+          ..write('state: $state, ')
+          ..write('attempts: $attempts, ')
+          ..write('nextAttemptAt: $nextAttemptAt, ')
+          ..write('syncedAt: $syncedAt, ')
+          ..write('lastError: $lastError, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -4831,6 +5393,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $SyncMetadataTable syncMetadata = $SyncMetadataTable(this);
   late final $PendingEvaluationEventsTable pendingEvaluationEvents =
       $PendingEvaluationEventsTable(this);
+  late final $PilotEventsTable pilotEvents = $PilotEventsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -4844,6 +5407,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     syncOperations,
     syncMetadata,
     pendingEvaluationEvents,
+    pilotEvents,
   ];
 }
 
@@ -7262,6 +7826,284 @@ typedef $$PendingEvaluationEventsTableProcessedTableManager =
       PendingEvaluationEvent,
       PrefetchHooks Function()
     >;
+typedef $$PilotEventsTableCreateCompanionBuilder =
+    PilotEventsCompanion Function({
+      required String id,
+      required String owner,
+      required String payload,
+      Value<String?> dedupKey,
+      Value<String> state,
+      Value<int> attempts,
+      required DateTime nextAttemptAt,
+      Value<DateTime?> syncedAt,
+      Value<String?> lastError,
+      Value<int> rowid,
+    });
+typedef $$PilotEventsTableUpdateCompanionBuilder =
+    PilotEventsCompanion Function({
+      Value<String> id,
+      Value<String> owner,
+      Value<String> payload,
+      Value<String?> dedupKey,
+      Value<String> state,
+      Value<int> attempts,
+      Value<DateTime> nextAttemptAt,
+      Value<DateTime?> syncedAt,
+      Value<String?> lastError,
+      Value<int> rowid,
+    });
+
+class $$PilotEventsTableFilterComposer
+    extends Composer<_$AppDatabase, $PilotEventsTable> {
+  $$PilotEventsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get owner => $composableBuilder(
+    column: $table.owner,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get payload => $composableBuilder(
+    column: $table.payload,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get dedupKey => $composableBuilder(
+    column: $table.dedupKey,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get state => $composableBuilder(
+    column: $table.state,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get attempts => $composableBuilder(
+    column: $table.attempts,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get nextAttemptAt => $composableBuilder(
+    column: $table.nextAttemptAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get syncedAt => $composableBuilder(
+    column: $table.syncedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get lastError => $composableBuilder(
+    column: $table.lastError,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$PilotEventsTableOrderingComposer
+    extends Composer<_$AppDatabase, $PilotEventsTable> {
+  $$PilotEventsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get owner => $composableBuilder(
+    column: $table.owner,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get payload => $composableBuilder(
+    column: $table.payload,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get dedupKey => $composableBuilder(
+    column: $table.dedupKey,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get state => $composableBuilder(
+    column: $table.state,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get attempts => $composableBuilder(
+    column: $table.attempts,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get nextAttemptAt => $composableBuilder(
+    column: $table.nextAttemptAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get syncedAt => $composableBuilder(
+    column: $table.syncedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get lastError => $composableBuilder(
+    column: $table.lastError,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$PilotEventsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $PilotEventsTable> {
+  $$PilotEventsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get owner =>
+      $composableBuilder(column: $table.owner, builder: (column) => column);
+
+  GeneratedColumn<String> get payload =>
+      $composableBuilder(column: $table.payload, builder: (column) => column);
+
+  GeneratedColumn<String> get dedupKey =>
+      $composableBuilder(column: $table.dedupKey, builder: (column) => column);
+
+  GeneratedColumn<String> get state =>
+      $composableBuilder(column: $table.state, builder: (column) => column);
+
+  GeneratedColumn<int> get attempts =>
+      $composableBuilder(column: $table.attempts, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get nextAttemptAt => $composableBuilder(
+    column: $table.nextAttemptAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get syncedAt =>
+      $composableBuilder(column: $table.syncedAt, builder: (column) => column);
+
+  GeneratedColumn<String> get lastError =>
+      $composableBuilder(column: $table.lastError, builder: (column) => column);
+}
+
+class $$PilotEventsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $PilotEventsTable,
+          PilotEvent,
+          $$PilotEventsTableFilterComposer,
+          $$PilotEventsTableOrderingComposer,
+          $$PilotEventsTableAnnotationComposer,
+          $$PilotEventsTableCreateCompanionBuilder,
+          $$PilotEventsTableUpdateCompanionBuilder,
+          (
+            PilotEvent,
+            BaseReferences<_$AppDatabase, $PilotEventsTable, PilotEvent>,
+          ),
+          PilotEvent,
+          PrefetchHooks Function()
+        > {
+  $$PilotEventsTableTableManager(_$AppDatabase db, $PilotEventsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$PilotEventsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$PilotEventsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$PilotEventsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> owner = const Value.absent(),
+                Value<String> payload = const Value.absent(),
+                Value<String?> dedupKey = const Value.absent(),
+                Value<String> state = const Value.absent(),
+                Value<int> attempts = const Value.absent(),
+                Value<DateTime> nextAttemptAt = const Value.absent(),
+                Value<DateTime?> syncedAt = const Value.absent(),
+                Value<String?> lastError = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => PilotEventsCompanion(
+                id: id,
+                owner: owner,
+                payload: payload,
+                dedupKey: dedupKey,
+                state: state,
+                attempts: attempts,
+                nextAttemptAt: nextAttemptAt,
+                syncedAt: syncedAt,
+                lastError: lastError,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String owner,
+                required String payload,
+                Value<String?> dedupKey = const Value.absent(),
+                Value<String> state = const Value.absent(),
+                Value<int> attempts = const Value.absent(),
+                required DateTime nextAttemptAt,
+                Value<DateTime?> syncedAt = const Value.absent(),
+                Value<String?> lastError = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => PilotEventsCompanion.insert(
+                id: id,
+                owner: owner,
+                payload: payload,
+                dedupKey: dedupKey,
+                state: state,
+                attempts: attempts,
+                nextAttemptAt: nextAttemptAt,
+                syncedAt: syncedAt,
+                lastError: lastError,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$PilotEventsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $PilotEventsTable,
+      PilotEvent,
+      $$PilotEventsTableFilterComposer,
+      $$PilotEventsTableOrderingComposer,
+      $$PilotEventsTableAnnotationComposer,
+      $$PilotEventsTableCreateCompanionBuilder,
+      $$PilotEventsTableUpdateCompanionBuilder,
+      (
+        PilotEvent,
+        BaseReferences<_$AppDatabase, $PilotEventsTable, PilotEvent>,
+      ),
+      PilotEvent,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -7295,4 +8137,6 @@ class $AppDatabaseManager {
         _db,
         _db.pendingEvaluationEvents,
       );
+  $$PilotEventsTableTableManager get pilotEvents =>
+      $$PilotEventsTableTableManager(_db, _db.pilotEvents);
 }

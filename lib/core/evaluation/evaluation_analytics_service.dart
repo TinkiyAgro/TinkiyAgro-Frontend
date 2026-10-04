@@ -1,19 +1,15 @@
-import 'dart:async';
-
 import 'package:drift/drift.dart';
-import 'package:uuid/uuid.dart';
 
 import '../api_client.dart';
 import '../constants/app_constants.dart';
 import '../offline/app_database.dart';
-import 'pilot_session.dart';
+import 'pilot_events.dart';
 
 class EvaluationAnalyticsService {
   EvaluationAnalyticsService._();
   static final instance = EvaluationAnalyticsService._();
 
   final AppDatabase _db = AppDatabase.instance;
-  final Set<String> _impressions = <String>{};
 
   Future<void> impression({
     required String productId,
@@ -22,16 +18,10 @@ class EvaluationAnalyticsService {
     required int position,
     String? requestId,
   }) async {
-    final key = '${PilotSession.sessionId}|$requestId|$section|$productId';
-    if (!_impressions.add(key)) return;
-    await _enqueue(
-      'IMPRESSION',
-      productId,
-      farmer,
-      section,
-      position,
-      requestId,
-    );
+    // Pilot impressions require a server-issued list, never a search result.
+    if (section == 'RECOMMENDED' || section == 'POPULAR') {
+      await PilotEventsQueue.instance.record('ITEM_IMPRESSION', listId: requestId, productId: productId);
+    }
   }
 
   Future<void> click({
@@ -40,7 +30,8 @@ class EvaluationAnalyticsService {
     required String section,
     required int position,
     String? requestId,
-  }) => _enqueue('CLICK', productId, farmer, section, position, requestId);
+  }) => PilotEventsQueue.instance.record('CLICK', productId: productId,
+      listId: section == 'RECOMMENDED' || section == 'POPULAR' ? requestId : null);
 
   Future<void> addToCart({
     required String productId,
@@ -49,44 +40,8 @@ class EvaluationAnalyticsService {
     required int position,
     String? requestId,
   }) =>
-      _enqueue('ADD_TO_CART', productId, farmer, section, position, requestId);
-
-  Future<void> _enqueue(
-    String type,
-    String productId,
-    String farmer,
-    String section,
-    int position,
-    String? requestId,
-  ) async {
-    if (farmer.isEmpty || section.isEmpty || position < 1) return;
-    final now = DateTime.now().toUtc();
-    await _db
-        .into(_db.pendingEvaluationEvents)
-        .insert(
-          PendingEvaluationEventsCompanion.insert(
-            id: const Uuid().v4(),
-            eventType: type,
-            productId: productId,
-            farmerUsername: farmer,
-            sourceSection: section,
-            listPosition: position,
-            createdAt: now,
-            enqueuedAt: now,
-            recommendationRequestId: Value(requestId),
-            participantId: Value(
-              PilotSession.participantId.isEmpty
-                  ? null
-                  : PilotSession.participantId,
-            ),
-            pilotSessionId: Value(
-              PilotSession.sessionId.isEmpty ? null : PilotSession.sessionId,
-            ),
-            networkCondition: const Value(PilotSession.networkCondition),
-          ),
-        );
-    unawaited(syncPending());
-  }
+      PilotEventsQueue.instance.record('INTEREST', productId: productId,
+          listId: section == 'RECOMMENDED' || section == 'POPULAR' ? requestId : null);
 
   Future<void> syncPending() async {
     final pending =

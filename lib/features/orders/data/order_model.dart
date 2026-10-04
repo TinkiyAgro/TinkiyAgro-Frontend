@@ -553,7 +553,8 @@ class DeliveryOptions {
     final opts = <DeliveryOption>[];
     final pickupPoints = parseCheckoutPickupPoints(json['pickupPoints']);
 
-    final rawOptions = json['options'] ?? json['deliveryOptions'];
+    final rawOptions =
+        json['options'] ?? json['deliveryOptions'] ?? json['methods'];
     if (rawOptions is List) {
       for (final o in rawOptions) {
         if (o is Map<String, dynamic>) {

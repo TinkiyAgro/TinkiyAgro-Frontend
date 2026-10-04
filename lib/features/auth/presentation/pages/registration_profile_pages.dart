@@ -95,18 +95,21 @@ class _OrganizationRegistrationPageState
   Future<void> _locate() async {
     try {
       var permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied)
+      if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
+      }
       if (permission == LocationPermission.denied ||
-          permission == LocationPermission.deniedForever)
+          permission == LocationPermission.deniedForever) {
         throw Exception('Permiso de ubicación requerido');
+      }
       final p = await Geolocator.getCurrentPosition();
       if (mounted) setState(() => _position = p);
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
         );
+      }
     }
   }
 
@@ -121,6 +124,7 @@ class _OrganizationRegistrationPageState
     if (_position == null) {
       await _locate();
       if (_position == null) return;
+      if (!mounted) return;
     }
     setState(() => _loading = true);
     try {
@@ -252,11 +256,13 @@ class _ProducerLocationSetupPageState extends State<ProducerLocationSetupPage> {
 
   Future<void> _locate() async {
     var permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied)
+    if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
+    }
     if (permission == LocationPermission.denied ||
-        permission == LocationPermission.deniedForever)
+        permission == LocationPermission.deniedForever) {
       return;
+    }
     final p = await Geolocator.getCurrentPosition();
     if (mounted) setState(() => _position = p);
   }
@@ -340,7 +346,42 @@ class _ConsumerDiscoverySetupPageState
   final _account = _AccountControllers();
   double _radius = 50;
   Position? _position;
+  double? _savedLatitude;
+  double? _savedLongitude;
   bool _loading = false;
+  bool _loadingPreferences = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.existingAccount) _loadPreferences();
+  }
+
+  Future<void> _loadPreferences() async {
+    setState(() => _loadingPreferences = true);
+    try {
+      final data = await OrganizationService().getDiscoveryPreferences();
+      if (!mounted) return;
+      setState(() {
+        _radius = (data['radiusKm'] as num?)?.toDouble() ?? 50;
+        _savedLatitude = (data['latitude'] as num?)?.toDouble();
+        _savedLongitude = (data['longitude'] as num?)?.toDouble();
+      });
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'No se pudo cargar tu zona guardada: ${e.toString().replaceFirst('Exception: ', '')}',
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _loadingPreferences = false);
+    }
+  }
+
   @override
   void dispose() {
     _account.dispose();
@@ -349,46 +390,68 @@ class _ConsumerDiscoverySetupPageState
 
   Future<void> _locate() async {
     var permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied)
+    if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
+    }
     if (permission == LocationPermission.denied ||
         permission == LocationPermission.deniedForever) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('La ubicación es obligatoria para continuar'),
           ),
         );
+      }
       return;
     }
     final p = await Geolocator.getCurrentPosition();
-    if (mounted) setState(() => _position = p);
+    if (mounted) {
+      setState(() {
+        _position = p;
+        _savedLatitude = p.latitude;
+        _savedLongitude = p.longitude;
+      });
+    }
   }
 
   Future<void> _submit() async {
-    if (_position == null) {
+    if (_savedLatitude == null || _savedLongitude == null) {
       await _locate();
-      if (_position == null) return;
+      if (_savedLatitude == null || _savedLongitude == null) return;
+      if (!mounted) return;
     }
     setState(() => _loading = true);
     try {
       if (widget.existingAccount) {
-        await OrganizationService().saveDiscoveryPreferences(
-          _position!.latitude,
-          _position!.longitude,
+        final saved = await OrganizationService().saveDiscoveryPreferences(
+          _savedLatitude!,
+          _savedLongitude!,
           _radius.round(),
         );
-        if (mounted)
+        if (mounted) {
+          setState(() {
+            _radius = (saved['radiusKm'] as num?)?.toDouble() ?? _radius;
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Zona guardada: ${_radius.round()} km')),
+          );
           Navigator.pushNamedAndRemoveUntil(context, '/home', (_) => false);
+        }
       } else {
         if (!_form.currentState!.validate()) return;
         await completeRegistration(
           context,
           _account.arguments(),
           role: 'CONSUMIDOR',
-          latitude: _position!.latitude,
-          longitude: _position!.longitude,
+          latitude: _savedLatitude!,
+          longitude: _savedLongitude!,
           radius: _radius.round(),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
         );
       }
     } finally {
@@ -424,15 +487,21 @@ class _ConsumerDiscoverySetupPageState
                 color: _ink,
               ),
             ),
-            Slider(
-              value: _radius,
-              min: 0,
-              max: 300,
-              divisions: 60,
-              activeColor: _brand,
-              label: '${_radius.round()} km',
-              onChanged: (v) => setState(() => _radius = v),
-            ),
+            if (_loadingPreferences)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 16),
+                child: CircularProgressIndicator(color: _brand),
+              )
+            else
+              Slider(
+                value: _radius,
+                min: 0,
+                max: 300,
+                divisions: 60,
+                activeColor: _brand,
+                label: '${_radius.round()} km',
+                onChanged: (v) => setState(() => _radius = v),
+              ),
             const Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [Text('0 km'), Text('300 km')],
@@ -443,13 +512,15 @@ class _ConsumerDiscoverySetupPageState
       OutlinedButton.icon(
         onPressed: _locate,
         icon: Icon(
-          _position == null ? Icons.my_location : Icons.check_circle,
+          _savedLatitude == null ? Icons.my_location : Icons.check_circle,
           color: _brand,
         ),
         label: Text(
-          _position == null
-              ? 'Usar mi ubicación actual'
-              : 'Ubicación capturada',
+          _savedLatitude == null
+              ? 'Usar mi ubicación actual *'
+              : _position == null
+              ? 'Ubicación guardada (toca para actualizar)'
+              : 'Ubicación actualizada',
         ),
         style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(52)),
       ),
@@ -459,7 +530,7 @@ class _ConsumerDiscoverySetupPageState
       ),
       _PrimaryButton(
         label: 'Guardar y continuar',
-        loading: _loading,
+        loading: _loading || _loadingPreferences,
         onPressed: _submit,
       ),
     ],
@@ -575,10 +646,11 @@ Future<void> completeRegistration(
       Navigator.pushNamedAndRemoveUntil(context, destination, (_) => false);
     }
   } catch (e) {
-    if (context.mounted)
+    if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
       );
+    }
     rethrow;
   }
 }
@@ -620,7 +692,17 @@ class _AccountFields extends StatelessWidget {
         _Field(controller: account.firstName, label: 'Nombres'),
         _Field(controller: account.lastName, label: 'Apellidos'),
       ],
-      _Field(controller: account.username, label: 'Usuario'),
+      _Field(
+        controller: account.username,
+        label: 'Usuario',
+        validator: (value) {
+          final username = value?.trim() ?? '';
+          if (username.isEmpty) return 'Campo obligatorio';
+          if (username.length < 3) return 'Usa al menos 3 caracteres';
+          if (username.contains(RegExp(r'\s'))) return 'No uses espacios';
+          return null;
+        },
+      ),
       _Field(
         controller: account.password,
         label: 'Contraseña',
@@ -633,6 +715,14 @@ class _AccountFields extends StatelessWidget {
         controller: account.phone,
         label: 'Celular',
         keyboardType: TextInputType.phone,
+        validator: (value) {
+          final phone = (value ?? '').replaceAll(RegExp(r'[\s()+-]'), '');
+          if (phone.isEmpty) return 'Campo obligatorio';
+          if (!RegExp(r'^\d{9,15}$').hasMatch(phone)) {
+            return 'Ingresa un celular válido';
+          }
+          return null;
+        },
       ),
     ],
   );
@@ -772,7 +862,7 @@ class _Field extends StatelessWidget {
         validator ??
         (v) => v == null || v.trim().isEmpty ? 'Campo obligatorio' : null,
     decoration: InputDecoration(
-      labelText: label,
+      labelText: '$label *',
       filled: true,
       fillColor: Colors.white,
       border: OutlineInputBorder(

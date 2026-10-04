@@ -9,6 +9,7 @@ import '../../features/farmer/data/farmer_order_repository.dart';
 import '../../features/farmer/data/pickup_point_repository.dart';
 import '../session_manager.dart';
 import '../evaluation/evaluation_analytics_service.dart';
+import '../evaluation/pilot_events.dart';
 import 'offline_metrics_exporter.dart';
 
 class SyncCoordinator {
@@ -27,6 +28,7 @@ class SyncCoordinator {
       }
     });
     _periodicTimer ??= Timer.periodic(const Duration(seconds: 30), (_) {
+      unawaited(PilotEventsQueue.instance.syncPending());
       final role = SessionManager().rol;
       if (role == 'REPARTIDOR') {
         unawaited(syncNow());
@@ -43,6 +45,7 @@ class SyncCoordinator {
   }
 
   Future<void> syncNow({bool force = false}) async {
+    await PilotEventsQueue.instance.syncPending();
     await EvaluationAnalyticsService.instance.syncPending();
     if (SessionManager().rol == 'AGRICULTOR') {
       _lastFarmerPeriodicSync = DateTime.now();

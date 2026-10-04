@@ -61,7 +61,7 @@ class CatalogService {
       return List.generate(
         products.length,
         (index) => products[index].copiarCon(
-          sourceSection: 'POPULARES',
+          sourceSection: 'OFERTA',
           sourcePosition: index + 1,
         ),
       );

@@ -19,7 +19,8 @@ import 'package:tinkiyagro_app/features/wholesale/data/wholesale_service.dart';
 import 'package:tinkiyagro_app/features/wholesale/presentation/wholesale_pages.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 import 'package:tinkiyagro_app/core/evaluation/evaluation_analytics_service.dart';
-import 'package:tinkiyagro_app/core/evaluation/pilot_session.dart';
+import 'package:tinkiyagro_app/core/evaluation/pilot_feed.dart';
+import '../widgets/pilot_feed_view.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -45,6 +46,8 @@ class _HomePageState extends State<HomePage> {
   List<Map<String, dynamic>> _wholesaleProducts = [];
   bool _cargandoHome = true;
   bool _buscando = false;
+  List<PilotFeedList> _pilotLists = [];
+  bool _feedFailed = false;
 
   // True si hay cualquier filtro/búsqueda/categoría activa
   bool get _enModoFiltro {
@@ -141,31 +144,21 @@ class _HomePageState extends State<HomePage> {
   Future<void> _cargarProductosHome() async {
     setState(() => _cargandoHome = true);
     try {
-      final todos = await _catalogService.buscarProductos();
-      List<Producto> populares = [];
-      try {
-        populares = await _catalogService.obtenerPopulares();
-      } catch (_) {}
-      if (populares.isEmpty) populares = todos;
+      final lists = await PilotFeedService().load();
       List<Map<String, dynamic>> wholesale = [];
       try {
         wholesale = await WholesaleService().products();
       } catch (_) {}
-      List<Producto> recomendados = [];
-      try {
-        recomendados = await _catalogService.obtenerRecomendados();
-      } catch (_) {}
-      if (recomendados.isEmpty) recomendados = todos;
       if (mounted) {
         setState(() {
-          _recomendados = recomendados;
-          _tendencias = populares;
+          _pilotLists = lists;
+          _feedFailed = false;
           _wholesaleProducts = wholesale;
           _cargandoHome = false;
         });
       }
     } catch (_) {
-      if (mounted) setState(() => _cargandoHome = false);
+      if (mounted) setState(() { _cargandoHome = false; _feedFailed = true; });
     }
   }
 
@@ -607,28 +600,13 @@ class _HomePageState extends State<HomePage> {
   }
 
   List<Widget> _buildExperimentalSections() {
-    Widget recommended() => _buildSeccionProductos(
-      titulo: 'Recomendados para ti',
-      productos: _recomendados,
-      cargando: _cargandoHome,
-      routeName: 'Recomendados para ti',
-    );
-    Widget popular() => _buildSeccionProductos(
-      titulo: 'Populares',
-      productos: _tendencias,
-      cargando: _cargandoHome,
-      routeName: 'Populares',
-    );
-    final first = PilotSession.sectionOrder == 'POPULARES_FIRST'
-        ? popular()
-        : recommended();
-    final second = PilotSession.sectionOrder == 'POPULARES_FIRST'
-        ? recommended()
-        : popular();
     return [
-      first,
-      const SizedBox(height: 24),
-      second,
+      if (_cargandoHome) const Center(child: CircularProgressIndicator())
+      else if (_feedFailed) TextButton.icon(
+        onPressed: _cargarProductosHome,
+        icon: const Icon(Icons.refresh),
+        label: const Text('No se pudo actualizar el inicio. Reintentar'),
+      ) else PilotFeedView(lists: _pilotLists),
       const SizedBox(height: 24),
       _buildWholesaleSection(),
       const SizedBox(height: 30),
@@ -642,7 +620,7 @@ class _HomePageState extends State<HomePage> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           const Text(
-            'Al por mayor',
+            'Ver toda la oferta mayorista',
             style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
           IconButton(

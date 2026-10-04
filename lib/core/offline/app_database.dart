@@ -134,6 +134,21 @@ class PendingEvaluationEvents extends Table {
   Set<Column<Object>> get primaryKey => {id};
 }
 
+class PilotEvents extends Table {
+  TextColumn get id => text()();
+  TextColumn get owner => text()();
+  TextColumn get payload => text()();
+  TextColumn get dedupKey => text().nullable().unique()();
+  TextColumn get state => text().withDefault(const Constant('PENDING'))();
+  IntColumn get attempts => integer().withDefault(const Constant(0))();
+  DateTimeColumn get nextAttemptAt => dateTime()();
+  DateTimeColumn get syncedAt => dateTime().nullable()();
+  TextColumn get lastError => text().nullable()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
 @DriftDatabase(
   tables: [
     CachedFarmerProducts,
@@ -144,6 +159,7 @@ class PendingEvaluationEvents extends Table {
     SyncOperations,
     SyncMetadata,
     PendingEvaluationEvents,
+    PilotEvents,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -154,7 +170,7 @@ class AppDatabase extends _$AppDatabase {
   static final AppDatabase instance = AppDatabase._();
 
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 8;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -163,6 +179,9 @@ class AppDatabase extends _$AppDatabase {
       await _createSyncAuditTriggers();
     },
     onUpgrade: (migrator, from, to) async {
+      if (from < 8) {
+        await migrator.createTable(pilotEvents);
+      }
       if (from < 2) {
         await migrator.createTable(cachedPickupPoints);
       }

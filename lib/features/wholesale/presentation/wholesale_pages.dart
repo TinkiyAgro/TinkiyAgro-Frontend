@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
@@ -5,6 +6,9 @@ import 'package:tinkiyagro_app/features/catalog/data/product_model.dart';
 import 'package:tinkiyagro_app/features/orders/presentation/pages/consumer_orders_page.dart';
 import 'package:tinkiyagro_app/features/organization/data/organization_service.dart';
 import 'package:tinkiyagro_app/features/wholesale/data/wholesale_service.dart';
+import 'package:tinkiyagro_app/core/evaluation/pilot_session.dart';
+import 'package:tinkiyagro_app/core/evaluation/pilot_events.dart';
+import 'package:uuid/uuid.dart';
 
 const _brand = Color(0xFF5CA8A0),
     _ink = Color(0xFF132823),
@@ -20,12 +24,18 @@ class WholesaleProductCard extends StatelessWidget {
   final bool compact;
   @override
   Widget build(BuildContext context) => InkWell(
-    onTap: () => Navigator.push(
+    onTap: () {
+      unawaited(PilotEventsQueue.instance.record(
+        'CLICK',
+        productId: product['id']?.toString(),
+      ));
+      Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => WholesaleQuoteRequestPage(initialProduct: product),
       ),
-    ),
+      );
+    },
     borderRadius: BorderRadius.circular(14),
     child: Container(
       width: compact ? 225 : double.infinity,
@@ -138,6 +148,7 @@ class WholesaleQuoteRequestPage extends StatefulWidget {
 }
 
 class _WholesaleQuoteRequestPageState extends State<WholesaleQuoteRequestPage> {
+  final String _operationId = const Uuid().v4();
   final _delivery = TextEditingController(),
       _days = TextEditingController(),
       _notes = TextEditingController();
@@ -287,7 +298,11 @@ class _WholesaleQuoteRequestPageState extends State<WholesaleQuoteRequestPage> {
         _message('Completa una cantidad válida para ${product['name']}');
         return;
       }
-      items.add({'productId': product['id'], 'quantity': quantity});
+      items.add({
+        'productId': product['id'],
+        'quantity': quantity,
+        'originListId': product['originListId'],
+      });
     }
     if (_delivery.text.trim().isEmpty) {
       _message('Completa el lugar de entrega');
@@ -296,6 +311,9 @@ class _WholesaleQuoteRequestPageState extends State<WholesaleQuoteRequestPage> {
     setState(() => _saving = true);
     try {
       final quote = await WholesaleService().requestQuote({
+        'operationId': _operationId,
+        'submittedAtClient': DateTime.now().toUtc().toIso8601String(),
+        'sessionId': widget.initialProduct['originSessionId'] ?? PilotSession.sessionId,
         'organizationId': widget.initialProduct['organizationId'],
         'items': items,
         'deliveryLocation': _delivery.text.trim(),

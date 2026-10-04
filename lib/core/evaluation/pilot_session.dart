@@ -1,8 +1,31 @@
 import '../session_manager.dart';
+import 'package:uuid/uuid.dart';
+
+class PilotSessionClock {
+  PilotSessionClock({DateTime Function()? clock}) : clock = clock ?? DateTime.now;
+  final DateTime Function() clock;
+  String? _id;
+  String? _owner;
+  DateTime? _lastActivity;
+
+  String current(String? owner, {bool activity = false}) {
+    final now = clock();
+    if (_id == null || owner != _owner ||
+        (_lastActivity != null && now.difference(_lastActivity!) >= const Duration(minutes: 30))) {
+      _id = const Uuid().v4();
+      _owner = owner;
+      _lastActivity = now;
+    }
+    if (activity) _lastActivity = now;
+    return _id!;
+  }
+}
 
 class PilotSession {
   static const participantId = String.fromEnvironment('PILOT_PARTICIPANT_ID');
-  static const sessionId = String.fromEnvironment('PILOT_SESSION_ID');
+  static final _clock = PilotSessionClock();
+  static String get sessionId => _clock.current(SessionManager().username);
+  static void activity() => _clock.current(SessionManager().username, activity: true);
   static const networkCondition = String.fromEnvironment(
     'PILOT_NETWORK_CONDITION',
     defaultValue: 'TOTAL',

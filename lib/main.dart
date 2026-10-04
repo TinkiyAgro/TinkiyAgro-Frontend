@@ -2,6 +2,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'core/session_manager.dart';
+import 'core/evaluation/pilot_session.dart';
 import 'core/app_navigator.dart';
 import 'core/notifications/push_notification_service.dart';
 import 'core/offline/sync_coordinator.dart';
@@ -61,6 +62,12 @@ class TinkiyAgroApp extends StatelessWidget {
     }
 
     return MaterialApp(
+      builder: (context, child) => Listener(
+        behavior: HitTestBehavior.translucent,
+        onPointerDown: (_) => PilotSession.activity(),
+        onPointerMove: (_) => PilotSession.activity(),
+        child: child ?? const SizedBox.shrink(),
+      ),
       navigatorKey: appNavigatorKey,
       scaffoldMessengerKey: appScaffoldMessengerKey,
       title: 'TinkiyAgro',
