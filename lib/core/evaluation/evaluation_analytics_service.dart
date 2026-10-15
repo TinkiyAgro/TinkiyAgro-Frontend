@@ -68,8 +68,8 @@ class EvaluationAnalyticsService {
                 'recommendationRequestId': event.recommendationRequestId,
                 'participantId': event.participantId,
                 'pilotSessionId': event.pilotSessionId,
-                'clientCreatedAt': event.createdAt.toIso8601String(),
-                'enqueuedAt': event.enqueuedAt.toIso8601String(),
+                'clientCreatedAt': event.createdAt.toUtc().toIso8601String(),
+                'enqueuedAt': event.enqueuedAt.toUtc().toIso8601String(),
                 'networkCondition': event.networkCondition,
               },
             )

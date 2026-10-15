@@ -143,22 +143,46 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _cargarProductosHome() async {
     setState(() => _cargandoHome = true);
+    var feedFailed = false;
+    var lists = <PilotFeedList>[];
+    var recommended = <Producto>[];
+    var popular = <Producto>[];
+    var wholesale = <Map<String, dynamic>>[];
+
     try {
-      final lists = await PilotFeedService().load();
-      List<Map<String, dynamic>> wholesale = [];
+      lists = await PilotFeedService().load();
+    } catch (error) {
+      feedFailed = true;
+      debugPrint('[HomePage] Pilot feed unavailable: $error');
       try {
-        wholesale = await WholesaleService().products();
-      } catch (_) {}
-      if (mounted) {
-        setState(() {
-          _pilotLists = lists;
-          _feedFailed = false;
-          _wholesaleProducts = wholesale;
-          _cargandoHome = false;
-        });
+        recommended = await _catalogService.obtenerRecomendados();
+      } catch (fallbackError) {
+        debugPrint(
+          '[HomePage] Recommended fallback unavailable: $fallbackError',
+        );
       }
-    } catch (_) {
-      if (mounted) setState(() { _cargandoHome = false; _feedFailed = true; });
+      try {
+        popular = await _catalogService.obtenerPopulares();
+      } catch (fallbackError) {
+        debugPrint('[HomePage] Popular fallback unavailable: $fallbackError');
+      }
+    }
+
+    try {
+      wholesale = await WholesaleService().products();
+    } catch (error) {
+      debugPrint('[HomePage] Wholesale products unavailable: $error');
+    }
+
+    if (mounted) {
+      setState(() {
+        _pilotLists = lists;
+        _recomendados = recommended;
+        _tendencias = popular;
+        _feedFailed = feedFailed;
+        _wholesaleProducts = wholesale;
+        _cargandoHome = false;
+      });
     }
   }
 
@@ -601,51 +625,71 @@ class _HomePageState extends State<HomePage> {
 
   List<Widget> _buildExperimentalSections() {
     return [
-      if (_cargandoHome) const Center(child: CircularProgressIndicator())
-      else if (_feedFailed) TextButton.icon(
-        onPressed: _cargarProductosHome,
-        icon: const Icon(Icons.refresh),
-        label: const Text('No se pudo actualizar el inicio. Reintentar'),
-      ) else PilotFeedView(lists: _pilotLists),
-      const SizedBox(height: 24),
-      _buildWholesaleSection(),
+      if (_cargandoHome)
+        const Center(child: CircularProgressIndicator())
+      else if (_feedFailed) ...[
+        TextButton.icon(
+          onPressed: _cargarProductosHome,
+          icon: const Icon(Icons.refresh),
+          label: const Text(
+            'No se pudo cargar el feed personalizado. Reintentar',
+          ),
+        ),
+        _buildSeccionProductos(
+          titulo: 'Recomendados para ti',
+          productos: _recomendados,
+          cargando: false,
+          routeName: 'Recomendados para ti',
+        ),
+        const SizedBox(height: 24),
+        _buildSeccionProductos(
+          titulo: 'Productos populares',
+          productos: _tendencias,
+          cargando: false,
+          routeName: 'Productos populares',
+        ),
+        const SizedBox(height: 24),
+        _buildWholesaleFallback(),
+      ] else
+        PilotFeedView(lists: _pilotLists),
       const SizedBox(height: 30),
     ];
   }
 
-  Widget _buildWholesaleSection() => Column(
+  Widget _buildWholesaleFallback() => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          const Text(
-            'Ver toda la oferta mayorista',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-          ),
-          IconButton(
-            icon: const Icon(Icons.arrow_forward_ios, size: 16),
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const WholesaleCatalogPage()),
-            ),
-          ),
-        ],
+      const Text(
+        'Organizaciones de productores',
+        style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+      ),
+      const Text('Compra por volumen, con cotización'),
+      const SizedBox(height: 16),
+      _buildWholesaleCarousel('Recomendados para ti', _wholesaleProducts),
+      const SizedBox(height: 20),
+      _buildWholesaleCarousel('Populares', _wholesaleProducts),
+    ],
+  );
+
+  Widget _buildWholesaleCarousel(
+    String title,
+    List<Map<String, dynamic>> products,
+  ) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(
+        title,
+        style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w600),
       ),
       const SizedBox(height: 12),
-      if (_cargandoHome)
-        const Center(child: CircularProgressIndicator())
-      else if (_wholesaleProducts.isEmpty)
-        const Text(
-          'No hay oferta mayorista dentro de tu radio.',
-          style: TextStyle(color: Colors.grey),
-        )
+      if (products.isEmpty)
+        const Text('No hay productos disponibles en tu zona.')
       else
         SizedBox(
           height: 250,
           child: ListView(
             scrollDirection: Axis.horizontal,
-            children: _wholesaleProducts
+            children: products
                 .take(6)
                 .map((p) => WholesaleProductCard(product: p, compact: true))
                 .toList(),

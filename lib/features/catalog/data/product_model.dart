@@ -161,6 +161,7 @@ class Producto {
       // Detail: farmer.fullName | farmerUsername | legacy fields
       nombreVendedor:
           farmerMap?['fullName']?.toString() ??
+          json['farmerName']?.toString() ??
           json['farmerUsername'] ??
           json['nombreVendedor'] ??
           json['sellerName'] ??
