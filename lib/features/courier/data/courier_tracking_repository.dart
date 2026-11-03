@@ -2,10 +2,12 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:drift/drift.dart';
+import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../core/offline/app_database.dart';
 import '../../../core/offline/sync_types.dart';
+import '../../../core/evaluation/gps_evaluation.dart';
 import '../../../core/session_manager.dart';
 import 'remote/courier_service.dart';
 
@@ -82,6 +84,7 @@ class CourierTrackingRepository {
     required String label,
     required double latitude,
     required double longitude,
+    double? accuracyM,
     DateTime? capturedAt,
   }) async {
     final owner = _owner;
@@ -90,7 +93,8 @@ class CourierTrackingRepository {
       'label': label,
       'latitude': latitude,
       'longitude': longitude,
-      'capturedAt': captured.toIso8601String(),
+      if (accuracyM != null) 'accuracyM': accuracyM,
+      'capturedAt': captured.toUtc().toIso8601String(),
     };
     final existing =
         await (_db.select(_db.syncOperations)
@@ -203,12 +207,28 @@ class CourierTrackingRepository {
     );
 
     try {
-      await _remote.updateTrackingRaw(operation.entityLocalId, {
-        'label': sentPayload['label'],
-        'latitude': sentPayload['latitude'],
-        'longitude': sentPayload['longitude'],
-        'capturedAt': sentPayload['capturedAt'],
-      });
+      final response = await _remote
+          .updateTrackingRaw(operation.entityLocalId, {
+            'label': sentPayload['label'],
+            'latitude': sentPayload['latitude'],
+            'longitude': sentPayload['longitude'],
+            'capturedAt': sentPayload['capturedAt'],
+          });
+      final measurementId = GpsEvaluation.trackingMeasurementId(response);
+      final accuracy = (sentPayload['accuracyM'] as num?)?.toDouble();
+      if (GpsEvaluation.enabled && measurementId != null && accuracy != null) {
+        try {
+          await GpsEvaluation.recordContinuous(
+            trackingMeasurementId: measurementId,
+            latitude: (sentPayload['latitude'] as num).toDouble(),
+            longitude: (sentPayload['longitude'] as num).toDouble(),
+            accuracyM: accuracy,
+            capturedAt: DateTime.parse(sentPayload['capturedAt'] as String),
+          );
+        } catch (error) {
+          debugPrint('[GpsEvaluation] no se pudo registrar la muestra: $error');
+        }
+      }
       await _db.transaction(() async {
         final currentOperation = await (_db.select(
           _db.syncOperations,

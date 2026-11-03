@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:tinkiyagro_app/core/constants/app_constants.dart';
+import 'package:tinkiyagro_app/core/evaluation/gps_evaluation.dart';
 import 'package:tinkiyagro_app/core/offline/sync_types.dart';
 import 'package:tinkiyagro_app/features/orders/data/remote/location_tracking_service.dart';
 import '../../data/courier_model.dart';
@@ -24,6 +25,7 @@ class _CourierDeliveryPageState extends State<CourierDeliveryPage> {
   late CourierDeliveryGroup _group;
   bool _initialized = false;
   bool _trackingActive = false;
+  String? _evaluationRunId;
   List<CourierTrackingStatus> _trackingStatuses = const [];
 
   final Map<String, bool> _confirming = {};
@@ -60,6 +62,15 @@ class _CourierDeliveryPageState extends State<CourierDeliveryPage> {
     if (!mounted) return;
     final granted = await _tracking.requestPermission();
     if (!granted || !mounted) return;
+    try {
+      _evaluationRunId = await GpsEvaluation.startSession();
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('No se pudo iniciar la sesión GPS: $error')),
+      );
+      return;
+    }
     final ids = _group.customers.map((c) => c.subOrderId).toList();
     _tracking.start(
       subOrderIds: ids,
@@ -158,6 +169,20 @@ class _CourierDeliveryPageState extends State<CourierDeliveryPage> {
                     ),
                   ),
                 ],
+              ),
+            ),
+          if (_evaluationRunId != null)
+            Container(
+              width: double.infinity,
+              color: const Color(0xFFE8F3F1),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: SelectableText(
+                'Sesión GPS: $_evaluationRunId',
+                style: const TextStyle(
+                  color: Color(0xFF2F6F67),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
           Expanded(

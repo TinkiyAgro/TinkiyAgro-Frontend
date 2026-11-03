@@ -29,8 +29,8 @@ void main() {
   });
 
   test('keeps and syncs only the newest location per suborder', () async {
-    final firstCapture = DateTime(2026, 6, 22, 10);
-    final latestCapture = DateTime(2026, 6, 22, 10, 5);
+    final firstCapture = DateTime.parse('2026-06-22T10:00:00-05:00');
+    final latestCapture = DateTime.parse('2026-06-22T10:05:00-05:00');
 
     await repository.recordLocation(
       subOrderId: 'sub-1',
@@ -59,6 +59,7 @@ void main() {
         jsonDecode(queued.single.payloadJson) as Map<String, dynamic>;
     expect(payload['label'], 'Posicion mas reciente');
     expect(payload['latitude'], -12.02);
+    expect(payload['capturedAt'], '2026-06-22T15:05:00.000Z');
 
     _setSession(role: 'REPARTIDOR');
     await repository.syncPending(force: true);
@@ -66,7 +67,8 @@ void main() {
     expect(remote.trackingCalls, hasLength(1));
     expect(remote.trackingCalls.single['latitude'], -12.02);
     final status = (await repository.watchStatuses(['sub-1']).first).single;
-    expect(status.capturedAt, latestCapture);
+    // SQLite stores the wall-clock value without retaining the UTC marker.
+    expect(status.capturedAt, DateTime(2026, 6, 22, 10, 5));
     expect(status.syncState, EntitySyncState.synced);
     expect(status.syncedAt, isNotNull);
   });

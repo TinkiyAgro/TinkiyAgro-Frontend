@@ -70,12 +70,26 @@ class _CarritoPageState extends State<CarritoPage> {
     }
   }
 
+  void _eliminarConAviso(CarritoItem item) {
+    _eliminarItem(item);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('${item.producto.nombre} eliminado del carrito.'),
+        backgroundColor: Colors.redAccent,
+      ),
+    );
+  }
+
   Future<void> _cambiarFormato(CarritoItem item, String nuevoFormato) async {
     // La API no admite cambio de formato; actualizamos solo localmente
     _manager.cambiarFormato(item, nuevoFormato);
   }
 
   Future<void> _cambiarCantidad(CarritoItem item, int delta) async {
+    if (delta < 0 && item.cantidad <= 1) {
+      _eliminarConAviso(item);
+      return;
+    }
     if (delta > 0) {
       _manager.incrementarCantidad(item);
     } else if (delta < 0) {
@@ -169,15 +183,7 @@ class _CarritoPageState extends State<CarritoPage> {
     return Dismissible(
       key: Key('cart_item_${item.producto.id}_${item.formatoVenta}'),
       direction: DismissDirection.endToStart,
-      onDismissed: (_) {
-        _eliminarItem(item);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('${item.producto.nombre} eliminado del carrito.'),
-            backgroundColor: Colors.redAccent,
-          ),
-        );
-      },
+      onDismissed: (_) => _eliminarConAviso(item),
       background: Container(
         alignment: Alignment.centerRight,
         padding: const EdgeInsets.only(right: 24.0),
@@ -244,22 +250,46 @@ class _CarritoPageState extends State<CarritoPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    's/. ${item.precioUnitario.toStringAsFixed(2)}',
-                    style: const TextStyle(
-                      color: Color(0xFF4A7C73),
-                      fontSize: 13,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    item.producto.nombre,
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black,
-                    ),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              's/. ${item.precioUnitario.toStringAsFixed(2)}',
+                              style: const TextStyle(
+                                color: Color(0xFF4A7C73),
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              item.producto.nombre,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        key: Key(
+                          'delete_cart_item_${item.producto.id}_${item.formatoVenta}',
+                        ),
+                        tooltip: 'Eliminar del carrito',
+                        visualDensity: VisualDensity.compact,
+                        icon: const Icon(Icons.delete_outline),
+                        color: Colors.redAccent,
+                        onPressed: () => _eliminarConAviso(item),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 8),
                   Row(
@@ -379,18 +409,14 @@ class _CarritoPageState extends State<CarritoPage> {
               border: Border.all(color: Colors.grey.shade300),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: const Icon(Icons.remove,
-                size: 16, color: Color(0xFF5CA399)),
+            child: const Icon(Icons.remove, size: 16, color: Color(0xFF5CA399)),
           ),
         ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12),
           child: Text(
             '${item.cantidad}',
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
           ),
         ),
         GestureDetector(

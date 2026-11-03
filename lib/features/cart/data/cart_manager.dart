@@ -49,16 +49,19 @@ class CarritoManager extends ChangeNotifier {
 
   void agregarAlCarrito(Producto producto, int cantidad, String formatoVenta) {
     final index = _items.indexWhere(
-      (item) => item.producto.id == producto.id && item.formatoVenta == formatoVenta,
+      (item) =>
+          item.producto.id == producto.id && item.formatoVenta == formatoVenta,
     );
     if (index != -1) {
       _items[index].cantidad += cantidad;
     } else {
-      _items.add(CarritoItem(
-        producto: producto,
-        cantidad: cantidad,
-        formatoVenta: formatoVenta,
-      ));
+      _items.add(
+        CarritoItem(
+          producto: producto,
+          cantidad: cantidad,
+          formatoVenta: formatoVenta,
+        ),
+      );
     }
     notifyListeners();
   }
@@ -76,8 +79,10 @@ class CarritoManager extends ChangeNotifier {
   void decrementarCantidad(CarritoItem item) {
     if (item.cantidad > 1) {
       item.cantidad--;
-      notifyListeners();
+    } else {
+      _items.remove(item);
     }
+    notifyListeners();
   }
 
   void eliminarItem(CarritoItem item) {

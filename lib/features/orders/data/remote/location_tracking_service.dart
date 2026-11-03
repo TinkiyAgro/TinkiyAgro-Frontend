@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:tinkiyagro_app/core/api_client.dart';
+import 'package:tinkiyagro_app/core/evaluation/gps_evaluation.dart';
 import 'package:tinkiyagro_app/core/session_manager.dart';
 import 'package:tinkiyagro_app/features/courier/data/courier_tracking_repository.dart';
 
@@ -18,8 +19,12 @@ class LocationTrackingService {
   Timer? _timer;
   List<String> _subOrderIds = [];
   String _endpointTemplate = '';
+  bool _sending = false;
 
-  static const _interval = Duration(hours: 1);
+  static const _targetAccuracyM = 5.0;
+  static const _accuracySamplingWindow = Duration(seconds: 12);
+
+  Duration get _interval => GpsEvaluation.trackingInterval;
 
   bool get isActive => _timer != null;
 
@@ -59,7 +64,7 @@ class LocationTrackingService {
     _timer = Timer.periodic(_interval, (_) => _sendAll());
 
     debugPrint(
-      '[LocationTracking] iniciado para $ids — cada ${_interval.inHours}h',
+      '[LocationTracking] iniciado para $ids — cada ${_interval.inSeconds}s',
     );
   }
 
@@ -87,13 +92,10 @@ class LocationTrackingService {
   }
 
   Future<void> _sendAll() async {
-    if (_subOrderIds.isEmpty) return;
+    if (_subOrderIds.isEmpty || _sending) return;
+    _sending = true;
     try {
-      final position = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.high,
-        ),
-      );
+      final position = await _getBestAvailablePosition();
       final label = await _buildLabel(position.latitude, position.longitude);
       final body = {
         'label': label,
@@ -110,6 +112,7 @@ class LocationTrackingService {
             label: label,
             latitude: position.latitude,
             longitude: position.longitude,
+            accuracyM: position.accuracy,
           );
         } else {
           await ApiClient.post(endpoint, body);
@@ -117,7 +120,59 @@ class LocationTrackingService {
       }
     } catch (e) {
       debugPrint('[LocationTracking] error al enviar: $e');
+    } finally {
+      _sending = false;
     }
+  }
+
+  Future<Position> _getBestAvailablePosition() async {
+    final settings = _highAccuracySettings();
+    var best = await Geolocator.getCurrentPosition(locationSettings: settings);
+    if (best.accuracy <= _targetAccuracyM) return best;
+
+    final completer = Completer<Position>();
+    StreamSubscription<Position>? subscription;
+    Timer? timeout;
+
+    void complete() {
+      if (!completer.isCompleted) completer.complete(best);
+    }
+
+    subscription = Geolocator.getPositionStream(locationSettings: settings)
+        .listen(
+          (candidate) {
+            if (candidate.accuracy < best.accuracy) best = candidate;
+            if (best.accuracy <= _targetAccuracyM) complete();
+          },
+          onError: (_) => complete(),
+          onDone: complete,
+        );
+    timeout = Timer(_accuracySamplingWindow, complete);
+
+    final selected = await completer.future;
+    timeout.cancel();
+    await subscription.cancel();
+    debugPrint(
+      '[LocationTracking] mejor precisión disponible: '
+      '${selected.accuracy.toStringAsFixed(1)} m',
+    );
+    return selected;
+  }
+
+  LocationSettings _highAccuracySettings() {
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      return AndroidSettings(
+        accuracy: LocationAccuracy.bestForNavigation,
+        distanceFilter: 0,
+        intervalDuration: Duration(seconds: 1),
+        timeLimit: Duration(seconds: 15),
+      );
+    }
+    return const LocationSettings(
+      accuracy: LocationAccuracy.bestForNavigation,
+      distanceFilter: 0,
+      timeLimit: Duration(seconds: 15),
+    );
   }
 
   Future<String> _buildLabel(double lat, double lon) async {
