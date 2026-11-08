@@ -80,6 +80,36 @@ class _CarritoPageState extends State<CarritoPage> {
     );
   }
 
+  Future<bool> _confirmarEliminacion(CarritoItem item) async {
+    return await showDialog<bool>(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            title: const Text('Eliminar producto'),
+            content: Text(
+              '¿Deseas eliminar ${item.producto.nombre} del carrito?',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext, false),
+                child: const Text('Cancelar'),
+              ),
+              FilledButton.icon(
+                onPressed: () => Navigator.pop(dialogContext, true),
+                icon: const Icon(Icons.delete_outline),
+                label: const Text('Eliminar'),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+  }
+
+  Future<void> _confirmarYEliminar(CarritoItem item) async {
+    if (await _confirmarEliminacion(item) && mounted) {
+      _eliminarConAviso(item);
+    }
+  }
+
   Future<void> _cambiarFormato(CarritoItem item, String nuevoFormato) async {
     // La API no admite cambio de formato; actualizamos solo localmente
     _manager.cambiarFormato(item, nuevoFormato);
@@ -87,7 +117,7 @@ class _CarritoPageState extends State<CarritoPage> {
 
   Future<void> _cambiarCantidad(CarritoItem item, int delta) async {
     if (delta < 0 && item.cantidad <= 1) {
-      _eliminarConAviso(item);
+      await _confirmarYEliminar(item);
       return;
     }
     if (delta > 0) {
@@ -151,6 +181,16 @@ class _CarritoPageState extends State<CarritoPage> {
                     'Agrega productos desde la tienda.',
                     style: TextStyle(fontSize: 14, color: Colors.grey.shade400),
                   ),
+                  const SizedBox(height: 20),
+                  FilledButton.icon(
+                    onPressed: () => Navigator.pushNamedAndRemoveUntil(
+                      context,
+                      '/home',
+                      (_) => false,
+                    ),
+                    icon: const Icon(Icons.storefront_outlined),
+                    label: const Text('Seguir comprando'),
+                  ),
                 ],
               ),
             );
@@ -183,6 +223,7 @@ class _CarritoPageState extends State<CarritoPage> {
     return Dismissible(
       key: Key('cart_item_${item.producto.id}_${item.formatoVenta}'),
       direction: DismissDirection.endToStart,
+      confirmDismiss: (_) => _confirmarEliminacion(item),
       onDismissed: (_) => _eliminarConAviso(item),
       background: Container(
         alignment: Alignment.centerRight,
@@ -287,7 +328,7 @@ class _CarritoPageState extends State<CarritoPage> {
                         visualDensity: VisualDensity.compact,
                         icon: const Icon(Icons.delete_outline),
                         color: Colors.redAccent,
-                        onPressed: () => _eliminarConAviso(item),
+                        onPressed: () => _confirmarYEliminar(item),
                       ),
                     ],
                   ),

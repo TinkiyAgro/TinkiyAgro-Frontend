@@ -508,6 +508,40 @@ class _DetalleProductoPageState extends State<DetalleProductoPage> {
                       ),
                       const SizedBox(height: 16),
 
+                      if (producto.descripcion.trim().isNotEmpty) ...[
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Descripción',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.black87,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                producto.descripcion,
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  height: 1.4,
+                                  color: Colors.grey.shade700,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                      ],
+
                       // Reseñas
                       GestureDetector(
                         onTap: () => Navigator.pushNamed(

@@ -53,8 +53,10 @@ class _ConsumerAddressesPageState extends State<ConsumerAddressesPage> {
     }
   }
 
-  List<Direccion> get _actual => _direcciones.where((d) => d.esDefault).toList();
-  List<Direccion> get _otras => _direcciones.where((d) => !d.esDefault).toList();
+  List<Direccion> get _actual =>
+      _direcciones.where((d) => d.esDefault).toList();
+  List<Direccion> get _otras =>
+      _direcciones.where((d) => !d.esDefault).toList();
 
   @override
   Widget build(BuildContext context) {
@@ -62,53 +64,67 @@ class _ConsumerAddressesPageState extends State<ConsumerAddressesPage> {
       backgroundColor: const Color(0xFFF7F8FA),
       appBar: _buildAppBar(context),
       body: _cargando
-          ? const Center(child: CircularProgressIndicator(color: Color(0xFF5CA399)))
+          ? const Center(
+              child: CircularProgressIndicator(color: Color(0xFF5CA399)),
+            )
           : _error != null
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(_error!, textAlign: TextAlign.center,
-                          style: const TextStyle(color: Colors.redAccent)),
-                      const SizedBox(height: 12),
-                      ElevatedButton(
-                        onPressed: _cargarDirecciones,
-                        style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF5CA399)),
-                        child: const Text('Reintentar',
-                            style: TextStyle(color: Colors.white)),
-                      ),
-                    ],
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    _error!,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: Colors.redAccent),
                   ),
-                )
-              : SingleChildScrollView(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const SizedBox(height: 8),
-                      if (_actual.isNotEmpty) ...[
-                        _buildSectionTitle('Dirección de entrega actual'),
-                        const SizedBox(height: 12),
-                        ..._actual.map((d) => _buildAddressCard(d, isCurrent: true)),
-                        const SizedBox(height: 20),
-                      ],
-                      if (_otras.isNotEmpty) ...[
-                        _buildSectionTitle('Otras direcciones'),
-                        const SizedBox(height: 12),
-                        ..._otras.map((d) => _buildAddressCard(d, isCurrent: false)),
-                      ],
-                      if (_direcciones.isEmpty)
-                        const Center(
-                          child: Padding(
-                            padding: EdgeInsets.symmetric(vertical: 60),
-                            child: Text('No tienes direcciones registradas.',
-                                style: TextStyle(color: Colors.grey, fontSize: 15)),
-                          ),
+                  const SizedBox(height: 12),
+                  ElevatedButton(
+                    onPressed: _cargarDirecciones,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF5CA399),
+                    ),
+                    child: const Text(
+                      'Reintentar',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ),
+                ],
+              ),
+            )
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 8),
+                  if (_actual.isNotEmpty) ...[
+                    _buildSectionTitle('Dirección de entrega actual'),
+                    const SizedBox(height: 12),
+                    ..._actual.map(
+                      (d) => _buildAddressCard(d, isCurrent: true),
+                    ),
+                    const SizedBox(height: 20),
+                  ],
+                  if (_otras.isNotEmpty) ...[
+                    _buildSectionTitle('Otras direcciones'),
+                    const SizedBox(height: 12),
+                    ..._otras.map(
+                      (d) => _buildAddressCard(d, isCurrent: false),
+                    ),
+                  ],
+                  if (_direcciones.isEmpty)
+                    const Center(
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(vertical: 60),
+                        child: Text(
+                          'No tienes direcciones registradas.',
+                          style: TextStyle(color: Colors.grey, fontSize: 15),
                         ),
-                    ],
-                  ),
-                ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
       floatingActionButton: FloatingActionButton(
         onPressed: _navegarAgregarDireccion,
         backgroundColor: const Color(0xFF5CA399),
@@ -129,7 +145,11 @@ class _ConsumerAddressesPageState extends State<ConsumerAddressesPage> {
       ),
       title: const Text(
         'Mis direcciones',
-        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black),
+        style: TextStyle(
+          fontSize: 18,
+          fontWeight: FontWeight.bold,
+          color: Colors.black,
+        ),
       ),
       centerTitle: true,
       bottom: PreferredSize(
@@ -140,9 +160,14 @@ class _ConsumerAddressesPageState extends State<ConsumerAddressesPage> {
   }
 
   Widget _buildSectionTitle(String title) {
-    return Text(title,
-        style: const TextStyle(
-            fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black));
+    return Text(
+      title,
+      style: const TextStyle(
+        fontSize: 16,
+        fontWeight: FontWeight.bold,
+        color: Colors.black,
+      ),
+    );
   }
 
   Widget _buildAddressCard(Direccion direccion, {required bool isCurrent}) {
@@ -163,8 +188,7 @@ class _ConsumerAddressesPageState extends State<ConsumerAddressesPage> {
         ],
       ),
       child: ListTile(
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
         leading: isCurrent
             ? const Icon(Icons.location_on, color: Color(0xFF5CA399))
             : const Icon(Icons.location_on_outlined, color: Colors.grey),
@@ -177,8 +201,10 @@ class _ConsumerAddressesPageState extends State<ConsumerAddressesPage> {
           ),
         ),
         subtitle: direccion.label.isNotEmpty
-            ? Text(direccion.label,
-                style: TextStyle(fontSize: 12, color: Colors.grey.shade400))
+            ? Text(
+                direccion.label,
+                style: TextStyle(fontSize: 12, color: Colors.grey.shade400),
+              )
             : null,
         trailing: PopupMenuButton<String>(
           icon: const Icon(Icons.more_vert, color: Colors.black87),
@@ -189,6 +215,7 @@ class _ConsumerAddressesPageState extends State<ConsumerAddressesPage> {
                 value: 'set_default',
                 child: Text('Usar como actual'),
               ),
+            const PopupMenuItem(value: 'edit', child: Text('Editar')),
             const PopupMenuItem(
               value: 'delete',
               child: Text('Eliminar', style: TextStyle(color: Colors.red)),
@@ -214,25 +241,60 @@ class _ConsumerAddressesPageState extends State<ConsumerAddressesPage> {
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error: ${e.toString()}'),
-                backgroundColor: Colors.redAccent),
+            SnackBar(
+              content: Text('Error: ${e.toString()}'),
+              backgroundColor: Colors.redAccent,
+            ),
           );
         }
       }
+    } else if (accion == 'edit') {
+      final editada = await Navigator.push<bool>(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ConsumerAddAddressPage(direccion: direccion),
+        ),
+      );
+      if (editada == true) {
+        await _cargarDirecciones();
+      }
     } else if (accion == 'delete') {
+      final confirmar = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Eliminar dirección'),
+          content: Text('¿Seguro que deseas eliminar “${direccion.label}”?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Cancelar'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: const Text(
+                'Eliminar',
+                style: TextStyle(color: Colors.red),
+              ),
+            ),
+          ],
+        ),
+      );
+      if (confirmar != true) return;
       try {
         await _service.eliminarDireccion(direccion.id);
         await _cargarDirecciones();
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Dirección eliminada.')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('Dirección eliminada.')));
         }
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error al eliminar: ${e.toString()}'),
-                backgroundColor: Colors.redAccent),
+            SnackBar(
+              content: Text('Error al eliminar: ${e.toString()}'),
+              backgroundColor: Colors.redAccent,
+            ),
           );
         }
       }

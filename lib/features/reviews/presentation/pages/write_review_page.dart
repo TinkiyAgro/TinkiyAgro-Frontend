@@ -41,7 +41,10 @@ class _WriteReviewsPageState extends State<WriteReviewsPage> {
       Resena newReview;
       if (widget.productId.isNotEmpty) {
         newReview = await _service.agregarResena(
-            widget.productId, _rating, comment);
+          widget.productId,
+          _rating,
+          comment,
+        );
       } else {
         // Fallback local si no hay productId
         final session = SessionManager();
@@ -91,9 +94,12 @@ class _WriteReviewsPageState extends State<WriteReviewsPage> {
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
-          'Write Reviews',
+          'Escribir reseña',
           style: TextStyle(
-              color: Colors.black, fontSize: 20, fontWeight: FontWeight.bold),
+            color: Colors.black,
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
         ),
         centerTitle: true,
       ),
@@ -103,8 +109,7 @@ class _WriteReviewsPageState extends State<WriteReviewsPage> {
           children: [
             Container(
               width: double.infinity,
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(24),
@@ -121,19 +126,21 @@ class _WriteReviewsPageState extends State<WriteReviewsPage> {
                   const Text(
                     '¿Qué opinas?',
                     style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black),
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black,
+                    ),
                   ),
                   const SizedBox(height: 12),
                   Text(
                     'Por favor, valora el producto haciendo clic en las estrellas que aparecen a continuación.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey.shade500,
-                        height: 1.4,
-                        fontWeight: FontWeight.w500),
+                      fontSize: 14,
+                      color: Colors.grey.shade500,
+                      height: 1.4,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                   const SizedBox(height: 24),
                   Row(
@@ -145,8 +152,7 @@ class _WriteReviewsPageState extends State<WriteReviewsPage> {
                         onTap: () =>
                             setState(() => _rating = starValue.toDouble()),
                         child: Padding(
-                          padding:
-                              const EdgeInsets.symmetric(horizontal: 4),
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
                           child: Icon(
                             Icons.star,
                             size: 44,
@@ -166,24 +172,32 @@ class _WriteReviewsPageState extends State<WriteReviewsPage> {
                       border: Border.all(color: Colors.grey.shade200),
                     ),
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 8),
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Padding(
                           padding: const EdgeInsets.only(top: 12),
-                          child: Icon(Icons.edit_outlined,
-                              color: Colors.grey.shade400, size: 20),
+                          child: Icon(
+                            Icons.edit_outlined,
+                            color: Colors.grey.shade400,
+                            size: 20,
+                          ),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
                           child: TextField(
                             controller: _commentCtrl,
                             maxLines: 5,
+                            maxLength: 500,
                             decoration: InputDecoration(
                               hintText: 'Escribe sobre tu experiencia',
                               hintStyle: TextStyle(
-                                  color: Colors.grey.shade400, fontSize: 14),
+                                color: Colors.grey.shade400,
+                                fontSize: 14,
+                              ),
                               border: InputBorder.none,
                             ),
                             style: const TextStyle(fontSize: 14),
@@ -211,12 +225,16 @@ class _WriteReviewsPageState extends State<WriteReviewsPage> {
                               width: 22,
                               height: 22,
                               child: CircularProgressIndicator(
-                                  color: Colors.white, strokeWidth: 2),
+                                color: Colors.white,
+                                strokeWidth: 2,
+                              ),
                             )
                           : const Text(
                               'Enviar',
                               style: TextStyle(
-                                  fontSize: 16, fontWeight: FontWeight.bold),
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                     ),
                   ),

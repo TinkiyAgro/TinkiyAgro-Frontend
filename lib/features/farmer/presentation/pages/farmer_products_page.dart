@@ -230,6 +230,8 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
                       'S/. ${product.precio.toStringAsFixed(2)}',
                       style: const TextStyle(color: Color(0xFF4A7C73)),
                     ),
+                    const SizedBox(height: 5),
+                    _productStatus(product.productStatus),
                     if (item.syncState != EntitySyncState.synced) ...[
                       const SizedBox(height: 5),
                       _syncLabel(item.syncState),
@@ -240,6 +242,33 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
               const Icon(Icons.chevron_right),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _productStatus(String rawStatus) {
+    final normalized = rawStatus.trim().toUpperCase();
+    final available = normalized == 'DISPONIBLE' || normalized == 'ACTIVE';
+    final label = switch (normalized) {
+      'DISPONIBLE' || 'ACTIVE' => 'Disponible',
+      'AGOTADO' || 'OUT_OF_STOCK' => 'Agotado',
+      'INACTIVO' || 'INACTIVE' => 'Inactivo',
+      _ => normalized.isEmpty ? 'Sin estado' : rawStatus,
+    };
+    final color = available ? Colors.green.shade700 : Colors.orange.shade800;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: color,
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
         ),
       ),
     );

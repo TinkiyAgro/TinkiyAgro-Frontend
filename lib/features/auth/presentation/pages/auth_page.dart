@@ -295,8 +295,11 @@ class _AuthPageState extends State<AuthPage>
               onPressed: () =>
                   setState(() => _loginPassVisible = !_loginPassVisible),
             ),
-            validator: (v) =>
-                v == null || v.length < 4 ? 'Contraseña muy corta' : null,
+            validator: (v) {
+              if (v == null || v.isEmpty) return 'Ingresa tu contraseña';
+              if (v.length < 4) return 'Contraseña muy corta';
+              return null;
+            },
           ),
           const SizedBox(height: 32),
           SizedBox(
@@ -527,12 +530,14 @@ class _AuthPageState extends State<AuthPage>
         try {
           final preference = await OrganizationService()
               .getDiscoveryPreferences();
-          if (preference['configured'] != true)
+          if (preference['configured'] != true) {
             destination = '/consumer_discovery_update';
+          }
         } catch (_) {
           destination = '/consumer_discovery_update';
         }
       }
+      if (!mounted) return;
       Navigator.pushNamedAndRemoveUntil(context, destination, (route) => false);
     } catch (e) {
       if (!mounted) return;

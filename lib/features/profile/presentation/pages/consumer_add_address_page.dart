@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
+import '../../data/address_model.dart';
 import '../../data/remote/profile_service.dart';
 
 class ConsumerAddAddressPage extends StatefulWidget {
-  const ConsumerAddAddressPage({super.key});
+  final Direccion? direccion;
+
+  const ConsumerAddAddressPage({super.key, this.direccion});
 
   @override
-  State<ConsumerAddAddressPage> createState() =>
-      _ConsumerAddAddressPageState();
+  State<ConsumerAddAddressPage> createState() => _ConsumerAddAddressPageState();
 }
 
 class _ConsumerAddAddressPageState extends State<ConsumerAddAddressPage> {
@@ -16,6 +18,20 @@ class _ConsumerAddAddressPageState extends State<ConsumerAddAddressPage> {
   final _districtController = TextEditingController();
   final _referenceController = TextEditingController();
   bool _guardando = false;
+
+  bool get _editando => widget.direccion != null;
+
+  @override
+  void initState() {
+    super.initState();
+    final direccion = widget.direccion;
+    if (direccion != null) {
+      _labelController.text = direccion.label;
+      _addressController.text = direccion.address;
+      _districtController.text = direccion.district;
+      _referenceController.text = direccion.reference;
+    }
+  }
 
   @override
   void dispose() {
@@ -40,18 +56,31 @@ class _ConsumerAddAddressPageState extends State<ConsumerAddAddressPage> {
 
     setState(() => _guardando = true);
     try {
-      await _service.agregarDireccion(
-        label: label,
-        address: address,
-        district: district,
-        reference: _referenceController.text.trim(),
-      );
+      if (_editando) {
+        await _service.editarDireccion(
+          id: widget.direccion!.id,
+          label: label,
+          address: address,
+          district: district,
+          reference: _referenceController.text.trim(),
+          defaultAddress: widget.direccion!.esDefault,
+        );
+      } else {
+        await _service.agregarDireccion(
+          label: label,
+          address: address,
+          district: district,
+          reference: _referenceController.text.trim(),
+        );
+      }
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error al agregar: ${e.toString()}'),
+            content: Text(
+              'Error al ${_editando ? 'editar' : 'agregar'}: ${e.toString()}',
+            ),
             backgroundColor: Colors.redAccent,
           ),
         );
@@ -110,9 +139,9 @@ class _ConsumerAddAddressPageState extends State<ConsumerAddAddressPage> {
         icon: const Icon(Icons.arrow_back, color: Colors.black),
         onPressed: () => Navigator.pop(context),
       ),
-      title: const Text(
-        'Agregar dirección',
-        style: TextStyle(
+      title: Text(
+        _editando ? 'Editar dirección' : 'Agregar dirección',
+        style: const TextStyle(
           fontSize: 18,
           fontWeight: FontWeight.bold,
           color: Colors.black,
@@ -151,8 +180,10 @@ class _ConsumerAddAddressPageState extends State<ConsumerAddAddressPage> {
           hintText: hint,
           hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 15),
           border: InputBorder.none,
-          contentPadding:
-              const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+          contentPadding: const EdgeInsets.symmetric(
+            vertical: 16,
+            horizontal: 16,
+          ),
         ),
       ),
     );
@@ -178,10 +209,12 @@ class _ConsumerAddAddressPageState extends State<ConsumerAddAddressPage> {
                   width: 22,
                   height: 22,
                   child: CircularProgressIndicator(
-                      color: Colors.white, strokeWidth: 2),
+                    color: Colors.white,
+                    strokeWidth: 2,
+                  ),
                 )
-              : const Text(
-                  'Agregar',
+              : Text(
+                  _editando ? 'Guardar cambios' : 'Agregar',
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
         ),

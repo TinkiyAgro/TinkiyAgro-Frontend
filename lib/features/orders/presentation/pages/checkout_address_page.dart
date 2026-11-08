@@ -4,6 +4,7 @@ import '../../../farmer/data/pickup_point_model.dart';
 import '../../../farmer/data/remote/pickup_point_service.dart';
 import '../../../profile/data/address_model.dart';
 import '../../../profile/data/remote/profile_service.dart';
+import '../../../profile/presentation/pages/consumer_add_address_page.dart';
 
 class CheckoutDireccionPage extends StatefulWidget {
   const CheckoutDireccionPage({super.key});
@@ -57,24 +58,30 @@ class _CheckoutDireccionPageState extends State<CheckoutDireccionPage> {
     setState(() => _cargandoPickup[username] = true);
 
     // 1. Try pickup points already embedded in the PICKUP delivery option
-    final embedded = farmer.availableOptions
-        .where((o) => o.type == 'PICKUP')
-        .firstOrNull
-        ?.pickupPoints ?? [];
+    final embedded =
+        farmer.availableOptions
+            .where((o) => o.type == 'PICKUP')
+            .firstOrNull
+            ?.pickupPoints ??
+        [];
 
     if (embedded.isNotEmpty) {
-      final converted = embedded.map((p) => PuntoRecojo(
-        id: p.id,
-        farmerUsername: username,
-        name: p.name,
-        address: p.address,
-        deliveryDate: '',
-        availableFrom: '',
-        availableTo: '',
-        orderDeadlineDate: '',
-        orderDeadlineTime: '',
-        status: 'ACTIVE',
-      )).toList();
+      final converted = embedded
+          .map(
+            (p) => PuntoRecojo(
+              id: p.id,
+              farmerUsername: username,
+              name: p.name,
+              address: p.address,
+              deliveryDate: '',
+              availableFrom: '',
+              availableTo: '',
+              orderDeadlineDate: '',
+              orderDeadlineTime: '',
+              status: 'ACTIVE',
+            ),
+          )
+          .toList();
       if (mounted) {
         setState(() {
           _puntosPorFarmer[username] = converted;
@@ -308,12 +315,16 @@ class _CheckoutDireccionPageState extends State<CheckoutDireccionPage> {
                           ? farmer.farmerName
                           : farmer.farmerUsername,
                       style: const TextStyle(
-                          fontSize: 15, fontWeight: FontWeight.bold),
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     Text(
                       farmer.tipoEntrega,
-                      style:
-                          TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey.shade600,
+                      ),
                     ),
                   ],
                 ),
@@ -325,9 +336,10 @@ class _CheckoutDireccionPageState extends State<CheckoutDireccionPage> {
             const Text(
               'Recoger en:',
               style: TextStyle(
-                  fontSize: 13,
-                  color: Colors.black54,
-                  fontWeight: FontWeight.w500),
+                fontSize: 13,
+                color: Colors.black54,
+                fontWeight: FontWeight.w500,
+              ),
             ),
             const SizedBox(height: 8),
             _buildPickupSection(farmer),
@@ -335,9 +347,10 @@ class _CheckoutDireccionPageState extends State<CheckoutDireccionPage> {
             const Text(
               'Entregar en:',
               style: TextStyle(
-                  fontSize: 13,
-                  color: Colors.black54,
-                  fontWeight: FontWeight.w500),
+                fontSize: 13,
+                color: Colors.black54,
+                fontWeight: FontWeight.w500,
+              ),
             ),
             const SizedBox(height: 8),
             _buildDeliverySection(farmer),
@@ -358,7 +371,9 @@ class _CheckoutDireccionPageState extends State<CheckoutDireccionPage> {
         padding: EdgeInsets.symmetric(vertical: 12),
         child: Center(
           child: CircularProgressIndicator(
-              strokeWidth: 2.5, color: Color(0xFF5CA399)),
+            strokeWidth: 2.5,
+            color: Color(0xFF5CA399),
+          ),
         ),
       );
     }
@@ -410,19 +425,23 @@ class _CheckoutDireccionPageState extends State<CheckoutDireccionPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(punto.name,
-                style: const TextStyle(
-                    fontWeight: FontWeight.bold, fontSize: 13)),
+            Text(
+              punto.name,
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+            ),
             if (punto.horario.isNotEmpty) ...[
               const SizedBox(height: 3),
-              Text(punto.horario,
-                  style: TextStyle(fontSize: 11, color: Colors.grey.shade500)),
+              Text(
+                punto.horario,
+                style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
+              ),
             ],
             if (punto.address.isNotEmpty) ...[
               const SizedBox(height: 3),
-              Text(punto.address,
-                  style: const TextStyle(
-                      fontSize: 11, color: Color(0xFF5CA399))),
+              Text(
+                punto.address,
+                style: const TextStyle(fontSize: 11, color: Color(0xFF5CA399)),
+              ),
             ],
           ],
         ),
@@ -438,7 +457,9 @@ class _CheckoutDireccionPageState extends State<CheckoutDireccionPage> {
         padding: EdgeInsets.symmetric(vertical: 12),
         child: Center(
           child: CircularProgressIndicator(
-              strokeWidth: 2.5, color: Color(0xFF5CA399)),
+            strokeWidth: 2.5,
+            color: Color(0xFF5CA399),
+          ),
         ),
       );
     }
@@ -461,8 +482,10 @@ class _CheckoutDireccionPageState extends State<CheckoutDireccionPage> {
             if (hasAddress) ...[
               Text(
                 addressText,
-                style:
-                    const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                ),
               ),
               if (_defaultDireccion != null &&
                   farmer.selectedAddressId == _defaultDireccion!.id &&
@@ -470,8 +493,7 @@ class _CheckoutDireccionPageState extends State<CheckoutDireccionPage> {
                 const SizedBox(height: 2),
                 Text(
                   _defaultDireccion!.district,
-                  style:
-                      TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                  style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
                 ),
               ],
               const SizedBox(height: 8),
@@ -484,8 +506,11 @@ class _CheckoutDireccionPageState extends State<CheckoutDireccionPage> {
             ],
             Row(
               children: [
-                const Icon(Icons.edit_outlined,
-                    size: 13, color: Color(0xFF5CA399)),
+                const Icon(
+                  Icons.edit_outlined,
+                  size: 13,
+                  color: Color(0xFF5CA399),
+                ),
                 const SizedBox(width: 4),
                 Text(
                   hasAddress ? 'Cambiar dirección' : 'Agregar dirección',
@@ -515,10 +540,10 @@ class _CheckoutDireccionPageState extends State<CheckoutDireccionPage> {
         child: ElevatedButton(
           onPressed: _puedeAvanzar
               ? () => Navigator.pushNamed(
-                    context,
-                    '/checkout_pago',
-                    arguments: _farmers,
-                  )
+                  context,
+                  '/checkout_pago',
+                  arguments: _farmers,
+                )
               : null,
           style: ElevatedButton.styleFrom(
             backgroundColor: const Color(0xFF5CA399),
@@ -574,8 +599,9 @@ class _AddressSelectorSheetState extends State<_AddressSelectorSheet> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding:
-          EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
       child: Container(
         padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
         child: Column(
@@ -615,10 +641,30 @@ class _AddressSelectorSheetState extends State<_AddressSelectorSheet> {
               )
             else
               ...(_direcciones.map((dir) => _buildAddressTile(dir))),
+            const SizedBox(height: 4),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: _agregarDireccion,
+                icon: const Icon(Icons.add_location_alt_outlined),
+                label: const Text('Agregar nueva dirección'),
+              ),
+            ),
           ],
         ),
       ),
     );
+  }
+
+  Future<void> _agregarDireccion() async {
+    final agregada = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(builder: (_) => const ConsumerAddAddressPage()),
+    );
+    if (agregada == true) {
+      setState(() => _cargando = true);
+      await _cargar();
+    }
   }
 
   Widget _buildAddressTile(Direccion dir) {
@@ -655,19 +701,23 @@ class _AddressSelectorSheetState extends State<_AddressSelectorSheet> {
                     Text(
                       dir.label,
                       style: const TextStyle(
-                          fontWeight: FontWeight.bold, fontSize: 13),
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                      ),
                     ),
                   Text(
                     dir.textoCompleto,
-                    style:
-                        TextStyle(fontSize: 12, color: Colors.grey.shade700),
+                    style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
                   ),
                 ],
               ),
             ),
             if (selected)
-              const Icon(Icons.check_circle,
-                  color: Color(0xFF5CA399), size: 20),
+              const Icon(
+                Icons.check_circle,
+                color: Color(0xFF5CA399),
+                size: 20,
+              ),
           ],
         ),
       ),

@@ -22,6 +22,7 @@ class _AddProductPageState extends State<AddProductPage> {
 
   // Controllers
   final _nameCtrl = TextEditingController();
+  final _descriptionCtrl = TextEditingController();
   final _priceCtrl = TextEditingController();
   final _stockCtrl = TextEditingController();
   final _weightCtrl = TextEditingController();
@@ -52,6 +53,7 @@ class _AddProductPageState extends State<AddProductPage> {
       if (args is Producto) {
         _editingProduct = args;
         _nameCtrl.text = _editingProduct!.nombre;
+        _descriptionCtrl.text = _editingProduct!.descripcion;
         _priceCtrl.text = _editingProduct!.precio.toStringAsFixed(2);
         _stockCtrl.text = _editingProduct!.stockDisponible.toStringAsFixed(0);
         _weightCtrl.text = _editingProduct!.pesoUnidadAprox.toString();
@@ -74,6 +76,7 @@ class _AddProductPageState extends State<AddProductPage> {
   @override
   void dispose() {
     _nameCtrl.dispose();
+    _descriptionCtrl.dispose();
     _priceCtrl.dispose();
     _stockCtrl.dispose();
     _weightCtrl.dispose();
@@ -124,6 +127,7 @@ class _AddProductPageState extends State<AddProductPage> {
 
     final category = _selectedCategory ?? 'Frutas';
     final name = _nameCtrl.text.trim();
+    final description = _descriptionCtrl.text.trim();
 
     final price = double.tryParse(_priceCtrl.text) ?? 0.0;
     final stock = double.tryParse(_stockCtrl.text) ?? 0.0;
@@ -135,6 +139,7 @@ class _AddProductPageState extends State<AddProductPage> {
 
     final datos = {
       'name': name,
+      'description': description,
       'category': labelToCategory(category),
       'saleFormats': [
         if (_sellByKilo)
@@ -222,6 +227,7 @@ class _AddProductPageState extends State<AddProductPage> {
       ),
       body: Form(
         key: _formKey,
+        autovalidateMode: AutovalidateMode.onUserInteraction,
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24.0),
           child: Column(
@@ -274,7 +280,7 @@ class _AddProductPageState extends State<AddProductPage> {
                               ),
                               SizedBox(height: 8),
                               Text(
-                                'Subir imagen',
+                                'Subir imagen *',
                                 style: TextStyle(
                                   color: Colors.black54,
                                   fontSize: 12,
@@ -299,6 +305,21 @@ class _AddProductPageState extends State<AddProductPage> {
                 ),
                 validator: (value) => value == null || value.trim().isEmpty
                     ? 'Ingresa el nombre del producto'
+                    : null,
+              ),
+              const SizedBox(height: 20),
+
+              _buildLabel('Descripción *'),
+              TextFormField(
+                controller: _descriptionCtrl,
+                textCapitalization: TextCapitalization.sentences,
+                maxLength: 500,
+                maxLines: 4,
+                decoration: _buildInputDecoration(
+                  'Describe el origen, calidad y características del producto',
+                ),
+                validator: (value) => value == null || value.trim().isEmpty
+                    ? 'Ingresa la descripción del producto'
                     : null,
               ),
               const SizedBox(height: 20),
