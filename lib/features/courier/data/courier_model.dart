@@ -20,10 +20,11 @@ class CourierOrderItem {
     final displayQty = qty.isEmpty
         ? unit
         : unit.isEmpty
-            ? qty
-            : '$qty $unit';
+        ? qty
+        : '$qty $unit';
     return CourierOrderItem(
-      productName: json['productName']?.toString() ?? json['name']?.toString() ?? '',
+      productName:
+          json['productName']?.toString() ?? json['name']?.toString() ?? '',
       quantity: displayQty,
       price: _parseDouble(json['unitPrice'] ?? json['price'] ?? json['total']),
     );
@@ -64,34 +65,48 @@ class CourierCustomer {
   });
 
   factory CourierCustomer.fromJson(Map<String, dynamic> json, {int index = 1}) {
-    debugPrint('[CourierCustomer.fromJson] keys=${json.keys.toList()} json=$json');
-    final rawItems = (json['items'] ?? json['products'] ?? json['orderItems'] ?? []) as List;
-    final items = rawItems.whereType<Map>()
+    debugPrint(
+      '[CourierCustomer.fromJson] keys=${json.keys.toList()} json=$json',
+    );
+    final rawItems =
+        (json['items'] ?? json['products'] ?? json['orderItems'] ?? []) as List;
+    final items = rawItems
+        .whereType<Map>()
         .map((i) => CourierOrderItem.fromJson(i.cast<String, dynamic>()))
         .toList();
 
     // Try flat fields first, then nested customer/consumer objects
-    final customerObj = json['customer'] ?? json['consumer'] ?? json['buyer'] ?? json['recipient'];
-    final name = json['customerName']?.toString()
-        ?? json['customerUsername']?.toString()
-        ?? json['consumerName']?.toString()
-        ?? json['consumerUsername']?.toString()
-        ?? json['fullName']?.toString()
-        ?? json['buyerName']?.toString()
-        ?? json['recipientName']?.toString()
-        ?? json['clientName']?.toString()
-        ?? json['name']?.toString()
-        ?? (customerObj is Map
-            ? (customerObj['fullName']?.toString()
-                ?? customerObj['name']?.toString()
-                ?? customerObj['username']?.toString())
-            : null)
-        ?? '';
-    final rawDelivery = (json['deliveryMethod'] ?? json['deliveryType'] ?? '').toString().toUpperCase();
-    final deliveryLabel = (rawDelivery == 'PICKUP' || rawDelivery == 'RECOJO') ? 'Recojo' : 'Delivery';
+    final customerObj =
+        json['customer'] ??
+        json['consumer'] ??
+        json['buyer'] ??
+        json['recipient'];
+    final name =
+        json['customerName']?.toString() ??
+        json['customerUsername']?.toString() ??
+        json['consumerName']?.toString() ??
+        json['consumerUsername']?.toString() ??
+        json['fullName']?.toString() ??
+        json['buyerName']?.toString() ??
+        json['recipientName']?.toString() ??
+        json['clientName']?.toString() ??
+        json['name']?.toString() ??
+        (customerObj is Map
+            ? (customerObj['fullName']?.toString() ??
+                  customerObj['name']?.toString() ??
+                  customerObj['username']?.toString())
+            : null) ??
+        '';
+    final rawDelivery = (json['deliveryMethod'] ?? json['deliveryType'] ?? '')
+        .toString()
+        .toUpperCase();
+    final deliveryLabel = (rawDelivery == 'PICKUP' || rawDelivery == 'RECOJO')
+        ? 'Recojo'
+        : 'Delivery';
     final rawPayment = (json['paymentMethod'] ?? '').toString().toUpperCase();
     final paymentLabel = rawPayment == 'YAPE' ? 'Yape' : 'Efectivo';
-    final subOrderId = json['id']?.toString() ?? json['subOrderId']?.toString() ?? '';
+    final subOrderId =
+        json['id']?.toString() ?? json['subOrderId']?.toString() ?? '';
 
     final destObj = json['destination'];
     final destMap = destObj is Map ? destObj.cast<String, dynamic>() : null;
@@ -106,14 +121,21 @@ class CourierCustomer {
       clientInitial: name.isNotEmpty ? name[0].toUpperCase() : '#',
       clientColor: const Color(0xFFB2DFDB),
       clientName: name.isNotEmpty ? name : 'Pedido #$index',
-      customerProfileImageUrl: resolveMediaUrl(json['customerProfileImageUrl']?.toString() ?? ''),
+      customerProfileImageUrl: resolveMediaUrl(
+        json['customerProfileImageUrl']?.toString() ?? '',
+      ),
       destinationAddress: destAddr,
       items: items,
       deliveryCost: _parseDouble(json['deliveryCost'] ?? json['shippingCost']),
-      total: _parseDouble(json['total'] ?? json['amount'] ?? json['totalAmount']),
+      total: _parseDouble(
+        json['total'] ?? json['amount'] ?? json['totalAmount'],
+      ),
       deliveryType: deliveryLabel,
       paymentMethod: paymentLabel,
-      yapePhoneNumber: json['yapePhoneNumber']?.toString() ?? json['yapeNumber']?.toString() ?? json['yapeNumero']?.toString(),
+      yapePhoneNumber:
+          json['yapePhoneNumber']?.toString() ??
+          json['yapeNumber']?.toString() ??
+          json['yapeNumero']?.toString(),
     );
   }
 }
@@ -127,6 +149,7 @@ class CourierDeliveryGroup {
   final String? district;
   final String? reference;
   final List<CourierCustomer> customers;
+  final DateTime? createdAt;
   String status; // 'En curso' | 'Entregado'
 
   CourierDeliveryGroup({
@@ -138,6 +161,7 @@ class CourierDeliveryGroup {
     this.district,
     this.reference,
     required this.customers,
+    this.createdAt,
     required this.status,
   });
 
@@ -163,7 +187,9 @@ class CourierDeliveryGroup {
     }).toList();
 
     final rawDelivery = (json['deliveryMethod'] ?? '').toString().toUpperCase();
-    final groupType = (rawDelivery == 'PICKUP' || rawDelivery == 'RECOJO') ? 'Recojo' : 'Delivery';
+    final groupType = (rawDelivery == 'PICKUP' || rawDelivery == 'RECOJO')
+        ? 'Recojo'
+        : 'Delivery';
 
     // Use the first subOrder's destination as fallback for district/reference.
     final firstSubOrder = rawSubOrders.whereType<Map>().isNotEmpty
@@ -173,35 +199,39 @@ class CourierDeliveryGroup {
     final subDestMap = subDestination is Map ? subDestination : null;
 
     // Use firstWhere to handle both null AND empty-string values from the API.
-    final address = [
-      json['destinationAddress'],
-      subDestMap?['address'],
-      json['pickupPointAddress'],
-      json['address'],
-    ].map((v) => (v?.toString() ?? '').trim()).firstWhere((s) => s.isNotEmpty, orElse: () => '');
+    final address =
+        [
+              json['destinationAddress'],
+              subDestMap?['address'],
+              json['pickupPointAddress'],
+              json['address'],
+            ]
+            .map((v) => (v?.toString() ?? '').trim())
+            .firstWhere((s) => s.isNotEmpty, orElse: () => '');
 
-    final district = [
-      subDestMap?['district'],
-      subDestMap?['distrito'],
-      json['district'],
-    ].map((v) => (v?.toString() ?? '').trim()).firstWhere((s) => s.isNotEmpty, orElse: () => '');
+    final district =
+        [subDestMap?['district'], subDestMap?['distrito'], json['district']]
+            .map((v) => (v?.toString() ?? '').trim())
+            .firstWhere((s) => s.isNotEmpty, orElse: () => '');
 
-    final reference = [
-      subDestMap?['reference'],
-      subDestMap?['referencia'],
-      json['reference'],
-    ].map((v) => (v?.toString() ?? '').trim()).firstWhere((s) => s.isNotEmpty, orElse: () => '');
+    final reference =
+        [subDestMap?['reference'], subDestMap?['referencia'], json['reference']]
+            .map((v) => (v?.toString() ?? '').trim())
+            .firstWhere((s) => s.isNotEmpty, orElse: () => '');
 
     final farmerObj2 = json['farmer'];
-    final farmerMap2 = farmerObj2 is Map ? farmerObj2.cast<String, dynamic>() : null;
-    final farmerName = farmerMap2?['fullName']?.toString()
-        ?? json['farmerName']?.toString()
-        ?? json['farmerUsername']?.toString()
-        ?? '';
+    final farmerMap2 = farmerObj2 is Map
+        ? farmerObj2.cast<String, dynamic>()
+        : null;
+    final farmerName =
+        farmerMap2?['fullName']?.toString() ??
+        json['farmerName']?.toString() ??
+        json['farmerUsername']?.toString() ??
+        '';
     final farmerImageUrl = resolveMediaUrl(
-      farmerMap2?['profileImageUrl']?.toString()
-          ?? json['farmerProfileImageUrl']?.toString()
-          ?? '',
+      farmerMap2?['profileImageUrl']?.toString() ??
+          json['farmerProfileImageUrl']?.toString() ??
+          '',
     );
 
     return CourierDeliveryGroup(
@@ -213,6 +243,7 @@ class CourierDeliveryGroup {
       district: district.isEmpty ? null : district,
       reference: reference.isEmpty ? null : reference,
       customers: customers,
+      createdAt: DateTime.tryParse(json['createdAt']?.toString() ?? ''),
       status: status,
     );
   }
@@ -222,13 +253,25 @@ class CourierDeliveryGroup {
 
 String _saleFormatToUnit(String format) {
   switch (format.toUpperCase()) {
-    case 'KILO': return 'kg';
-    case 'GRAM': case 'GRAMO': return 'g';
-    case 'UNIT': case 'UNIDAD': return 'ud';
-    case 'CAJA': case 'BOX': return 'caja';
-    case 'BOLSA': case 'BAG': return 'bolsa';
-    case 'LITRO': case 'LITER': return 'L';
-    default: return format.toLowerCase();
+    case 'KILO':
+      return 'kg';
+    case 'GRAM':
+    case 'GRAMO':
+      return 'g';
+    case 'UNIT':
+    case 'UNIDAD':
+      return 'ud';
+    case 'CAJA':
+    case 'BOX':
+      return 'caja';
+    case 'BOLSA':
+    case 'BAG':
+      return 'bolsa';
+    case 'LITRO':
+    case 'LITER':
+      return 'L';
+    default:
+      return format.toLowerCase();
   }
 }
 

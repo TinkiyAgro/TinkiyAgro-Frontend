@@ -18,6 +18,7 @@ class _FarmerPickupPointFormPageState extends State<FarmerPickupPointFormPage> {
 
   late final TextEditingController _nameCtrl;
   late final TextEditingController _addressCtrl;
+  late final TextEditingController _cityCtrl;
 
   DateTime? _deliveryDate;
   TimeOfDay _availableFrom = const TimeOfDay(hour: 10, minute: 0);
@@ -36,6 +37,7 @@ class _FarmerPickupPointFormPageState extends State<FarmerPickupPointFormPage> {
     final p = widget.puntoEditar;
     _nameCtrl = TextEditingController(text: p?.name ?? '');
     _addressCtrl = TextEditingController(text: p?.address ?? '');
+    _cityCtrl = TextEditingController(text: p?.city ?? '');
     if (p != null) {
       _deliveryDate = _parseIsoDate(p.deliveryDate);
       _availableFrom = _parseTime(p.availableFrom);
@@ -50,6 +52,7 @@ class _FarmerPickupPointFormPageState extends State<FarmerPickupPointFormPage> {
   void dispose() {
     _nameCtrl.dispose();
     _addressCtrl.dispose();
+    _cityCtrl.dispose();
     super.dispose();
   }
 
@@ -150,6 +153,7 @@ class _FarmerPickupPointFormPageState extends State<FarmerPickupPointFormPage> {
       final payload = <String, dynamic>{
         'name': _nameCtrl.text.trim(),
         'address': _addressCtrl.text.trim(),
+        'city': _cityCtrl.text.trim(),
         'deliveryDate': deliveryDateStr,
         'availableFrom': _formatTime(_availableFrom),
         'availableTo': _formatTime(_availableTo),
@@ -222,6 +226,14 @@ class _FarmerPickupPointFormPageState extends State<FarmerPickupPointFormPage> {
                 _addressCtrl,
                 'Dirección',
                 Icons.map_outlined,
+                validator: (v) =>
+                    (v == null || v.trim().isEmpty) ? 'Campo requerido' : null,
+              ),
+              const SizedBox(height: 12),
+              _buildTextField(
+                _cityCtrl,
+                'Ciudad',
+                Icons.location_city_outlined,
                 validator: (v) =>
                     (v == null || v.trim().isEmpty) ? 'Campo requerido' : null,
               ),

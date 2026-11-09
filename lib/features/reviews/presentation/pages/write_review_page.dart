@@ -60,12 +60,6 @@ class _WriteReviewsPageState extends State<WriteReviewsPage> {
         );
       }
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('¡Reseña enviada con éxito!'),
-            backgroundColor: Color(0xFF5CA399),
-          ),
-        );
         Navigator.pop(context, newReview);
       }
     } catch (e) {

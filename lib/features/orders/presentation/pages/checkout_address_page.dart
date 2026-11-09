@@ -73,6 +73,7 @@ class _CheckoutDireccionPageState extends State<CheckoutDireccionPage> {
               farmerUsername: username,
               name: p.name,
               address: p.address,
+              city: '',
               deliveryDate: '',
               availableFrom: '',
               availableTo: '',

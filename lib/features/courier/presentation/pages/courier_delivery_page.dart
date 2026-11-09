@@ -82,7 +82,11 @@ class _CourierDeliveryPageState extends State<CourierDeliveryPage> {
   Future<void> _confirmDelivery(CourierCustomer customer) async {
     setState(() => _confirming[customer.subOrderId] = true);
     try {
-      await _service.confirmDelivery(customer.subOrderId);
+      await _service.confirmDelivery(
+        customer.subOrderId,
+        productsDelivered: customer.deliveryConfirmed,
+        paymentReceived: customer.paymentConfirmed,
+      );
       if (!mounted) return;
       _tracking.stopForSubOrder(customer.subOrderId);
       setState(() => _confirmed.add(customer.subOrderId));
@@ -249,10 +253,7 @@ class _CourierDeliveryPageState extends State<CourierDeliveryPage> {
     final isBusy = _confirming[customer.subOrderId] == true;
     final alreadyConfirmed = _confirmed.contains(customer.subOrderId);
     final canConfirm =
-        customer.deliveryConfirmed &&
-        customer.paymentConfirmed &&
-        !isBusy &&
-        !alreadyConfirmed;
+        customer.deliveryConfirmed && !isBusy && !alreadyConfirmed;
 
     return Container(
       padding: const EdgeInsets.all(16),

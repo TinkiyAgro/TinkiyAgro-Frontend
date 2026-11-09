@@ -215,7 +215,7 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
           ),
           const SizedBox(height: 4),
           Text(
-            '${pedido.numAgricultores} agricultores - ${pedido.estado}',
+            '${pedido.numAgricultores} ${pedido.numAgricultores == 1 ? 'agricultor' : 'agricultores'} - ${pedido.estado}',
             style: const TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,

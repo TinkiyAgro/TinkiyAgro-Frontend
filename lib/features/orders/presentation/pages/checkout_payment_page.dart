@@ -38,7 +38,9 @@ class _CheckoutPagoPageState extends State<CheckoutPagoPage> {
 
   Future<void> _loadPaymentOptions() async {
     try {
-      final summary = await DeliveryOptionsService().obtenerPaymentOptions(_farmers);
+      final summary = await DeliveryOptionsService().obtenerPaymentOptions(
+        _farmers,
+      );
       if (!mounted) return;
       setState(() {
         // Apply per-farmer methods from breakdown
@@ -54,7 +56,8 @@ class _CheckoutPagoPageState extends State<CheckoutPagoPage> {
           }
         }
         // If no per-farmer breakdown but global methods returned, apply to all
-        if (summary.farmerBreakdown.isEmpty && summary.paymentMethods.isNotEmpty) {
+        if (summary.farmerBreakdown.isEmpty &&
+            summary.paymentMethods.isNotEmpty) {
           for (final f in _farmers) {
             f.paymentMethods = List<String>.from(summary.paymentMethods);
             if (!f.paymentMethods.contains(f.metodoPago)) {
@@ -91,7 +94,10 @@ class _CheckoutPagoPageState extends State<CheckoutPagoPage> {
         title: const Text(
           'Método de pago',
           style: TextStyle(
-              color: Colors.black, fontSize: 18, fontWeight: FontWeight.bold),
+            color: Colors.black,
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+          ),
         ),
         centerTitle: true,
       ),
@@ -104,6 +110,27 @@ class _CheckoutPagoPageState extends State<CheckoutPagoPage> {
             child: ListView(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               children: [
+                Container(
+                  margin: const EdgeInsets.only(bottom: 14),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE8F2F0),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(Icons.info_outline, color: Color(0xFF4A7C73)),
+                      SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'La aplicación no realiza cobros. El pago se efectúa contra entrega o recojo mediante el método seleccionado.',
+                          style: TextStyle(fontSize: 12),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
                 ..._farmers.map((f) => _buildFarmerCard(f)),
                 _buildSummary(),
                 const SizedBox(height: 80),
@@ -148,23 +175,27 @@ class _CheckoutPagoPageState extends State<CheckoutPagoPage> {
           child: Center(
             child: isDone
                 ? const Icon(Icons.check, color: Colors.white, size: 16)
-                : Text('$step',
+                : Text(
+                    '$step',
                     style: TextStyle(
                       color: isActive ? Colors.white : Colors.grey.shade600,
                       fontWeight: FontWeight.bold,
                       fontSize: 14,
-                    )),
+                    ),
+                  ),
           ),
         ),
         const SizedBox(height: 4),
-        Text(label,
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.bold,
-              color: isDone || isActive
-                  ? const Color(0xFF5CA399)
-                  : Colors.grey.shade500,
-            )),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.bold,
+            color: isDone || isActive
+                ? const Color(0xFF5CA399)
+                : Colors.grey.shade500,
+          ),
+        ),
       ],
     );
   }
@@ -220,12 +251,16 @@ class _CheckoutPagoPageState extends State<CheckoutPagoPage> {
                           ? farmer.farmerName
                           : farmer.farmerUsername,
                       style: const TextStyle(
-                          fontSize: 15, fontWeight: FontWeight.bold),
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     Text(
                       '${farmer.tipoEntrega} • S/. ${total.toStringAsFixed(2)}',
                       style: TextStyle(
-                          fontSize: 12, color: Colors.grey.shade600),
+                        fontSize: 12,
+                        color: Colors.grey.shade600,
+                      ),
                     ),
                   ],
                 ),
@@ -236,9 +271,10 @@ class _CheckoutPagoPageState extends State<CheckoutPagoPage> {
           const Text(
             'Método de pago',
             style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: Colors.black87),
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: Colors.black87,
+            ),
           ),
           const SizedBox(height: 8),
           _buildPaymentMethodsRow(farmer),
@@ -252,8 +288,7 @@ class _CheckoutPagoPageState extends State<CheckoutPagoPage> {
                   farmer.tipoEntrega == 'Recojo'
                       ? 'Pagarás al recibir tu pedido en el punto de recojo'
                       : 'El repartidor confirmará el Yape al entregar',
-                  style:
-                      TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                  style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
                 ),
               ),
             ],
@@ -311,17 +346,22 @@ class _CheckoutPagoPageState extends State<CheckoutPagoPage> {
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: const Center(
-                  child: Text('y',
-                      style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold)),
+                  child: Text(
+                    'y',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ),
               )
             else
-              Icon(Icons.wallet_outlined,
-                  size: 18,
-                  color: selected ? const Color(0xFF5CA399) : Colors.black87),
+              Icon(
+                Icons.wallet_outlined,
+                size: 18,
+                color: selected ? const Color(0xFF5CA399) : Colors.black87,
+              ),
             const SizedBox(width: 6),
             Text(
               method,
@@ -356,31 +396,56 @@ class _CheckoutPagoPageState extends State<CheckoutPagoPage> {
       child: Column(
         children: [
           _buildSummaryRow(
-              'Productos', 'S/. ${_productosTotal.toStringAsFixed(2)}'),
+            'Productos',
+            'S/. ${_productosTotal.toStringAsFixed(2)}',
+          ),
           ..._farmers.map((f) {
-            final name = f.farmerName.isNotEmpty ? f.farmerName : f.farmerUsername;
-            return _buildSummaryRow(
-              'Envío ($name)',
-              f.costoEnvio > 0
-                  ? 'S/. ${f.costoEnvio.toStringAsFixed(2)}'
-                  : 'Por confirmar',
+            final name = f.farmerName.isNotEmpty
+                ? f.farmerName
+                : f.farmerUsername;
+            return Column(
+              children: [
+                ...f.items.map(
+                  (item) => _buildSummaryRow(
+                    item.displayText,
+                    'S/. ${item.total.toStringAsFixed(2)}',
+                  ),
+                ),
+                _buildSummaryRow(
+                  'Envío ($name)',
+                  f.costoEnvio > 0
+                      ? 'S/. ${f.costoEnvio.toStringAsFixed(2)}'
+                      : 'Sin costo',
+                ),
+                _buildSummaryRow('Pago ($name)', f.metodoPago),
+                _buildSummaryRow(
+                  f.tipoEntrega == 'Recojo' ? 'Entrega' : 'Dirección',
+                  f.tipoEntrega == 'Recojo'
+                      ? 'Punto de recojo seleccionado'
+                      : (f.selectedAddressText ?? 'No seleccionada'),
+                ),
+              ],
             );
           }),
           const Divider(height: 20),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Total',
-                  style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black)),
+              const Text(
+                'Total',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
+                ),
+              ),
               Text(
                 'S/. ${grandTotal.toStringAsFixed(2)}',
                 style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black),
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
+                ),
               ),
             ],
           ),
@@ -396,12 +461,15 @@ class _CheckoutPagoPageState extends State<CheckoutPagoPage> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Expanded(
-            child: Text(label,
-                style:
-                    TextStyle(fontSize: 13, color: Colors.grey.shade700)),
+            child: Text(
+              label,
+              style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
+            ),
           ),
-          Text(value,
-              style: const TextStyle(fontSize: 13, color: Colors.black87)),
+          Text(
+            value,
+            style: const TextStyle(fontSize: 13, color: Colors.black87),
+          ),
         ],
       ),
     );
@@ -485,9 +553,10 @@ class _CheckoutPagoPageState extends State<CheckoutPagoPage> {
               const Text(
                 'Pedido realizado correctamente',
                 style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87),
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
                 textAlign: TextAlign.center,
               ),
             ],

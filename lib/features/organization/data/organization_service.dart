@@ -39,6 +39,8 @@ class OrganizationService {
       _upload('/api/organizations/me/profile-image', image);
   Future<Map<String, dynamic>> uploadProductImage(String id, File image) =>
       _upload('/api/organizations/me/products/$id/image', image);
+  Future<Map<String, dynamic>> uploadMemberImage(String id, File image) =>
+      _upload('/api/organizations/me/members/$id/image', image);
   Future<Map<String, dynamic>> saveMember(
     Map<String, dynamic> data, {
     String? id,

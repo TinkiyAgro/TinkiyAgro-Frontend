@@ -69,15 +69,19 @@ class CourierService implements CourierRemoteDataSource {
   }
 
   /// POST /api/courier/deliveries/{subOrderId}/confirm
-  Future<void> confirmDelivery(String subOrderId) async {
+  Future<void> confirmDelivery(
+    String subOrderId, {
+    required bool productsDelivered,
+    required bool paymentReceived,
+  }) async {
     final url = AppConstants.confirmDeliveryCourierEndpoint.replaceAll(
       '{subOrderId}',
       subOrderId,
     );
     debugPrint('[CourierService] confirmDelivery → $url');
     final response = await ApiClient.post(url, {
-      'productsDelivered': true,
-      'paymentReceived': true,
+      'productsDelivered': productsDelivered,
+      'paymentReceived': paymentReceived,
     });
     debugPrint(
       '[CourierService] confirmDelivery ${response.statusCode}: ${response.body}',

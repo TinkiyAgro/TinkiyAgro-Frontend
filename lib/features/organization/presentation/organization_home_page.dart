@@ -4,6 +4,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:tinkiyagro_app/core/session_manager.dart';
 import 'package:tinkiyagro_app/features/catalog/data/product_model.dart';
 import 'package:tinkiyagro_app/features/organization/data/organization_service.dart';
+import 'package:tinkiyagro_app/features/profile/presentation/pages/notifications_page.dart';
 import 'package:tinkiyagro_app/features/wholesale/presentation/wholesale_pages.dart';
 
 const _brand = Color(0xFF5CA8A0),
@@ -301,7 +302,7 @@ class _OrganizationCatalogPageState extends State<OrganizationCatalogPage> {
                       style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
                     subtitle: Text(
-                      '${p['category']} · Disponible para cotización',
+                      '${p['category']} · ${p['active'] == true ? 'Activo' : 'Inactivo'}',
                     ),
                     trailing: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -358,6 +359,8 @@ class _OrganizationMemberFormPageState
   final _key = GlobalKey<FormState>();
   late final TextEditingController _first, _last, _phone, _region, _zone;
   bool _saving = false;
+  bool _active = true;
+  File? _image;
   @override
   void initState() {
     super.initState();
@@ -367,6 +370,7 @@ class _OrganizationMemberFormPageState
     _phone = TextEditingController(text: m['phoneNumber']);
     _region = TextEditingController(text: m['region']);
     _zone = TextEditingController(text: m['zone']);
+    _active = m['active'] as bool? ?? true;
   }
 
   @override
@@ -386,26 +390,73 @@ class _OrganizationMemberFormPageState
     onSave: _save,
     formKey: _key,
     fields: [
+      InkWell(
+        onTap: () async {
+          final picked = await ImagePicker().pickImage(
+            source: ImageSource.gallery,
+            imageQuality: 82,
+            maxWidth: 1200,
+          );
+          if (picked != null && mounted) {
+            setState(() => _image = File(picked.path));
+          }
+        },
+        child: CircleAvatar(
+          radius: 48,
+          backgroundColor: const Color(0xFFE0F2ED),
+          backgroundImage: _image != null
+              ? FileImage(_image!)
+              : (resolveMediaUrl(widget.member?['profileImageUrl']).isNotEmpty
+                        ? NetworkImage(
+                            resolveMediaUrl(widget.member?['profileImageUrl']),
+                          )
+                        : null)
+                    as ImageProvider?,
+          child:
+              _image == null &&
+                  resolveMediaUrl(widget.member?['profileImageUrl']).isEmpty
+              ? const Icon(Icons.add_a_photo_outlined, color: _brand, size: 32)
+              : null,
+        ),
+      ),
       _Input(_first, 'Nombre'),
       _Input(_last, 'Apellidos'),
       _Input(_phone, 'Celular', keyboard: TextInputType.phone),
       _Input(_region, 'Región'),
       _Input(_zone, 'Zona'),
+      SwitchListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 4),
+        title: const Text('Miembro activo'),
+        subtitle: Text(
+          _active
+              ? 'Puede aparecer en el catálogo de la organización'
+              : 'No aparecerá como integrante disponible',
+        ),
+        value: _active,
+        activeThumbColor: _brand,
+        onChanged: (value) => setState(() => _active = value),
+      ),
     ],
   );
   Future<void> _save() async {
     if (!_key.currentState!.validate()) return;
     setState(() => _saving = true);
     try {
-      await OrganizationService().saveMember({
+      final saved = await OrganizationService().saveMember({
         'firstName': _first.text.trim(),
         'lastName': _last.text.trim(),
         'phoneNumber': _phone.text.trim(),
         'region': _region.text.trim(),
         'zone': _zone.text.trim(),
         'profileImageUrl': widget.member?['profileImageUrl'],
-        'active': true,
+        'active': _active,
       }, id: widget.member?['id']);
+      if (_image != null) {
+        await OrganizationService().uploadMemberImage(
+          saved['id'].toString(),
+          _image!,
+        );
+      }
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
       if (mounted)
@@ -433,6 +484,7 @@ class _OrganizationProductFormPageState
   String _category = 'TUBERCULOS', _unit = 'kg';
   String? _memberId;
   bool _saving = false;
+  bool _active = true;
   File? _image;
   List<Map<String, dynamic>> _members = [];
   @override
@@ -446,6 +498,7 @@ class _OrganizationProductFormPageState
     _category = p['category'] ?? _category;
     _unit = p['unit'] ?? _unit;
     _memberId = p['memberId'];
+    _active = p['active'] as bool? ?? true;
     OrganizationService().getMembers().then((v) {
       if (mounted)
         setState(() {
@@ -570,6 +623,18 @@ class _OrganizationProductFormPageState
         'Precio referencial por unidad',
         keyboard: TextInputType.number,
       ),
+      SwitchListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 4),
+        title: const Text('Producto activo'),
+        subtitle: Text(
+          _active
+              ? 'Disponible para mostrarse y recibir cotizaciones'
+              : 'Oculto temporalmente del catálogo',
+        ),
+        value: _active,
+        activeThumbColor: _brand,
+        onChanged: (value) => setState(() => _active = value),
+      ),
     ],
   );
   Future<void> _save() async {
@@ -585,7 +650,7 @@ class _OrganizationProductFormPageState
         'stock': double.parse(_stock.text.replaceAll(',', '.')),
         'referencePrice': double.parse(_price.text.replaceAll(',', '.')),
         'imageUrl': widget.product?['imageUrl'],
-        'active': true,
+        'active': _active,
       }, id: widget.product?['id']);
       if (_image != null) {
         await OrganizationService().uploadProductImage(
@@ -615,13 +680,27 @@ class _Page extends StatelessWidget {
     child: ListView(
       padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
       children: [
-        const Text(
-          'TINKIYAGRO',
-          style: TextStyle(
-            fontSize: 20,
-            color: _ink,
-            fontWeight: FontWeight.w800,
-          ),
+        Row(
+          children: [
+            const Expanded(
+              child: Text(
+                'TINKIYAGRO',
+                style: TextStyle(
+                  fontSize: 20,
+                  color: _ink,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+            IconButton(
+              tooltip: 'Notificaciones',
+              icon: const Icon(Icons.notifications_none, color: _ink),
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const NotificationsPage()),
+              ),
+            ),
+          ],
         ),
         const SizedBox(height: 18),
         Text(
@@ -656,16 +735,27 @@ class _MemberCard extends StatelessWidget {
       contentPadding: const EdgeInsets.all(14),
       leading: CircleAvatar(
         backgroundColor: const Color(0xFFE0F2ED),
-        child: Text(
-          (data['firstName'] as String).substring(0, 1),
-          style: const TextStyle(color: _ink, fontWeight: FontWeight.bold),
-        ),
+        backgroundImage: resolveMediaUrl(data['profileImageUrl']).isEmpty
+            ? null
+            : NetworkImage(resolveMediaUrl(data['profileImageUrl'])),
+        child: resolveMediaUrl(data['profileImageUrl']).isEmpty
+            ? Text(
+                ((data['firstName'] as String?) ?? '?').substring(0, 1),
+                style: const TextStyle(
+                  color: _ink,
+                  fontWeight: FontWeight.bold,
+                ),
+              )
+            : null,
       ),
       title: Text(
         '${data['firstName']} ${data['lastName']}',
         style: const TextStyle(fontWeight: FontWeight.bold),
       ),
-      subtitle: Text('${data['zone'] ?? ''}, ${data['region'] ?? ''}'),
+      subtitle: Text(
+        '${data['zone'] ?? ''}, ${data['region'] ?? ''}\n${data['active'] == true ? 'Activo' : 'Inactivo'}',
+      ),
+      isThreeLine: true,
       trailing: TextButton(onPressed: onEdit, child: const Text('Editar')),
     ),
   );

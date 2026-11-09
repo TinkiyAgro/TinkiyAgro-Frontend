@@ -116,13 +116,12 @@ class _ConsumerOrdersPageState extends State<ConsumerOrdersPage> {
       child: ListView.builder(
         padding: const EdgeInsets.symmetric(horizontal: 16),
         itemCount: _pedidos.length,
-        itemBuilder: (context, index) =>
-            _buildOrderCard(_pedidos[index], index + 1),
+        itemBuilder: (context, index) => _buildOrderCard(_pedidos[index]),
       ),
     );
   }
 
-  Widget _buildOrderCard(PedidoConsumidor pedido, int displayNumber) {
+  Widget _buildOrderCard(PedidoConsumidor pedido) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
@@ -170,7 +169,7 @@ class _ConsumerOrdersPageState extends State<ConsumerOrdersPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Pedido #$displayNumber',
+                          'Pedido #${pedido.numero}',
                           style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
@@ -179,7 +178,7 @@ class _ConsumerOrdersPageState extends State<ConsumerOrdersPage> {
                         ),
                         const SizedBox(height: 3),
                         Text(
-                          '${pedido.fechaLarga} • ${pedido.numAgricultores} agricultores • S/. ${pedido.total.toStringAsFixed(2)}',
+                          '${pedido.fechaLarga} • ${pedido.numAgricultores} ${pedido.numAgricultores == 1 ? 'agricultor' : 'agricultores'} • S/. ${pedido.total.toStringAsFixed(2)}',
                           style: TextStyle(
                             fontSize: 12,
                             color: Colors.grey.shade600,

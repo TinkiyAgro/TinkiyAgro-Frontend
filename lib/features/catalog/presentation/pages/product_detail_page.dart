@@ -421,7 +421,7 @@ class _DetalleProductoPageState extends State<DetalleProductoPage> {
                           ),
                           const SizedBox(width: 6),
                           Text(
-                            '(${producto.cantidadResenas} reviews)',
+                            '(${producto.cantidadResenas} ${producto.cantidadResenas == 1 ? 'reseña' : 'reseñas'})',
                             style: TextStyle(
                               fontSize: 13,
                               color: Colors.grey.shade500,

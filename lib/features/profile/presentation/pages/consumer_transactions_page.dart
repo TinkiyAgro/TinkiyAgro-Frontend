@@ -9,29 +9,44 @@ class _TransactionItem {
 }
 
 class _Transaction {
+  final String orderId;
   final int orderNumber;
+  final DateTime? createdAt;
+  final String status;
   final double total;
   final List<_TransactionItem> items;
   bool isExpanded = false;
 
   _Transaction({
+    required this.orderId,
     required this.orderNumber,
+    required this.createdAt,
+    required this.status,
     required this.total,
     required this.items,
   });
 
   factory _Transaction.fromJson(Map<String, dynamic> json) {
     final orderNum = _parseInt(json['orderNumber'] ?? json['id']);
-    final total = _parseDouble(json['total'] ?? json['totalAmount'] ?? json['amount']);
+    final total = _parseDouble(
+      json['total'] ?? json['totalAmount'] ?? json['amount'],
+    );
     final productsTotal = _parseDouble(json['productsTotal']);
     final deliveryTotal = _parseDouble(json['deliveryTotal']);
 
     final items = <_TransactionItem>[];
-    if (productsTotal > 0) items.add(_TransactionItem('Subtotal productos', productsTotal));
-    if (deliveryTotal > 0) items.add(_TransactionItem('Gastos de envío', deliveryTotal));
+    if (productsTotal > 0)
+      items.add(_TransactionItem('Subtotal productos', productsTotal));
+    if (deliveryTotal > 0)
+      items.add(_TransactionItem('Gastos de envío', deliveryTotal));
 
     return _Transaction(
+      orderId: json['orderId']?.toString() ?? json['id']?.toString() ?? '',
       orderNumber: orderNum,
+      createdAt: DateTime.tryParse(
+        json['createdAt']?.toString() ?? '',
+      )?.toLocal(),
+      status: _statusLabel(json['status']?.toString() ?? ''),
       total: total,
       items: items,
     );
@@ -49,6 +64,15 @@ class _Transaction {
     if (v is double) return v;
     if (v is num) return v.toDouble();
     return double.tryParse(v.toString()) ?? 0.0;
+  }
+
+  static String _statusLabel(String value) {
+    return switch (value.toUpperCase()) {
+      'DELIVERED' => 'Entregado',
+      'CONFIRMED' => 'Confirmado',
+      'IN_PROGRESS' => 'En proceso',
+      _ => value.isEmpty ? 'Sin estado' : value,
+    };
   }
 }
 
@@ -166,8 +190,11 @@ class _ConsumerTransactionsPageState extends State<ConsumerTransactionsPage> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.receipt_long_outlined,
-                size: 64, color: Colors.grey.shade300),
+            Icon(
+              Icons.receipt_long_outlined,
+              size: 64,
+              color: Colors.grey.shade300,
+            ),
             const SizedBox(height: 16),
             Text(
               'Sin transacciones aún',
@@ -207,8 +234,7 @@ class _ConsumerTransactionsPageState extends State<ConsumerTransactionsPage> {
         children: [
           // Header row
           Padding(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             child: Row(
               children: [
                 Text(
@@ -253,19 +279,39 @@ class _ConsumerTransactionsPageState extends State<ConsumerTransactionsPage> {
               ],
             ),
           ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    '${_formatDate(tx.createdAt)} • ${tx.status}',
+                    style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                  ),
+                ),
+                Text(
+                  'Ref. ${tx.orderId.isEmpty ? tx.orderNumber : (tx.orderId.length > 8 ? tx.orderId.substring(0, 8) : tx.orderId)}',
+                  style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
+                ),
+              ],
+            ),
+          ),
           if (tx.isExpanded && tx.items.isNotEmpty) ...[
             const Divider(height: 1, indent: 16, endIndent: 16),
             Padding(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              child: Column(
-                children: tx.items.map(_buildItemRow).toList(),
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              child: Column(children: tx.items.map(_buildItemRow).toList()),
             ),
           ],
         ],
       ),
     );
+  }
+
+  String _formatDate(DateTime? value) {
+    if (value == null) return 'Fecha no disponible';
+    String two(int number) => number.toString().padLeft(2, '0');
+    return '${two(value.day)}/${two(value.month)}/${value.year} ${two(value.hour)}:${two(value.minute)}';
   }
 
   Widget _buildItemRow(_TransactionItem item) {
@@ -276,18 +322,12 @@ class _ConsumerTransactionsPageState extends State<ConsumerTransactionsPage> {
           Expanded(
             child: Text(
               item.description,
-              style: TextStyle(
-                fontSize: 13,
-                color: Colors.grey.shade600,
-              ),
+              style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
             ),
           ),
           Text(
             '- S/. ${item.amount.toStringAsFixed(2)}',
-            style: TextStyle(
-              fontSize: 13,
-              color: Colors.grey.shade700,
-            ),
+            style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
           ),
         ],
       ),

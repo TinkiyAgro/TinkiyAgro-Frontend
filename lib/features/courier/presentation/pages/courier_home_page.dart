@@ -322,6 +322,14 @@ class _CourierHomePageState extends State<CourierHomePage> {
                             color: Colors.grey.shade600,
                           ),
                         ),
+                        if (group.createdAt != null)
+                          Text(
+                            'Pedido: ${_formatDate(group.createdAt!.toLocal())}',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: Colors.grey.shade600,
+                            ),
+                          ),
                         if (group.location.isNotEmpty) ...[
                           const SizedBox(height: 2),
                           Row(

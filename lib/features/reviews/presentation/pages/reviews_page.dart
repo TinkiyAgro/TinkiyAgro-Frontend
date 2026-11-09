@@ -71,7 +71,10 @@ class _ResenasPageState extends State<ResenasPage> {
         title: const Text(
           'Reseñas',
           style: TextStyle(
-              color: Colors.black, fontSize: 20, fontWeight: FontWeight.bold),
+            color: Colors.black,
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
         ),
         centerTitle: true,
       ),
@@ -88,7 +91,14 @@ class _ResenasPageState extends State<ResenasPage> {
                   ),
                 );
                 if (newReview != null) {
+                  if (!context.mounted) return;
                   setState(() => _resenas.insert(0, newReview));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Reseña publicada correctamente.'),
+                      backgroundColor: Color(0xFF5CA399),
+                    ),
+                  );
                 }
               },
               child: const Icon(Icons.edit_outlined),
@@ -96,22 +106,22 @@ class _ResenasPageState extends State<ResenasPage> {
           : null,
       body: _cargando
           ? const Center(
-              child: CircularProgressIndicator(color: Color(0xFF5CA399)))
+              child: CircularProgressIndicator(color: Color(0xFF5CA399)),
+            )
           : _resenas.isEmpty
-              ? const Center(
-                  child: Text(
-                    'Aún no hay reseñas para este producto.',
-                    style: TextStyle(fontSize: 16, color: Colors.grey),
-                  ),
-                )
-              : ListView.builder(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 16, vertical: 12),
-                  itemCount: _resenas.length,
-                  itemBuilder: (context, index) {
-                    return _buildReviewItem(_resenas[index]);
-                  },
-                ),
+          ? const Center(
+              child: Text(
+                'Aún no hay reseñas para este producto.',
+                style: TextStyle(fontSize: 16, color: Colors.grey),
+              ),
+            )
+          : ListView.builder(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              itemCount: _resenas.length,
+              itemBuilder: (context, index) {
+                return _buildReviewItem(_resenas[index]);
+              },
+            ),
     );
   }
 
@@ -150,15 +160,22 @@ class _ResenasPageState extends State<ResenasPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(resena.userName,
-                        style: const TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black)),
+                    Text(
+                      resena.userName,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black,
+                      ),
+                    ),
                     const SizedBox(height: 2),
-                    Text(resena.timeAgo,
-                        style: TextStyle(
-                            fontSize: 11, color: Colors.grey.shade500)),
+                    Text(
+                      resena.timeAgo,
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.grey.shade500,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -169,18 +186,20 @@ class _ResenasPageState extends State<ResenasPage> {
           const SizedBox(height: 12),
           Row(
             children: [
-              Text(resena.rating.toStringAsFixed(1),
-                  style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87)),
+              Text(
+                resena.rating.toStringAsFixed(1),
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+              ),
               const SizedBox(width: 6),
               Row(
                 children: List.generate(5, (index) {
                   final val = index + 1;
                   final llena = val <= resena.rating.floor();
-                  final media =
-                      !llena && (resena.rating - index >= 0.5);
+                  final media = !llena && (resena.rating - index >= 0.5);
                   return Icon(
                     llena
                         ? Icons.star
@@ -196,7 +215,10 @@ class _ResenasPageState extends State<ResenasPage> {
           Text(
             resena.content,
             style: TextStyle(
-                fontSize: 13, color: Colors.grey.shade600, height: 1.4),
+              fontSize: 13,
+              color: Colors.grey.shade600,
+              height: 1.4,
+            ),
           ),
         ],
       ),

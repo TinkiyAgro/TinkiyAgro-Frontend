@@ -190,6 +190,7 @@ class _FarmerPickupPointsPageState extends State<FarmerPickupPointsPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(point.address, maxLines: 2, overflow: TextOverflow.ellipsis),
+            if (point.city.isNotEmpty) Text(point.city),
             Text(point.horario),
             if (item.syncState != EntitySyncState.synced)
               _syncLabel(item.syncState),
