@@ -26,6 +26,8 @@ class Producto {
   final double? stockCaja;
   final double? unidadesCajaReferencial;
   final String farmerDescription;
+  final String farmerBusinessName;
+  final String farmerCoverageArea;
   final String farmerPhone;
   final String productStatus;
   final bool purchasable;
@@ -61,6 +63,8 @@ class Producto {
     this.stockCaja,
     this.unidadesCajaReferencial,
     this.farmerDescription = '',
+    this.farmerBusinessName = '',
+    this.farmerCoverageArea = '',
     this.farmerPhone = '',
     this.productStatus = '',
     this.purchasable = true,
@@ -183,6 +187,11 @@ class Producto {
           farmerMap?['description']?.toString() ??
           json['farmerDescription']?.toString() ??
           '',
+      farmerBusinessName:
+          farmerMap?['businessName']?.toString() ??
+          farmerMap?['fullName']?.toString() ??
+          '',
+      farmerCoverageArea: farmerMap?['coverageArea']?.toString() ?? '',
       farmerPhone:
           farmerMap?['phoneNumber']?.toString() ??
           json['farmerPhone']?.toString() ??

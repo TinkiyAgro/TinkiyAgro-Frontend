@@ -221,19 +221,38 @@ class _DetalleProductoPageState extends State<DetalleProductoPage> {
                 ),
               ),
             ],
-            if (producto.farmerPhone.isNotEmpty) ...[
+            if (producto.farmerBusinessName.isNotEmpty) ...[
               const SizedBox(height: 14),
               Row(
                 children: [
                   const Icon(
-                    Icons.phone_outlined,
+                    Icons.storefront_outlined,
                     size: 18,
                     color: Color(0xFF5CA399),
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    producto.farmerPhone,
+                    'Negocio: ${producto.farmerBusinessName}',
                     style: const TextStyle(fontSize: 14),
+                  ),
+                ],
+              ),
+            ],
+            if (producto.farmerCoverageArea.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  const Icon(
+                    Icons.location_on_outlined,
+                    size: 18,
+                    color: Color(0xFF5CA399),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Zona de cobertura: ${producto.farmerCoverageArea}',
+                      style: const TextStyle(fontSize: 14),
+                    ),
                   ),
                 ],
               ),

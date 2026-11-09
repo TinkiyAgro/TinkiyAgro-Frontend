@@ -25,15 +25,17 @@ class WholesaleProductCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) => InkWell(
     onTap: () {
-      unawaited(PilotEventsQueue.instance.record(
-        'CLICK',
-        productId: product['id']?.toString(),
-      ));
+      unawaited(
+        PilotEventsQueue.instance.record(
+          'CLICK',
+          productId: product['id']?.toString(),
+        ),
+      );
       Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => WholesaleQuoteRequestPage(initialProduct: product),
-      ),
+        context,
+        MaterialPageRoute(
+          builder: (_) => WholesaleQuoteRequestPage(initialProduct: product),
+        ),
       );
     },
     borderRadius: BorderRadius.circular(14),
@@ -74,6 +76,19 @@ class WholesaleProductCard extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(color: Color(0xFF65736F)),
+                ),
+                Text(
+                  [product['zone'], product['region']]
+                      .where(
+                        (value) => value != null && value.toString().isNotEmpty,
+                      )
+                      .join(' · '),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Color(0xFF65736F),
+                  ),
                 ),
                 const SizedBox(height: 8),
                 Text(
@@ -313,7 +328,8 @@ class _WholesaleQuoteRequestPageState extends State<WholesaleQuoteRequestPage> {
       final quote = await WholesaleService().requestQuote({
         'operationId': _operationId,
         'submittedAtClient': DateTime.now().toUtc().toIso8601String(),
-        'sessionId': widget.initialProduct['originSessionId'] ?? PilotSession.sessionId,
+        'sessionId':
+            widget.initialProduct['originSessionId'] ?? PilotSession.sessionId,
         'organizationId': widget.initialProduct['organizationId'],
         'items': items,
         'deliveryLocation': _delivery.text.trim(),
@@ -1077,6 +1093,22 @@ class _WholesaleTrackingPageState extends State<WholesaleTrackingPage> {
                   '${order['dispatchLatitude']}, ${order['dispatchLongitude']} · precisión ${(order['dispatchAccuracyMeters'] as num?)?.toStringAsFixed(0) ?? '-'} m',
             ),
           ],
+          if (order['deliveryLatitude'] != null) ...[
+            const SizedBox(height: 12),
+            _Notice(
+              title: 'Ubicación de recepción registrada',
+              text:
+                  '${order['deliveryLatitude']}, ${order['deliveryLongitude']} · precisión ${(order['deliveryAccuracyMeters'] as num?)?.toStringAsFixed(0) ?? '-'} m',
+            ),
+          ],
+          if (order['incidentNotes'] != null) ...[
+            const SizedBox(height: 12),
+            _Notice(
+              title: 'Incidencia registrada',
+              text:
+                  '${order['incidentNotes']}${order['incidentReportedAt'] == null ? '' : '\nFecha: ${_formatDateTime(order['incidentReportedAt'])}'}',
+            ),
+          ],
           if (order['status'] == 'EN_TRANSITO') ...[
             const SizedBox(height: 16),
             FilledButton(
@@ -1149,6 +1181,15 @@ class _WholesaleTrackingPageState extends State<WholesaleTrackingPage> {
     setState(() => _busy = true);
     try {
       await WholesaleService().reportIncident(widget.orderId, text);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Incidencia registrada y notificada a la organización.',
+            ),
+          ),
+        );
+      }
       _reload();
     } catch (e) {
       _show('$e');
@@ -1204,6 +1245,14 @@ class _OrganizationOrderTrackingPageState
           ),
           const SizedBox(height: 16),
           _OrderTimeline(order: o),
+          if (o['deliveryLatitude'] != null) ...[
+            const SizedBox(height: 12),
+            _Notice(
+              title: 'Ubicación de recepción registrada',
+              text:
+                  '${o['deliveryLatitude']}, ${o['deliveryLongitude']} · precisión ${(o['deliveryAccuracyMeters'] as num?)?.toStringAsFixed(0) ?? '-'} m',
+            ),
+          ],
           const SizedBox(height: 14),
           _Summary(
             rows: {
@@ -1215,7 +1264,11 @@ class _OrganizationOrderTrackingPageState
           ),
           if (o['incidentNotes'] != null) ...[
             const SizedBox(height: 12),
-            _Notice(title: 'Incidencia reportada', text: o['incidentNotes']),
+            _Notice(
+              title: 'Incidencia reportada',
+              text:
+                  '${o['incidentNotes']}\nReportada por: ${o['incidentReportedBy'] ?? '-'}${o['incidentReportedAt'] == null ? '' : '\nFecha: ${_formatDateTime(o['incidentReportedAt'])}'}',
+            ),
           ],
           const SizedBox(height: 16),
           if (o['status'] == 'CONFIRMADA')
@@ -1738,6 +1791,15 @@ String _organizationQuoteStatus(dynamic raw) =>
       'VENCIDA': 'Vencida',
     }[raw] ??
     _status(raw);
+
+String _formatDateTime(dynamic raw) {
+  final value = DateTime.tryParse(raw?.toString() ?? '')?.toLocal();
+  if (value == null) return raw?.toString() ?? '-';
+  String two(int number) => number.toString().padLeft(2, '0');
+  return '${two(value.day)}/${two(value.month)}/${value.year} '
+      '${two(value.hour)}:${two(value.minute)}';
+}
+
 InputDecoration _input(String label) => InputDecoration(
   labelText: label,
   filled: true,

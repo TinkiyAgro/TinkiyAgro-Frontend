@@ -26,6 +26,9 @@ class FarmerOrderItem {
 
 class FarmerCustomerOrder {
   final String subOrderId;
+  final int orderNumber;
+  final DateTime? createdAt;
+  final String estado;
   final List<String> subOrderIds;
   final String customerUsername;
   final String clienteInicial;
@@ -44,6 +47,9 @@ class FarmerCustomerOrder {
 
   FarmerCustomerOrder({
     this.subOrderId = '',
+    this.orderNumber = 0,
+    this.createdAt,
+    this.estado = 'Pendiente',
     List<String>? subOrderIds,
     this.customerUsername = '',
     required this.clienteInicial,
@@ -112,6 +118,11 @@ class FarmerCustomerOrder {
         json['subOrderId']?.toString() ?? json['id']?.toString() ?? '';
     return FarmerCustomerOrder(
       subOrderId: subOrderId,
+      orderNumber: _parseInt(json['orderNumber']),
+      createdAt: DateTime.tryParse(
+        json['createdAt']?.toString() ?? '',
+      )?.toLocal(),
+      estado: _statusLabel(json['status']?.toString() ?? ''),
       customerUsername: username,
       clienteInicial: name.isNotEmpty ? name[0].toUpperCase() : '#',
       clienteColor: const Color(0xFFB2DFDB),
@@ -364,6 +375,9 @@ List<FarmerCustomerOrder> _mergeCustomerOrders(
     final first = items.first;
     return FarmerCustomerOrder(
       subOrderId: first.subOrderId,
+      orderNumber: first.orderNumber,
+      createdAt: first.createdAt,
+      estado: first.estado,
       subOrderIds: items.expand((item) => item.subOrderIds).toList(),
       customerUsername: first.customerUsername,
       clienteInicial: first.clienteInicial,
@@ -384,6 +398,28 @@ List<FarmerCustomerOrder> _mergeCustomerOrders(
       pagoConfirmado: items.every((item) => item.pagoConfirmado),
     );
   }).toList();
+}
+
+int _parseInt(dynamic value) {
+  if (value is int) return value;
+  return int.tryParse(value?.toString() ?? '') ?? 0;
+}
+
+String _statusLabel(String value) {
+  switch (value.toUpperCase()) {
+    case 'CONFIRMED':
+      return 'Pendiente';
+    case 'PREPARED':
+      return 'En preparación';
+    case 'DISPATCHED':
+      return 'En camino';
+    case 'READY_FOR_PICKUP':
+      return 'Listo para recoger';
+    case 'DELIVERED':
+      return 'Entregado';
+    default:
+      return value.isEmpty ? 'Pendiente' : value;
+  }
 }
 
 // ── Top-level helpers for fromJson parsers ────────────────────────────────────

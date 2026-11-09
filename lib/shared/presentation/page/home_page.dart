@@ -59,6 +59,8 @@ class _HomePageState extends State<HomePage> {
         f.calificacion != null ||
         f.ventaPorKilo ||
         f.ventaPorCaja ||
+        f.soloDisponibles ||
+        f.distanciaMaximaKm != null ||
         f.modalidad != 'TODOS';
   }
 
@@ -223,6 +225,11 @@ class _HomePageState extends State<HomePage> {
               ventaPorKilo: filtros.ventaPorKilo ? true : null,
               ventaPorCaja: filtros.ventaPorCaja ? true : null,
             );
+      final filteredRetail = filtros.soloDisponibles
+          ? resultados
+                .where((p) => p.purchasable && p.stockDisponible > 0)
+                .toList()
+          : resultados;
       var wholesale = await WholesaleService().products();
       if (filtros.modalidad == 'MINORISTA') wholesale = [];
       final term = _terminoBusqueda.toLowerCase();
@@ -242,11 +249,16 @@ class _HomePageState extends State<HomePage> {
         final price = (p['referencePrice'] as num?)?.toDouble() ?? 0;
         return matchesTerm &&
             category &&
+            (!filtros.soloDisponibles ||
+                ((p['stock'] as num?)?.toDouble() ?? 0) > 0) &&
+            (filtros.distanciaMaximaKm == null ||
+                ((p['distanceKm'] as num?)?.toDouble() ?? double.infinity) <=
+                    filtros.distanciaMaximaKm!) &&
             (filtros.precioMinimo == null || price >= filtros.precioMinimo!) &&
             (filtros.precioMaximo == null || price <= filtros.precioMaximo!);
       }).toList();
       setState(() {
-        _resultadosBusqueda = resultados;
+        _resultadosBusqueda = filteredRetail;
         _wholesaleProducts = wholesale;
         _buscando = false;
       });
@@ -699,6 +711,21 @@ class _HomePageState extends State<HomePage> {
   );
 
   Widget _buildResultadosFiltro() {
+    final filtros = CatalogoRepositorio().filtrosActivos;
+    final etiquetas = <String>[
+      if (_terminoBusqueda.isNotEmpty) 'Búsqueda: $_terminoBusqueda',
+      if (_categoriaSeleccionada != null) _categoriaSeleccionada!,
+      if (filtros.modalidad != 'TODOS')
+        filtros.modalidad == 'MINORISTA' ? 'Compra directa' : 'Mayorista',
+      if (filtros.precioMinimo != null) 'Desde S/ ${filtros.precioMinimo}',
+      if (filtros.precioMaximo != null) 'Hasta S/ ${filtros.precioMaximo}',
+      if (filtros.calificacion != null) '${filtros.calificacion}+ estrellas',
+      if (filtros.ventaPorKilo) 'Por kilo',
+      if (filtros.ventaPorCaja) 'Por caja',
+      if (filtros.soloDisponibles) 'Disponibles',
+      if (filtros.distanciaMaximaKm != null)
+        'Hasta ${filtros.distanciaMaximaKm!.round()} km',
+    ];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -732,6 +759,22 @@ class _HomePageState extends State<HomePage> {
             ),
           ],
         ),
+        if (etiquetas.isNotEmpty) ...[
+          Wrap(
+            spacing: 8,
+            runSpacing: 6,
+            children: etiquetas
+                .map(
+                  (label) => Chip(
+                    label: Text(label),
+                    backgroundColor: const Color(0xFFE0F2ED),
+                    side: BorderSide.none,
+                  ),
+                )
+                .toList(),
+          ),
+          const SizedBox(height: 12),
+        ],
         const SizedBox(height: 12),
         if (_buscando)
           const Center(

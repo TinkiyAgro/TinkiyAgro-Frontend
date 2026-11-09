@@ -600,7 +600,7 @@ class _FarmerOrdersPageState extends State<FarmerOrdersPage> {
     FarmerCustomerOrder customer,
   ) {
     return GestureDetector(
-      onTap: null,
+      onTap: () => _showOrderDetail(group, customer),
       child: Container(
         margin: const EdgeInsets.fromLTRB(12, 0, 12, 8),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -640,6 +640,12 @@ class _FarmerOrdersPageState extends State<FarmerOrdersPage> {
                       fontSize: 14,
                     ),
                   ),
+                  Text(
+                    '${customer.orderNumber > 0 ? 'Pedido #${customer.orderNumber}' : 'Pedido ${customer.subOrderId.length > 8 ? customer.subOrderId.substring(0, 8) : customer.subOrderId}'}'
+                    '${customer.createdAt == null ? '' : ' · ${_formatearFecha(customer.createdAt!)}'}'
+                    ' · ${customer.estado}',
+                    style: const TextStyle(fontSize: 11, color: Colors.black54),
+                  ),
                   ...customer.items.map(
                     (i) => Text(
                       '${i.productName} × ${i.cantidad}',
@@ -661,6 +667,94 @@ class _FarmerOrdersPageState extends State<FarmerOrdersPage> {
       ),
     );
   }
+
+  Future<void> _showOrderDetail(
+    FarmerOrderGroup group,
+    FarmerCustomerOrder customer,
+  ) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                customer.orderNumber > 0
+                    ? 'Pedido #${customer.orderNumber}'
+                    : 'Detalle del pedido',
+                style: const TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                '${customer.estado}${customer.createdAt == null ? '' : ' · ${_formatearFecha(customer.createdAt!)}'}',
+                style: const TextStyle(color: Colors.black54),
+              ),
+              const Divider(height: 28),
+              Text(
+                customer.clienteNombre,
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 12),
+              ...customer.items.map(
+                (item) => ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(item.productName),
+                  subtitle: Text(item.cantidad),
+                  trailing: Text('S/. ${item.precio.toStringAsFixed(2)}'),
+                ),
+              ),
+              _detailRow('Productos', customer.productsSubtotal),
+              _detailRow('Envío', customer.deliveryCost),
+              _detailRow('Total', customer.total, bold: true),
+              const Divider(height: 28),
+              Text('Entrega: ${customer.tipoEntrega}'),
+              Text('Pago: ${customer.metodoPago}'),
+              if (group.direccion.isNotEmpty)
+                Text('Destino: ${group.direccion}'),
+              if (group.district?.isNotEmpty == true)
+                Text('Distrito: ${group.district}'),
+              if (group.reference?.isNotEmpty == true)
+                Text('Referencia: ${group.reference}'),
+              const SizedBox(height: 18),
+              FilledButton(
+                onPressed: () => Navigator.pop(context),
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size.fromHeight(48),
+                  backgroundColor: const Color(0xFF5CA399),
+                ),
+                child: const Text('Cerrar'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _detailRow(String label, double amount, {bool bold = false}) =>
+      Padding(
+        padding: const EdgeInsets.symmetric(vertical: 3),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              label,
+              style: TextStyle(fontWeight: bold ? FontWeight.bold : null),
+            ),
+            Text(
+              'S/. ${amount.toStringAsFixed(2)}',
+              style: TextStyle(fontWeight: bold ? FontWeight.bold : null),
+            ),
+          ],
+        ),
+      );
 
   Widget _buildDispatchSection(FarmerOrderGroup group) {
     return Padding(

@@ -8,6 +8,8 @@ class FiltrosCriterio {
   bool envioGratis;
   bool ventaPorKilo;
   bool ventaPorCaja;
+  bool soloDisponibles;
+  double? distanciaMaximaKm;
   String modalidad;
 
   FiltrosCriterio({
@@ -17,6 +19,8 @@ class FiltrosCriterio {
     this.envioGratis = false,
     this.ventaPorKilo = false,
     this.ventaPorCaja = false,
+    this.soloDisponibles = false,
+    this.distanciaMaximaKm,
     this.modalidad = 'TODOS',
   });
 
@@ -27,6 +31,8 @@ class FiltrosCriterio {
     envioGratis = false;
     ventaPorKilo = false;
     ventaPorCaja = false;
+    soloDisponibles = false;
+    distanciaMaximaKm = null;
     modalidad = 'TODOS';
   }
 
@@ -38,6 +44,8 @@ class FiltrosCriterio {
       envioGratis: envioGratis,
       ventaPorKilo: ventaPorKilo,
       ventaPorCaja: ventaPorCaja,
+      soloDisponibles: soloDisponibles,
+      distanciaMaximaKm: distanciaMaximaKm,
       modalidad: modalidad,
     );
   }
@@ -371,6 +379,8 @@ class CatalogoRepositorio extends ChangeNotifier {
     filtrosActivos.envioGratis = nuevosFiltros.envioGratis;
     filtrosActivos.ventaPorKilo = nuevosFiltros.ventaPorKilo;
     filtrosActivos.ventaPorCaja = nuevosFiltros.ventaPorCaja;
+    filtrosActivos.soloDisponibles = nuevosFiltros.soloDisponibles;
+    filtrosActivos.distanciaMaximaKm = nuevosFiltros.distanciaMaximaKm;
     filtrosActivos.modalidad = nuevosFiltros.modalidad;
     notifyListeners();
   }

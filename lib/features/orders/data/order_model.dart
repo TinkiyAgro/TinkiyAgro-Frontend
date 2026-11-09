@@ -131,6 +131,9 @@ class SubPedido {
         final isCurrent =
             s['current'] == true; // backend usa "current", no "active"
         final stepLabel = (s['label'] ?? '').toString();
+        final occurredAt = DateTime.tryParse(
+          s['occurredAt']?.toString() ?? '',
+        )?.toLocal();
 
         // Tracking embebido en el paso actual del timeline
         if (isCurrent) {
@@ -142,7 +145,9 @@ class SubPedido {
         }
         return TimelineEvent(
           label: stepLabel,
-          value: isCompleted
+          value: occurredAt != null
+              ? _formatTimelineDate(occurredAt)
+              : isCompleted
               ? 'Completado'
               : isCurrent
               ? 'En curso'
@@ -191,6 +196,12 @@ class SubPedido {
       tracking: tracking,
     );
   }
+}
+
+String _formatTimelineDate(DateTime value) {
+  String two(int number) => number.toString().padLeft(2, '0');
+  return '${two(value.day)}/${two(value.month)}/${value.year} '
+      '${two(value.hour)}:${two(value.minute)}';
 }
 
 String _saleFormatUnit(String format) {

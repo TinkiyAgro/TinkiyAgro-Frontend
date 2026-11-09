@@ -16,6 +16,8 @@ class _FiltrosProductoPageState extends State<FiltrosProductoPage> {
   double? _calificacionSeleccionada;
   bool _ventaPorKilo = false;
   bool _ventaPorCaja = false;
+  bool _soloDisponibles = false;
+  double _distanciaMaxima = 300;
   String _modalidad = 'TODOS';
   String? _priceError;
 
@@ -36,6 +38,8 @@ class _FiltrosProductoPageState extends State<FiltrosProductoPage> {
     _calificacionSeleccionada = filtros.calificacion;
     _ventaPorKilo = filtros.ventaPorKilo;
     _ventaPorCaja = filtros.ventaPorCaja;
+    _soloDisponibles = filtros.soloDisponibles;
+    _distanciaMaxima = filtros.distanciaMaximaKm ?? 300;
     _modalidad = filtros.modalidad;
   }
 
@@ -54,6 +58,8 @@ class _FiltrosProductoPageState extends State<FiltrosProductoPage> {
       _calificacionSeleccionada = null;
       _ventaPorKilo = false;
       _ventaPorCaja = false;
+      _soloDisponibles = false;
+      _distanciaMaxima = 300;
       _modalidad = 'TODOS';
       _priceError = null;
     });
@@ -87,6 +93,8 @@ class _FiltrosProductoPageState extends State<FiltrosProductoPage> {
       calificacion: _calificacionSeleccionada,
       ventaPorKilo: _ventaPorKilo,
       ventaPorCaja: _ventaPorCaja,
+      soloDisponibles: _soloDisponibles,
+      distanciaMaximaKm: _distanciaMaxima < 300 ? _distanciaMaxima : null,
       modalidad: _modalidad,
     );
 
@@ -247,8 +255,34 @@ class _FiltrosProductoPageState extends State<FiltrosProductoPage> {
                             onChanged: (val) =>
                                 setState(() => _ventaPorCaja = val),
                           ),
+                          const Divider(height: 1, indent: 56, endIndent: 16),
+                          _buildOtroItem(
+                            icon: Icons.inventory_outlined,
+                            titulo: 'Solo productos disponibles',
+                            valor: _soloDisponibles,
+                            onChanged: (val) =>
+                                setState(() => _soloDisponibles = val),
+                          ),
                         ],
                       ),
+                    ),
+                    const SizedBox(height: 28),
+                    Text(
+                      'Distancia máxima: ${_distanciaMaxima.round()} km',
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Slider(
+                      value: _distanciaMaxima,
+                      min: 5,
+                      max: 300,
+                      divisions: 59,
+                      label: '${_distanciaMaxima.round()} km',
+                      activeColor: const Color(0xFF5CA399),
+                      onChanged: (value) =>
+                          setState(() => _distanciaMaxima = value),
                     ),
                   ],
                 ),
