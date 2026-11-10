@@ -17,7 +17,7 @@ class _FiltrosProductoPageState extends State<FiltrosProductoPage> {
   bool _ventaPorKilo = false;
   bool _ventaPorCaja = false;
   bool _soloDisponibles = false;
-  double _distanciaMaxima = 300;
+  double _distanciaMaxima = 400;
   String _modalidad = 'TODOS';
   String? _priceError;
 
@@ -39,7 +39,7 @@ class _FiltrosProductoPageState extends State<FiltrosProductoPage> {
     _ventaPorKilo = filtros.ventaPorKilo;
     _ventaPorCaja = filtros.ventaPorCaja;
     _soloDisponibles = filtros.soloDisponibles;
-    _distanciaMaxima = filtros.distanciaMaximaKm ?? 300;
+    _distanciaMaxima = filtros.distanciaMaximaKm ?? 400;
     _modalidad = filtros.modalidad;
   }
 
@@ -59,7 +59,7 @@ class _FiltrosProductoPageState extends State<FiltrosProductoPage> {
       _ventaPorKilo = false;
       _ventaPorCaja = false;
       _soloDisponibles = false;
-      _distanciaMaxima = 300;
+      _distanciaMaxima = 400;
       _modalidad = 'TODOS';
       _priceError = null;
     });
@@ -94,7 +94,7 @@ class _FiltrosProductoPageState extends State<FiltrosProductoPage> {
       ventaPorKilo: _ventaPorKilo,
       ventaPorCaja: _ventaPorCaja,
       soloDisponibles: _soloDisponibles,
-      distanciaMaximaKm: _distanciaMaxima < 300 ? _distanciaMaxima : null,
+      distanciaMaximaKm: _distanciaMaxima < 400 ? _distanciaMaxima : null,
       modalidad: _modalidad,
     );
 
@@ -277,7 +277,7 @@ class _FiltrosProductoPageState extends State<FiltrosProductoPage> {
                     Slider(
                       value: _distanciaMaxima,
                       min: 5,
-                      max: 300,
+                      max: 400,
                       divisions: 59,
                       label: '${_distanciaMaxima.round()} km',
                       activeColor: const Color(0xFF5CA399),

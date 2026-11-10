@@ -496,7 +496,7 @@ class _ConsumerDiscoverySetupPageState
               Slider(
                 value: _radius,
                 min: 0,
-                max: 300,
+                max: 400,
                 divisions: 60,
                 activeColor: _brand,
                 label: '${_radius.round()} km',
@@ -504,7 +504,7 @@ class _ConsumerDiscoverySetupPageState
               ),
             const Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [Text('0 km'), Text('300 km')],
+              children: [Text('0 km'), Text('400 km')],
             ),
           ],
         ),
