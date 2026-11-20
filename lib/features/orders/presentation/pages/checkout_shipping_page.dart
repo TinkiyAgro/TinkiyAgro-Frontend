@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../cart/data/cart_manager.dart';
+import '../../data/checkout_farmer_mapper.dart';
 import '../../data/order_model.dart';
 import '../../data/remote/delivery_options_service.dart';
 
@@ -40,49 +41,14 @@ class _CheckoutEnvioPageState extends State<CheckoutEnvioPage> {
   }
 
   void _buildFarmersFromOptions(List<CheckoutFarmerOptions> farmerOptions) {
-    // Group cart items by farmerUsername for product summary
-    final cartItems = CarritoManager().items;
-    final Map<String, List<CarritoItem>> grouped = {};
-    for (final item in cartItems) {
-      grouped.putIfAbsent(item.producto.nombreVendedor, () => []).add(item);
-    }
-
-    _farmers = farmerOptions.map((fo) {
-      // Try to match cart items by username; fall back to all items if no match
-      final items =
-          grouped[fo.farmerUsername] ??
-          grouped.values.expand((x) => x).toList();
-
-      final checkoutItems = items
-          .map(
-            (ci) => CheckoutItemData(
-              productName: ci.producto.nombre,
-              cantidad: ci.cantidad.toDouble(),
-              unidad: ci.formatoVenta == 'Caja' ? 'Caja' : 'Kg',
-              precioUnitario: ci.precioUnitario,
-            ),
-          )
-          .toList();
-
-      final farmer = CheckoutFarmer(
-        farmerUsername: fo.farmerUsername,
-        farmerName: fo.farmerDisplayName,
-        farmerAvatarUrl: fo.farmerAvatarUrl,
-        items: checkoutItems,
-        productsTotal: items.fold(0.0, (s, i) => s + i.total),
-        availableOptions: fo.options,
-        selectedOptionIndex: fo.options.isNotEmpty ? 0 : -1,
-        paymentMethods: fo.paymentMethods.isNotEmpty ? fo.paymentMethods : null,
-      );
-      return farmer;
-    }).toList();
+    _farmers = buildCheckoutFarmers(CarritoManager().items, farmerOptions);
   }
 
   Future<void> _cargarDesdeCarrito() async {
     final cartItems = CarritoManager().items;
     final Map<String, List<CarritoItem>> grouped = {};
     for (final item in cartItems) {
-      grouped.putIfAbsent(item.producto.nombreVendedor, () => []).add(item);
+      grouped.putIfAbsent(cartFarmerUsername(item), () => []).add(item);
     }
 
     final farmers = grouped.entries.map((e) {

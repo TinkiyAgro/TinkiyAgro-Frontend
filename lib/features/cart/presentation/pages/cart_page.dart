@@ -39,6 +39,7 @@ class _CarritoPageState extends State<CarritoPage> {
           calificacion: 0,
           cantidadResenas: 0,
           nombreVendedor: item.farmerUsername,
+          farmerUsername: item.farmerUsername,
           calificacionVendedor: 0,
           urlAvatarVendedor: resolveMediaUrl(item.farmerAvatarUrl),
           stockDisponible: 0,

@@ -47,6 +47,7 @@ class _HomePageState extends State<HomePage> {
   bool _cargandoHome = true;
   bool _buscando = false;
   List<PilotFeedList> _pilotLists = [];
+  PilotSeasonContext? _pilotSeason;
   bool _feedFailed = false;
 
   // True si hay cualquier filtro/búsqueda/categoría activa
@@ -147,12 +148,15 @@ class _HomePageState extends State<HomePage> {
     setState(() => _cargandoHome = true);
     var feedFailed = false;
     var lists = <PilotFeedList>[];
+    PilotSeasonContext? season;
     var recommended = <Producto>[];
     var popular = <Producto>[];
     var wholesale = <Map<String, dynamic>>[];
 
     try {
-      lists = await PilotFeedService().load();
+      final feed = await PilotFeedService().load();
+      lists = feed.lists;
+      season = feed.season;
     } catch (error) {
       feedFailed = true;
       debugPrint('[HomePage] Pilot feed unavailable: $error');
@@ -179,6 +183,7 @@ class _HomePageState extends State<HomePage> {
     if (mounted) {
       setState(() {
         _pilotLists = lists;
+        _pilotSeason = season;
         _recomendados = recommended;
         _tendencias = popular;
         _feedFailed = feedFailed;
@@ -663,7 +668,7 @@ class _HomePageState extends State<HomePage> {
         const SizedBox(height: 24),
         _buildWholesaleFallback(),
       ] else
-        PilotFeedView(lists: _pilotLists),
+        PilotFeedView(lists: _pilotLists, season: _pilotSeason),
       const SizedBox(height: 30),
     ];
   }
